@@ -1,4 +1,7 @@
+import { isList, isMap, isVector } from './assertions'
 import { EvaluationError } from './evaluator'
+import { cljVector } from './factories'
+import { printString } from './printer'
 import { type CljValue, valueKeywords } from './types'
 
 export function valueToString(value: CljValue): string {
@@ -44,4 +47,20 @@ export function valueToString(value: CljValue): string {
         value,
       })
   }
+}
+
+export const toSeq = (collection: CljValue): CljValue[] => {
+  if (isList(collection)) {
+    return collection.value
+  }
+  if (isVector(collection)) {
+    return collection.value
+  }
+  if (isMap(collection)) {
+    return collection.entries.map(([k, v]) => cljVector([k, v]))
+  }
+  throw new EvaluationError(
+    `toSeq expects a collection, got ${printString(collection)}`,
+    { collection }
+  )
 }

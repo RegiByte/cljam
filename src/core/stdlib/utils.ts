@@ -1,0 +1,179 @@
+// Miscellaneous utilities: str, type, gensym, eval, macroexpand-1, macroexpand,
+// namespace, name, keyword
+import { isKeyword, isList, isMacro, isSymbol } from '../assertions'
+import { lookup } from '../env'
+import { applyMacro, evaluate, EvaluationError } from '../evaluator'
+import {
+  cljKeyword,
+  cljNativeFunction,
+  cljNil,
+  cljString,
+  cljSymbol,
+} from '../factories'
+import { makeGensym } from '../gensym'
+import { printString } from '../printer'
+import { valueToString } from '../transformations'
+import type { CljValue, Env } from '../types'
+
+export function getUtilFunctions(globalEnv: Env): Record<string, CljValue> {
+  const utilFunctions: Record<string, CljValue> = {
+    str: cljNativeFunction('str', (...args: CljValue[]) => {
+      return cljString(args.map(valueToString).join(''))
+    }),
+    type: cljNativeFunction('type', (x: CljValue) => {
+      if (x === undefined) {
+        throw new EvaluationError('type expects an argument', { x })
+      }
+      const kindToKeyword: Record<string, string> = {
+        number: ':number',
+        string: ':string',
+        boolean: ':boolean',
+        nil: ':nil',
+        keyword: ':keyword',
+        symbol: ':symbol',
+        list: ':list',
+        vector: ':vector',
+        map: ':map',
+        function: ':function',
+        'native-function': ':function',
+      }
+      const name = kindToKeyword[x.kind]
+      if (!name) {
+        throw new EvaluationError(`type: unhandled kind ${x.kind}`, { x })
+      }
+      return cljKeyword(name)
+    }),
+    gensym: cljNativeFunction('gensym', (...args: CljValue[]) => {
+      if (args.length > 1) {
+        throw new EvaluationError('gensym takes 0 or 1 arguments', { args })
+      }
+      const prefix = args[0]
+      if (prefix !== undefined && prefix.kind !== 'string') {
+        throw new EvaluationError(
+          `gensym prefix must be a string${prefix !== undefined ? `, got ${printString(prefix)}` : ''}`,
+          { prefix }
+        )
+      }
+      const p = prefix?.kind === 'string' ? prefix.value : 'G'
+      return cljSymbol(makeGensym(p))
+    }),
+    eval: cljNativeFunction('eval', (form: CljValue | undefined) => {
+      if (form === undefined) {
+        throw new EvaluationError('eval expects a form as argument', {
+          form,
+        })
+      }
+      return evaluate(form, globalEnv)
+    }),
+
+    'macroexpand-1': cljNativeFunction('macroexpand-1', (form: CljValue) => {
+      if (!isList(form) || form.value.length === 0) return form
+      const head = form.value[0]
+      if (!isSymbol(head)) return form
+      let macroValue: CljValue
+      try {
+        macroValue = lookup(head.name, globalEnv)
+      } catch {
+        return form
+      }
+      if (!isMacro(macroValue)) return form
+      return applyMacro(macroValue, form.value.slice(1))
+    }),
+
+    macroexpand: cljNativeFunction('macroexpand', (form: CljValue) => {
+      let current = form
+      while (true) {
+        if (!isList(current) || current.value.length === 0) return current
+        const head = current.value[0]
+        if (!isSymbol(head)) return current
+        let macroValue: CljValue
+        try {
+          macroValue = lookup(head.name, globalEnv)
+        } catch {
+          return current
+        }
+        if (!isMacro(macroValue)) return current
+        current = applyMacro(macroValue, current.value.slice(1))
+      }
+    }),
+
+    // Returns the namespace string of a qualified keyword or symbol, or nil.
+    // (namespace :user/foo) => "user"
+    // (namespace :foo)      => nil
+    // (namespace 'user/foo) => "user"
+    namespace: cljNativeFunction('namespace', (x: CljValue) => {
+      if (x === undefined) {
+        throw new EvaluationError('namespace expects an argument', { x })
+      }
+      let raw: string | undefined
+      if (isKeyword(x)) {
+        // keyword name format: ":ns/local" or ":local"
+        raw = x.name.slice(1) // strip leading ":"
+      } else if (isSymbol(x)) {
+        raw = x.name
+      } else {
+        throw new EvaluationError(
+          `namespace expects a keyword or symbol, got ${printString(x)}`,
+          { x }
+        )
+      }
+      const slashIdx = raw.indexOf('/')
+      if (slashIdx <= 0) return cljNil()
+      return cljString(raw.slice(0, slashIdx))
+    }),
+
+    // Returns the local name of a keyword or symbol as a string.
+    // (name :user/foo) => "foo"
+    // (name :foo)      => "foo"
+    // (name 'user/foo) => "foo"
+    name: cljNativeFunction('name', (x: CljValue) => {
+      if (x === undefined) {
+        throw new EvaluationError('name expects an argument', { x })
+      }
+      let raw: string | undefined
+      if (isKeyword(x)) {
+        raw = x.name.slice(1) // strip leading ":"
+      } else if (isSymbol(x)) {
+        raw = x.name
+      } else if (x.kind === 'string') {
+        return x
+      } else {
+        throw new EvaluationError(
+          `name expects a keyword, symbol, or string, got ${printString(x)}`,
+          { x }
+        )
+      }
+      const slashIdx = raw.indexOf('/')
+      return cljString(slashIdx >= 0 ? raw.slice(slashIdx + 1) : raw)
+    }),
+
+    // Constructs a keyword.
+    // (keyword "foo")        => :foo
+    // (keyword "user" "foo") => :user/foo
+    keyword: cljNativeFunction('keyword', (...args: CljValue[]) => {
+      if (args.length === 0 || args.length > 2) {
+        throw new EvaluationError('keyword expects 1 or 2 string arguments', {
+          args,
+        })
+      }
+      if (args[0].kind !== 'string') {
+        throw new EvaluationError(
+          `keyword expects a string, got ${printString(args[0])}`,
+          { args }
+        )
+      }
+      if (args.length === 1) {
+        return cljKeyword(`:${args[0].value}`)
+      }
+      if (args[1].kind !== 'string') {
+        throw new EvaluationError(
+          `keyword second argument must be a string, got ${printString(args[1])}`,
+          { args }
+        )
+      }
+      return cljKeyword(`:${args[0].value}/${args[1].value}`)
+    }),
+  }
+
+  return utilFunctions
+}

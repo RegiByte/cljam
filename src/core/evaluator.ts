@@ -5,15 +5,19 @@ import {
   cljMap,
   cljMultiArityFunction,
   cljMultiArityMacro,
+  cljMultiMethod,
+  cljNativeFunction,
   cljNil,
   cljVector,
 } from './factories'
 import {
   type Arity,
   type CljFunction,
+  type CljKeyword,
   type CljList,
   type CljMacro,
   type CljMap,
+  type CljMultiMethod,
   type CljNativeFunction,
   type CljSymbol,
   type CljValue,
@@ -29,6 +33,7 @@ import {
   isList,
   isMacro,
   isMap,
+  isMultiMethod,
   isSpecialForm,
   isSymbol,
   isVector,
@@ -46,6 +51,8 @@ export const specialFormKeywords = {
   ns: 'ns',
   loop: 'loop',
   recur: 'recur',
+  defmulti: 'defmulti',
+  defmethod: 'defmethod',
 } as const
 
 export class EvaluationError extends Error {
@@ -506,6 +513,71 @@ export function evaluateSpecialForm(
         }
       }
     }
+    case 'defmulti': {
+      const mmName = list.value[1]
+      if (!isSymbol(mmName)) {
+        throw new EvaluationError('defmulti: first argument must be a symbol', {
+          list,
+          env,
+        })
+      }
+      const dispatchFnExpr = list.value[2]
+      let dispatchFn: CljFunction | CljNativeFunction
+      if (isKeyword(dispatchFnExpr)) {
+        dispatchFn = keywordToDispatchFn(dispatchFnExpr)
+      } else {
+        const evaluated = evaluate(dispatchFnExpr, env)
+        if (!isAFunction(evaluated)) {
+          throw new EvaluationError(
+            'defmulti: dispatch-fn must be a function or keyword',
+            { list, env }
+          )
+        }
+        dispatchFn = evaluated
+      }
+      const mm = cljMultiMethod(mmName.name, dispatchFn, [])
+      define(mmName.name, mm, getNamespaceEnv(env))
+      return cljNil()
+    }
+    case 'defmethod': {
+      const mmName = list.value[1]
+      if (!isSymbol(mmName)) {
+        throw new EvaluationError(
+          'defmethod: first argument must be a symbol',
+          { list, env }
+        )
+      }
+      const dispatchVal = evaluate(list.value[2], env)
+      const existing = lookup(mmName.name, env)
+      if (!isMultiMethod(existing)) {
+        throw new EvaluationError(
+          `defmethod: ${mmName.name} is not a multimethod`,
+          { list, env }
+        )
+      }
+      const arities = parseArities([list.value[3], ...list.value.slice(4)], env)
+      const methodFn = cljMultiArityFunction(arities, env)
+      const isDefault = isKeyword(dispatchVal) && dispatchVal.name === ':default'
+      let updated: CljMultiMethod
+      if (isDefault) {
+        updated = cljMultiMethod(
+          existing.name,
+          existing.dispatchFn,
+          existing.methods,
+          methodFn
+        )
+      } else {
+        const filtered = existing.methods.filter(
+          (m) => !isEqual(m.dispatchVal, dispatchVal)
+        )
+        updated = cljMultiMethod(existing.name, existing.dispatchFn, [
+          ...filtered,
+          { dispatchVal, fn: methodFn },
+        ])
+      }
+      define(mmName.name, updated, getNamespaceEnv(env))
+      return cljNil()
+    }
     default:
       throw new EvaluationError(`Unknown special form: ${symbol}`, {
         symbol,
@@ -513,6 +585,33 @@ export function evaluateSpecialForm(
         env,
       })
   }
+}
+
+function keywordToDispatchFn(kw: CljKeyword): CljNativeFunction {
+  return cljNativeFunction(`kw:${kw.name}`, (...args: CljValue[]) => {
+    const target = args[0]
+    if (!isMap(target)) return cljNil()
+    const entry = target.entries.find(([k]) => isEqual(k, kw))
+    return entry ? entry[1] : cljNil()
+  })
+}
+
+function dispatchMultiMethod(mm: CljMultiMethod, args: CljValue[]): CljValue {
+  const dispatchVal = applyFunction(mm.dispatchFn, args)
+  const method = mm.methods.find(({ dispatchVal: dv }) => isEqual(dv, dispatchVal))
+  if (method) return applyFunction(method.fn, args)
+  if (mm.defaultMethod) return applyFunction(mm.defaultMethod, args)
+  // TODO: Clojure supports a custom default-dispatch-val per multimethod:
+  //   (defmulti foo identity :default ::no-match)
+  // This lets :default be a real dispatchable value while ::no-match is the
+  // fallback sentinel. Currently :default is hardcoded as the only sentinel,
+  // making it impossible to dispatch on the literal value :default while also
+  // having a catch-all. Low priority — add CljMultiMethod.defaultDispatchVal
+  // and thread it through defmulti, defmethod detection, and here.
+  throw new EvaluationError(
+    `No method in multimethod '${mm.name}' for dispatch value`,
+    { mm, dispatchVal }
+  )
 }
 
 export function evaluateList(list: CljList, env: Env): CljValue {
@@ -550,6 +649,10 @@ export function evaluateList(list: CljList, env: Env): CljValue {
     }
     return defaultReturn
   }
+  if (isMultiMethod(evaledFirst)) {
+    const args = list.value.slice(1).map((v) => evaluate(v, env))
+    return dispatchMultiMethod(evaledFirst, args)
+  }
   if (!isSymbol(first)) {
     throw new EvaluationError(
       'First element of list must be a function or special form',
@@ -575,6 +678,7 @@ export function evaluate(expr: CljValue, env: Env): CljValue {
     case valueKeywords.keyword:
     case valueKeywords.nil:
     case valueKeywords.function:
+    case valueKeywords.multiMethod:
     case valueKeywords.boolean:
       return expr
     case valueKeywords.symbol: {
@@ -583,9 +687,12 @@ export function evaluate(expr: CljValue, env: Env): CljValue {
         const alias = expr.name.slice(0, slashIdx)
         const sym = expr.name.slice(slashIdx + 1)
         const nsEnv = getNamespaceEnv(env)
-        const targetEnv = nsEnv.aliases?.get(alias)
+        const targetEnv =
+          nsEnv.aliases?.get(alias) ??
+          getRootEnv(env).resolveNs?.(alias) ??
+          null
         if (!targetEnv) {
-          throw new EvaluationError(`No such namespace alias: ${alias}`, {
+          throw new EvaluationError(`No such namespace or alias: ${alias}`, {
             symbol: expr.name,
             env,
           })

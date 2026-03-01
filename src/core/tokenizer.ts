@@ -46,6 +46,7 @@ const isNumber = (char: string) => {
 }
 const isDot = (char: string) => char === '.'
 const isKeywordStart = (char: string) => char === ':'
+const isHash = (char: string) => char === '#'
 
 const isDelimiter = (char: string) =>
   isLParen(char) ||
@@ -197,6 +198,30 @@ const parseSymbol = (scanner: CharScanner): Token => {
   }
 }
 
+// Single routing point for all # dispatch characters.
+// Add new dispatch forms here as they are supported.
+function parseDispatch(scanner: CharScanner): Token {
+  const start = scanner.position()
+  scanner.advance() // consume '#'
+  const next = scanner.peek()
+  if (next === '(') {
+    scanner.advance() // consume '('
+    return { kind: tokenKeywords.AnonFnStart, start, end: scanner.position() }
+  }
+  if (next === '"') {
+    // TODO: regex literals — #"pattern"
+    throw new TokenizerError('Regex literals are not yet supported', start)
+  }
+  if (next === '{') {
+    // TODO: set literals — #{1 2 3}
+    throw new TokenizerError('Set literals are not yet supported', start)
+  }
+  throw new TokenizerError(
+    `Unknown dispatch character: #${next ?? 'EOF'}`,
+    start
+  )
+}
+
 function parseNextToken(scanner: CharScanner): Token {
   const char = scanner.peek()!
   if (isWhitespace(scanner.peek()!)) {
@@ -334,6 +359,10 @@ function parseNextToken(scanner: CharScanner): Token {
       start,
       end: scanner.position(),
     }
+  }
+
+  if (isHash(char)) {
+    return parseDispatch(scanner)
   }
 
   // catch-all symbol parsing

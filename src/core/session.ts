@@ -5,7 +5,8 @@ import { EvaluationError, evaluateForms, RecurSignal } from './evaluator'
 import { cljNativeFunction, cljNil } from './factories'
 import { parseForms } from './parser'
 import { tokenize } from './tokenizer'
-import type { CljValue, Env } from './types'
+import type { CljValue, Env, Token } from './types'
+import { coreSource } from '../clojure/core-source'
 
 type NamespaceRegistry = Map<string, Env>
 
@@ -26,11 +27,15 @@ export type Session = {
   evaluateForms: (forms: CljValue[]) => CljValue
 }
 
-function extractNsName(forms: CljValue[]): string | null {
-  const nsForm = findNsForm(forms)
-  if (!nsForm) return null
-  const nameSymbol = nsForm.value[1]
-  return isSymbol(nameSymbol) ? nameSymbol.name : null
+// Lightweight token scan to extract the namespace name before full parsing.
+// Looks for the pattern: LParen Symbol("ns") Symbol(name) at the top of the token stream.
+function extractNsNameFromTokens(tokens: Token[]): string | null {
+  const meaningful = tokens.filter((t) => t.kind !== 'Comment')
+  if (meaningful.length < 3) return null
+  if (meaningful[0].kind !== 'LParen') return null
+  if (meaningful[1].kind !== 'Symbol' || meaningful[1].value !== 'ns') return null
+  if (meaningful[2].kind !== 'Symbol') return null
+  return meaningful[2].value
 }
 
 function findNsForm(forms: CljValue[]) {
@@ -158,6 +163,7 @@ export function createSession(options?: SessionOptions): Session {
 
   const coreEnv = makeEnv()
   coreEnv.namespace = 'clojure.core'
+  coreEnv.resolveNs = (name: string) => registry.get(name) ?? null
   loadCoreFunctions(coreEnv, options?.output)
   registry.set('clojure.core', coreEnv)
 
@@ -226,12 +232,15 @@ export function createSession(options?: SessionOptions): Session {
   }
 
   function loadFile(source: string, nsName?: string) {
-    const forms = parseForms(tokenize(source))
-    const targetNs = extractNsName(forms) ?? nsName ?? 'user'
+    const tokens = tokenize(source)
+    const targetNs = extractNsNameFromTokens(tokens) ?? nsName ?? 'user'
+    const forms = parseForms(tokens, targetNs)
     const env = ensureNs(targetNs)
     processNsRequires(forms, env)
     evaluateForms(forms, env)
   }
+
+  loadFile(coreSource)
 
   for (const source of options?.entries ?? []) {
     loadFile(source)
@@ -247,7 +256,7 @@ export function createSession(options?: SessionOptions): Session {
     loadFile,
     evaluate(source: string) {
       try {
-        const forms = parseForms(tokenize(source))
+        const forms = parseForms(tokenize(source), currentNs)
         const env = getNs(currentNs)!
         processNsRequires(forms, env)
         return evaluateForms(forms, env)

@@ -7,7 +7,8 @@ export type FormRange = {
   end: number
 }
 
-const OPEN = new Set(['LParen', 'LBracket', 'LBrace'])
+// AnonFnStart (#() consumes both # and (, so it opens a RParen-closed scope
+const OPEN = new Set(['LParen', 'LBracket', 'LBrace', 'AnonFnStart'])
 const CLOSE = new Set(['RParen', 'RBracket', 'RBrace'])
 const PREFIX = new Set(['Quote', 'Quasiquote', 'Unquote', 'UnquoteSplicing'])
 const SKIP = new Set(['Whitespace', 'Comment'])
@@ -99,7 +100,11 @@ function findMatchingOpen(relevant: Token[], closeIdx: number): number {
   for (let i = closeIdx - 1; i >= 0; i--) {
     const k = relevant[i].kind
     if (k === closeKind) depth++
-    else if (k === openKind) {
+    else if (
+      k === openKind ||
+      // AnonFnStart opens a RParen-closed scope just like LParen
+      (openKind === 'LParen' && k === 'AnonFnStart')
+    ) {
       depth--
       if (depth === 0) return i
     }

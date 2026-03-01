@@ -3,7 +3,6 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { cljPlugin, safeJsIdentifier, generateModuleCode, generateDts } from '../index'
 import type { CodegenContext } from '../codegen'
 import type { Plugin, ResolvedConfig } from 'vite'
-import macrosSource from '../../clojure/macros.clj?raw'
 import { createSession } from '../../core/session'
 
 const projectRoot = resolve(__dirname, '../../..')
@@ -18,7 +17,7 @@ function makePlugin(sourceRoots?: string[]) {
 
 function makeCodegenCtx(overrides?: Partial<CodegenContext>): CodegenContext {
   return {
-    session: createSession({ entries: [macrosSource] }),
+    session: createSession(),
     sourceRoots: ['src'],
     coreIndexPath: '/project/src/core/index.ts',
     virtualSessionId: 'virtual:clj-session',
@@ -107,9 +106,8 @@ describe('cljPlugin', () => {
     it('generates session module code for virtual:clj-session', () => {
       const code = plugin.load('\0virtual:clj-session', {})
       expect(code).toContain('import { createSession }')
-      expect(code).toContain('import macrosSource from')
       expect(code).toContain('export function getSession()')
-      expect(code).toContain('createSession({ entries: [macrosSource] })')
+      expect(code).toContain('createSession()')
     })
 
     it('returns undefined for non-clj files', () => {

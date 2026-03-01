@@ -36,12 +36,12 @@ export function registerClojureLanguage(monaco: typeof Monaco): void {
           base.qualifiedSymbols,
           {
             cases: {
-              '^:.+$': 'keyword.key',        // :foo, :ns/foo  → teal
-              '@specialForms': 'keyword',    // def, if, let … → mauve
-              '@coreSymbols': 'keyword',     // defn, map, fn … → mauve
+              '^:.+$': 'keyword.key', // :foo, :ns/foo  → teal
+              '@specialForms': 'keyword', // def, if, let … → mauve
+              '@coreSymbols': 'keyword', // defn, map, fn … → mauve
               '@booleans': 'constant.language', // true, false → yellow
-              '@nil': 'constant.other',      // nil            → peach
-              '@default': 'identifier',      // user symbols   → base text
+              '@nil': 'constant.other', // nil            → peach
+              '@default': 'identifier', // user symbols   → base text
             },
           },
         ],
@@ -77,36 +77,36 @@ export function defineMonacoTheme(monaco: typeof Monaco): void {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'keyword.clj',           foreground: 'ff7b72' }, // def, fn, if…   — red
-      { token: 'keyword.key.clj',       foreground: 'a5d6ff' }, // :keywords      — blue constant
+      { token: 'keyword.clj', foreground: 'ff7b72' }, // def, fn, if…   — red
+      { token: 'keyword.key.clj', foreground: 'a5d6ff' }, // :keywords      — blue constant
       { token: 'constant.language.clj', foreground: 'a5d6ff' }, // true / false   — blue
-      { token: 'constant.other.clj',    foreground: 'a5d6ff' }, // nil            — blue
-      { token: 'number.clj',            foreground: '79c0ff' }, // numbers        — light blue
-      { token: 'string.clj',            foreground: '79c0ff' }, // strings        — light blue
-      { token: 'string.escape.clj',     foreground: '79c0ff' }, // escape sequences
-      { token: 'comment.clj',           foreground: '8b949e', fontStyle: 'italic' },
-      { token: 'identifier.clj',        foreground: 'e6edf3' }, // user symbols   — base text
-      { token: 'delimiter.clj',         foreground: '6e7781' }, // parens/brackets — subdued
-      { token: 'meta.clj',              foreground: 'ffa657' }, // reader macros  — orange
+      { token: 'constant.other.clj', foreground: 'a5d6ff' }, // nil            — blue
+      { token: 'number.clj', foreground: '79c0ff' }, // numbers        — light blue
+      { token: 'string.clj', foreground: '79c0ff' }, // strings        — light blue
+      { token: 'string.escape.clj', foreground: '79c0ff' }, // escape sequences
+      { token: 'comment.clj', foreground: '8b949e', fontStyle: 'italic' },
+      { token: 'identifier.clj', foreground: 'e6edf3' }, // user symbols   — base text
+      { token: 'delimiter.clj', foreground: '6e7781' }, // parens/brackets — subdued
+      { token: 'meta.clj', foreground: 'ffa657' }, // reader macros  — orange
     ],
     colors: {
-      'editor.background':                  '#0d1117',
-      'editor.foreground':                  '#e6edf3',
-      'editor.lineHighlightBackground':     '#161b2280',
-      'editorCursor.foreground':            '#58a6ff',
-      'editor.selectionBackground':         '#264f7840',
+      'editor.background': '#0d1117',
+      'editor.foreground': '#e6edf3',
+      'editor.lineHighlightBackground': '#161b2280',
+      'editorCursor.foreground': '#58a6ff',
+      'editor.selectionBackground': '#264f7840',
       'editor.inactiveSelectionBackground': '#264f7820',
-      'editorLineNumber.foreground':        '#6e7781',
-      'editorLineNumber.activeForeground':  '#e6edf3',
-      'editorBracketMatch.background':      '#3392ff22',
-      'editorBracketMatch.border':          '#58a6ff',
-      'editorIndentGuide.background1':      '#21262d',
-      'editorIndentGuide.activeBackground1':'#30363d',
-      'scrollbarSlider.background':         '#30363d55',
-      'scrollbarSlider.hoverBackground':    '#484f5844',
-      'editorWidget.background':            '#161b22',
-      'editorSuggestWidget.background':     '#161b22',
-      'editorSuggestWidget.border':         '#30363d',
+      'editorLineNumber.foreground': '#6e7781',
+      'editorLineNumber.activeForeground': '#e6edf3',
+      'editorBracketMatch.background': '#3392ff22',
+      'editorBracketMatch.border': '#58a6ff',
+      'editorIndentGuide.background1': '#21262d',
+      'editorIndentGuide.activeBackground1': '#30363d',
+      'scrollbarSlider.background': '#30363d55',
+      'scrollbarSlider.hoverBackground': '#484f5844',
+      'editorWidget.background': '#161b22',
+      'editorSuggestWidget.background': '#161b22',
+      'editorSuggestWidget.border': '#30363d',
     },
   })
 }

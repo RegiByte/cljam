@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import macrosSource from '../../clojure/macros.clj?raw'
 import { cljNumber, cljString } from '../factories'
 import { createSession } from '../session'
 import { EvaluationError } from '../evaluator'
 
 function session() {
-  return createSession({ entries: [macrosSource] })
+  return createSession()
 }
 
 function sessionWithNs(nsName: string, defs: string) {
@@ -42,9 +41,9 @@ describe('namespaces', () => {
       expect(() => s.evaluate('u/nonexistent')).toThrow('not found')
     })
 
-    it('throws for unknown namespace alias', () => {
+    it('throws for unknown namespace or alias', () => {
       const s = session()
-      expectEvalError('unknown/foo', 'No such namespace alias: unknown', s)
+      expectEvalError('unknown/foo', 'No such namespace or alias: unknown', s)
     })
 
     it('aliases are live — sees defs added after require', () => {
@@ -264,7 +263,6 @@ describe('namespaces', () => {
 
     function sessionWithReadFile() {
       return createSession({
-        entries: [macrosSource],
         sourceRoots: ['src'],
         readFile: (path: string) => {
           const content = files[path]
@@ -319,7 +317,6 @@ describe('namespaces', () => {
     it('does not use readFile when namespace is already loaded', () => {
       let readFileCalls = 0
       const s = createSession({
-        entries: [macrosSource],
         sourceRoots: ['src'],
         readFile: (path: string) => {
           readFileCalls++

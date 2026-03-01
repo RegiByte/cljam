@@ -16,7 +16,6 @@ import { lookup } from '../env'
 import type { CljValue } from '../types'
 import { isCljValue } from '../assertions'
 import { createSession } from '../session'
-import macrosSource from '../../clojure/macros.clj?raw'
 
 function expectEvalError(code: string, expectedMessage: string) {
   const session = createSession()
@@ -1704,9 +1703,7 @@ describe('evaluator spec', () => {
     })
 
     it('should support recur in a defn function body', () => {
-      const session = createSession({
-        entries: [macrosSource],
-      })
+      const session = createSession()
       const result = session.evaluate(`
         (defn factorial [n]
             (loop [i n acc 1]
@@ -1811,9 +1808,7 @@ describe('evaluator spec', () => {
     })
 
     it('should handle multi arity with defn macro', () => {
-      const session = createSession({
-        entries: [macrosSource],
-      })
+      const session = createSession()
       session.evaluate(`
       (defn greet 
         ([] "hi")
@@ -1822,6 +1817,280 @@ describe('evaluator spec', () => {
       expect(session.evaluate('(greet)')).toMatchObject(toCljValue('hi'))
       expect(session.evaluate('(greet "world")')).toMatchObject(toCljValue('hi world'))
       expect(session.evaluate('(greet "world" "universe")')).toMatchObject(toCljValue('hi world and universe'))
+    })
+  })
+
+  describe('anonymous function reader macro #(...)', () => {
+    it('should evaluate a single-arg #(* 2 %)', () => {
+      const session = createSession()
+      expect(session.evaluate('(#(* 2 %) 5)')).toMatchObject(cljNumber(10))
+    })
+
+    it('should evaluate a two-arg #(+ %1 %2)', () => {
+      const session = createSession()
+      expect(session.evaluate('(#(+ %1 %2) 3 4)')).toMatchObject(cljNumber(7))
+    })
+
+    it('should use % and %1 interchangeably', () => {
+      const session = createSession()
+      expect(session.evaluate('(#(str % "-" %1) "x")')).toMatchObject(
+        cljString('x-x')
+      )
+    })
+
+    it('should work with map: (map #(* % 2) (range 5))', () => {
+      const session = createSession()
+      expect(
+        session.evaluate('(into [] (map #(* % 2) (range 5)))')
+      ).toMatchObject(
+        cljVector([
+          cljNumber(0),
+          cljNumber(2),
+          cljNumber(4),
+          cljNumber(6),
+          cljNumber(8),
+        ])
+      )
+    })
+
+    it('should support a rest-arg #(apply + %&)', () => {
+      const session = createSession()
+      expect(session.evaluate('(#(apply + %&) 1 2 3 4)')).toMatchObject(
+        cljNumber(10)
+      )
+    })
+
+    it('should support mixed fixed and rest args', () => {
+      const session = createSession()
+      expect(
+        session.evaluate('(#(str %1 " " (apply str %&)) "hello" "world" "!")')
+      ).toMatchObject(cljString('hello world!'))
+    })
+
+    it('should support a zero-arg #(...)', () => {
+      const session = createSession()
+      expect(session.evaluate('(#(+ 1 2))')).toMatchObject(cljNumber(3))
+    })
+
+    it('should infer arity from highest %N index', () => {
+      const session = createSession()
+      expect(session.evaluate('(#(+ %1 %3) 10 0 5)')).toMatchObject(
+        cljNumber(15)
+      )
+    })
+
+    it('should be composable with filter', () => {
+      const session = createSession()
+      expect(
+        session.evaluate('(into [] (filter #(even? %) (range 6)))')
+      ).toMatchObject(cljVector([cljNumber(0), cljNumber(2), cljNumber(4)]))
+    })
+  })
+
+  describe('multimethods', () => {
+    it('defmulti creates and binds a multimethod in the namespace', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      const mm = session.evaluate('area')
+      expect(mm.kind).toBe('multi-method')
+      if (mm.kind !== 'multi-method') throw new Error('not a multimethod')
+      expect(mm.name).toBe('area')
+    })
+
+    it('defmethod adds a method for a dispatch value', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate('(defmethod area :rect [r] (* (:w r) (:h r)))')
+      const mm = session.evaluate('area')
+      if (mm.kind !== 'multi-method') throw new Error('not a multimethod')
+      expect(mm.methods.length).toBe(1)
+      expect(mm.methods[0].dispatchVal).toMatchObject(cljKeyword(':rect'))
+    })
+
+    it('dispatches on a keyword dispatch fn', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate('(defmethod area :rect [r] (* (:w r) (:h r)))')
+      session.evaluate('(defmethod area :circle [c] (* 2 (:r c)))')
+      expect(
+        session.evaluate('(area {:shape :rect :w 4 :h 3})')
+      ).toMatchObject(cljNumber(12))
+      expect(
+        session.evaluate('(area {:shape :circle :r 5})')
+      ).toMatchObject(cljNumber(10))
+    })
+
+    it('dispatches on an explicit fn dispatch fn', () => {
+      const session = createSession()
+      session.evaluate('(defmulti greet (fn [x] (:lang x)))')
+      session.evaluate('(defmethod greet :en [x] "hello")')
+      session.evaluate('(defmethod greet :pt [x] "oi")')
+      expect(
+        session.evaluate('(greet {:lang :en})')
+      ).toMatchObject(cljString('hello'))
+      expect(
+        session.evaluate('(greet {:lang :pt})')
+      ).toMatchObject(cljString('oi'))
+    })
+
+    it('falls back to :default when no method matches', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate('(defmethod area :rect [r] (* (:w r) (:h r)))')
+      session.evaluate('(defmethod area :default [x] -1)')
+      expect(
+        session.evaluate('(area {:shape :triangle :w 3 :h 4})')
+      ).toMatchObject(cljNumber(-1))
+    })
+
+    it('throws when no method matches and no :default', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate('(defmethod area :rect [r] (* (:w r) (:h r)))')
+      expect(() =>
+        session.evaluate('(area {:shape :triangle})')
+      ).toThrow('No method in multimethod')
+    })
+
+    it('supports open extension — defmethod after the initial defmulti block', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate('(defmethod area :rect [r] (* (:w r) (:h r)))')
+      expect(
+        session.evaluate('(area {:shape :rect :w 5 :h 2})')
+      ).toMatchObject(cljNumber(10))
+      // extend later
+      session.evaluate('(defmethod area :square [s] (* (:side s) (:side s)))')
+      expect(
+        session.evaluate('(area {:shape :square :side 4})')
+      ).toMatchObject(cljNumber(16))
+    })
+
+    it('dispatches on a computed vector dispatch value', () => {
+      const session = createSession()
+      session.evaluate('(defmulti serialize (fn [x fmt] [(:type x) fmt]))')
+      session.evaluate('(defmethod serialize [:user :json] [x _] "user-json")')
+      session.evaluate('(defmethod serialize [:user :edn] [x _] "user-edn")')
+      expect(
+        session.evaluate('(serialize {:type :user} :json)')
+      ).toMatchObject(cljString('user-json'))
+      expect(
+        session.evaluate('(serialize {:type :user} :edn)')
+      ).toMatchObject(cljString('user-edn'))
+    })
+
+    it('re-defining a dispatch value replaces the old method', () => {
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate('(defmethod area :rect [r] 0)')
+      session.evaluate('(defmethod area :rect [r] (* (:w r) (:h r)))')
+      const mm = session.evaluate('area')
+      if (mm.kind !== 'multi-method') throw new Error('not a multimethod')
+      expect(mm.methods.length).toBe(1)
+      expect(
+        session.evaluate('(area {:shape :rect :w 3 :h 4})')
+      ).toMatchObject(cljNumber(12))
+    })
+
+    it('throws a clear error when defmethod targets a non-multimethod', () => {
+      const session = createSession()
+      session.evaluate('(def area 42)')
+      expect(() =>
+        session.evaluate('(defmethod area :rect [r] 0)')
+      ).toThrow('is not a multimethod')
+    })
+
+    it('supports multiple args via fn dispatch', () => {
+      const session = createSession()
+      session.evaluate('(defmulti combine (fn [a b] [(:kind a) (:kind b)]))')
+      session.evaluate('(defmethod combine [:num :num] [a b] (+ (:val a) (:val b)))')
+      session.evaluate('(defmethod combine [:str :str] [a b] (str (:val a) (:val b)))')
+      expect(
+        session.evaluate('(combine {:kind :num :val 3} {:kind :num :val 4})')
+      ).toMatchObject(cljNumber(7))
+      expect(
+        session.evaluate('(combine {:kind :str :val "foo"} {:kind :str :val "bar"})')
+      ).toMatchObject(cljString('foobar'))
+    })
+
+    it('supports multi-arity handlers — a defmethod can have multiple arities', () => {
+      // defmethod passes its fn-tail directly to fn, exactly like defn.
+      // So (defmethod foo :bar ([x] ...) ([x y] ...)) is valid and gives
+      // the :bar dispatch branch two arities. Dark magic. Works as expected.
+      const session = createSession()
+      session.evaluate('(defmulti area :shape)')
+      session.evaluate(`
+        (defmethod area :rect
+          ([r]       (* (:w r) (:h r)))
+          ([r scale] (* (:w r) (:h r) scale)))
+      `)
+      expect(
+        session.evaluate('(area {:shape :rect :w 3 :h 4})')
+      ).toMatchObject(cljNumber(12))
+      expect(
+        session.evaluate('(area {:shape :rect :w 3 :h 4} 2)')
+      ).toMatchObject(cljNumber(24))
+    })
+  })
+
+  describe('qualified symbol resolution', () => {
+    function sessionWithNs(nsName: string, defs: string) {
+      const s = createSession()
+      s.loadFile(`(ns ${nsName})\n${defs}`)
+      return s
+    }
+
+    it('resolves ns/sym by full namespace name without require', () => {
+      const s = sessionWithNs('my.utils', '(def helper 42)')
+      s.setNs('user')
+      expect(s.evaluate('my.utils/helper')).toEqual(cljNumber(42))
+    })
+
+    it('resolves user/sym for bindings defined in the user namespace', () => {
+      const s = createSession()
+      s.evaluate('(def answer 42)')
+      expect(s.evaluate('user/answer')).toEqual(cljNumber(42))
+    })
+
+    it('alias takes precedence over direct namespace name', () => {
+      const s = sessionWithNs('math.ops', '(def pi 3)')
+      s.setNs('user')
+      s.evaluate("(require '[math.ops :as m])")
+      expect(s.evaluate('m/pi')).toEqual(cljNumber(3))
+      expect(s.evaluate('math.ops/pi')).toEqual(cljNumber(3))
+    })
+
+    it('throws for nonexistent namespace', () => {
+      const s = createSession()
+      expect(() => s.evaluate('nonexistent.ns/foo')).toThrow(
+        'No such namespace or alias: nonexistent.ns'
+      )
+    })
+
+    it('throws for symbol not found in a valid namespace', () => {
+      const s = sessionWithNs('my.ns', '(def x 1)')
+      s.setNs('user')
+      expect(() => s.evaluate('my.ns/nonexistent')).toThrow('not found')
+    })
+  })
+
+  describe('auto-qualified keyword expansion (::)', () => {
+    it('::foo expands to :user/foo in the user namespace', () => {
+      const s = createSession()
+      expect(s.evaluate('::foo')).toEqual(cljKeyword(':user/foo'))
+    })
+
+    it('::foo expands to the namespace declared in the file', () => {
+      const s = createSession()
+      s.loadFile('(ns my.domain)\n(def k ::event)')
+      s.setNs('user')
+      expect(s.evaluate('my.domain/k')).toEqual(cljKeyword(':my.domain/event'))
+    })
+
+    it('::foo expanded keyword can be used as a map key', () => {
+      const s = createSession()
+      s.evaluate('(def m {::status :ok})')
+      expect(s.evaluate('(:user/status m)')).toEqual(cljKeyword(':ok'))
     })
   })
 })

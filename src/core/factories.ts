@@ -6,6 +6,7 @@ import type {
   CljList,
   CljMacro,
   CljMap,
+  CljMultiMethod,
   CljNativeFunction,
   CljNil,
   CljNumber,
@@ -70,11 +71,24 @@ export const cljMacro = (
   arities: [{ params, restParam, body }],
   env,
 })
-export const cljMultiArityMacro = (
-  arities: Arity[],
-  env: Env
-): CljMacro => ({
+export const cljMultiArityMacro = (arities: Arity[], env: Env): CljMacro => ({
   kind: 'macro',
   arities,
   env,
+})
+
+export const cljMultiMethod = (
+  name: string,
+  dispatchFn: CljFunction | CljNativeFunction,
+  methods: Array<{
+    dispatchVal: CljValue
+    fn: CljFunction | CljNativeFunction
+  }>,
+  defaultMethod?: CljFunction | CljNativeFunction
+): CljMultiMethod => ({
+  kind: 'multi-method',
+  name,
+  dispatchFn,
+  methods,
+  defaultMethod,
 })

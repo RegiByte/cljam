@@ -1,9 +1,9 @@
-import { cljBoolean, cljNil, cljSymbol } from './factories'
+import { cljBoolean, cljList, cljNil, cljSymbol, cljVector } from './factories'
 import { getTokenValue } from './tokenizer'
 import { valueKeywords, tokenKeywords, type Token } from './types'
 import type { CljValue, TokenKinds } from './types'
 
-export function makeTokenScanner(input: Token[]) {
+export function makeTokenScanner(input: Token[], currentNs: string = 'user') {
   let offset = 0
 
   const api = {
@@ -38,6 +38,7 @@ export function makeTokenScanner(input: Token[]) {
         api.advance()
       }
     },
+    namespace: () => currentNs,
   }
 
   return api
@@ -68,9 +69,21 @@ function parseAtom(scanner: TokenScanner): CljValue {
     case tokenKeywords.Number:
       scanner.advance() // consume the number token
       return { kind: 'number', value: token.value }
-    case tokenKeywords.Keyword:
+    case tokenKeywords.Keyword: {
       scanner.advance() // consume the keyword token
-      return { kind: 'keyword', name: token.value }
+      const kwName = token.value
+      if (kwName.startsWith('::')) {
+        const rest = kwName.slice(2)
+        if (rest.includes('/')) {
+          throw new ParserError(
+            '::alias/keyword syntax is not yet supported',
+            token
+          )
+        }
+        return { kind: 'keyword', name: `:${scanner.namespace()}/${rest}` }
+      }
+      return { kind: 'keyword', name: kwName }
+    }
   }
   throw new ParserError(`Unexpected token: ${token.kind}`, token)
 }
@@ -280,6 +293,135 @@ const parseMap = (scanner: TokenScanner) => {
   return { kind: valueKeywords.map, entries }
 }
 
+type AnonFnParams = { maxIndex: number; hasRest: boolean }
+
+// Walks the AST and collects which % params are referenced.
+function collectAnonFnParams(forms: CljValue[]): AnonFnParams {
+  let maxIndex = 0
+  let hasRest = false
+
+  function walk(form: CljValue): void {
+    switch (form.kind) {
+      case 'symbol': {
+        const name = form.name
+        if (name === '%' || name === '%1') {
+          maxIndex = Math.max(maxIndex, 1)
+        } else if (/^%[2-9]$/.test(name)) {
+          maxIndex = Math.max(maxIndex, parseInt(name[1]))
+        } else if (name === '%&') {
+          hasRest = true
+        }
+        break
+      }
+      case 'list':
+      case 'vector':
+        for (const child of form.value) walk(child)
+        break
+      case 'map':
+        for (const [k, v] of form.entries) {
+          walk(k)
+          walk(v)
+        }
+        break
+      default:
+        break
+    }
+  }
+
+  for (const form of forms) walk(form)
+  return { maxIndex, hasRest }
+}
+
+// Recursively substitutes % param symbols with their generated names.
+function substituteAnonFnParams(form: CljValue): CljValue {
+  switch (form.kind) {
+    case 'symbol': {
+      const name = form.name
+      if (name === '%' || name === '%1') return cljSymbol('p1')
+      if (/^%[2-9]$/.test(name)) return cljSymbol(`p${name[1]}`)
+      if (name === '%&') return cljSymbol('rest')
+      return form
+    }
+    case 'list':
+      return { ...form, value: form.value.map(substituteAnonFnParams) }
+    case 'vector':
+      return { ...form, value: form.value.map(substituteAnonFnParams) }
+    case 'map':
+      return {
+        ...form,
+        entries: form.entries.map(
+          ([k, v]) =>
+            [substituteAnonFnParams(k), substituteAnonFnParams(v)] as [
+              CljValue,
+              CljValue,
+            ]
+        ),
+      }
+    default:
+      return form
+  }
+}
+
+const parseAnonFn = (scanner: TokenScanner) => {
+  const startToken = scanner.peek()
+  if (!startToken) {
+    throw new ParserError(
+      'Unexpected end of input while parsing anonymous function',
+      scanner.position()
+    )
+  }
+  scanner.advance() // consume AnonFnStart
+
+  const bodyForms: CljValue[] = []
+  let pairMatched = false
+  while (!scanner.isAtEnd()) {
+    const token = scanner.peek()
+    if (!token) break
+    if (isClosingToken(token) && token.kind !== tokenKeywords.RParen) {
+      throw new ParserError(
+        `Expected ')' to close anonymous function started at line ${startToken.start.line} column ${startToken.start.col}, but got '${getTokenValue(token)}' at line ${token.start.line} column ${token.start.col}`,
+        token
+      )
+    }
+    if (token.kind === tokenKeywords.RParen) {
+      scanner.advance() // consume closing ')'
+      pairMatched = true
+      break
+    }
+    if (token.kind === tokenKeywords.AnonFnStart) {
+      throw new ParserError(
+        'Nested anonymous functions (#(...)) are not allowed',
+        token
+      )
+    }
+    bodyForms.push(parseForm(scanner))
+  }
+  if (!pairMatched) {
+    throw new ParserError(
+      `Unmatched anonymous function started at line ${startToken.start.line} column ${startToken.start.col}`,
+      scanner.peek()
+    )
+  }
+
+  // The entire body content is a single implicit list — #(* 2 %) ≡ (fn [p1] (* 2 p1))
+  const bodyList: CljValue = { kind: 'list', value: bodyForms }
+
+  const { maxIndex, hasRest } = collectAnonFnParams([bodyList])
+
+  const paramSymbols: CljValue[] = []
+  for (let i = 1; i <= maxIndex; i++) {
+    paramSymbols.push(cljSymbol(`p${i}`))
+  }
+  if (hasRest) {
+    paramSymbols.push(cljSymbol('&'))
+    paramSymbols.push(cljSymbol('rest'))
+  }
+
+  const substitutedBody = substituteAnonFnParams(bodyList)
+
+  return cljList([cljSymbol('fn'), cljVector(paramSymbols), substitutedBody])
+}
+
 function parseForm(scanner: TokenScanner): CljValue {
   const token = scanner.peek()
   if (!token) {
@@ -305,6 +447,8 @@ function parseForm(scanner: TokenScanner): CljValue {
       return parseUnquote(scanner)
     case tokenKeywords.UnquoteSplicing:
       return parseUnquoteSplicing(scanner)
+    case tokenKeywords.AnonFnStart:
+      return parseAnonFn(scanner)
     default:
       throw new ParserError(
         `Unexpected token: ${getTokenValue(token)} at line ${token.start.line} column ${token.start.col}`,
@@ -314,11 +458,9 @@ function parseForm(scanner: TokenScanner): CljValue {
 }
 
 // initializes the scanner and parses the forms, returning a tree of values
-export function parseForms(input: Token[]): CljValue[] {
-  const withoutComments = input.filter(
-    (t) => t.kind !== tokenKeywords.Comment
-  )
-  const scanner = makeTokenScanner(withoutComments)
+export function parseForms(input: Token[], currentNs: string = 'user'): CljValue[] {
+  const withoutComments = input.filter((t) => t.kind !== tokenKeywords.Comment)
+  const scanner = makeTokenScanner(withoutComments, currentNs)
   const values: CljValue[] = []
   while (!scanner.isAtEnd()) {
     values.push(parseForm(scanner))

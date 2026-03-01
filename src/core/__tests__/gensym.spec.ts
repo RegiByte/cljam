@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import macrosSource from '../../clojure/macros.clj?raw'
 import { cljBoolean, cljNumber, cljNil } from '../factories'
 import { isSymbol } from '../assertions'
 import { createSession } from '../session'
 import { makeGensym, resetGensymCounter } from '../gensym'
 
 function session() {
-  return createSession({ entries: [macrosSource] })
+  return createSession()
 }
 
 describe('makeGensym', () => {

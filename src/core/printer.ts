@@ -1,5 +1,5 @@
 import { EvaluationError } from './evaluator'
-import { valueKeywords, type CljValue } from './types'
+import { valueKeywords, type CljMultiMethod, type CljValue } from './types'
 
 export function printString(value: CljValue): string {
   switch (value.kind) {
@@ -61,6 +61,8 @@ export function printString(value: CljValue): string {
     }
     case valueKeywords.nativeFunction:
       return `(native-fn ${value.name})`
+    case valueKeywords.multiMethod:
+      return `(multi-method ${(value as CljMultiMethod).name})`
     default:
       throw new EvaluationError(`unhandled value type: ${value.kind}`, {
         value,

@@ -1,4 +1,3 @@
-import macrosSource from '../clojure/macros.clj?raw'
 import { EvaluationError } from '../core/evaluator'
 import { printString } from '../core/printer'
 import { createSession } from '../core/session'
@@ -42,10 +41,7 @@ export interface ReplState {
 }
 
 function makeSession(addOutput: (text: string) => void): Session {
-  return createSession({
-    output: addOutput,
-    entries: [macrosSource],
-  })
+  return createSession({ output: addOutput })
 }
 
 export function makeRepl(): ReplState {

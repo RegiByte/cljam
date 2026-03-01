@@ -341,4 +341,138 @@ describe('parser', () => {
       ]),
     ])
   })
+
+  describe('anonymous function reader macro #(...)', () => {
+    it('should expand #(* 2 %) to (fn [p1] (* 2 p1))', () => {
+      const result = parseForms(tokenize('#(* 2 %)'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([cljSymbol('p1')]),
+          cljList([cljSymbol('*'), cljNumber(2), cljSymbol('p1')]),
+        ]),
+      ])
+    })
+
+    it('should expand #(+ %1 %2) to (fn [p1 p2] (+ p1 p2))', () => {
+      const result = parseForms(tokenize('#(+ %1 %2)'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([cljSymbol('p1'), cljSymbol('p2')]),
+          cljList([cljSymbol('+'), cljSymbol('p1'), cljSymbol('p2')]),
+        ]),
+      ])
+    })
+
+    it('should treat % and %1 as the same param', () => {
+      const result = parseForms(tokenize('#(str % %1)'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([cljSymbol('p1')]),
+          cljList([cljSymbol('str'), cljSymbol('p1'), cljSymbol('p1')]),
+        ]),
+      ])
+    })
+
+    it('should expand #(apply + %&) to (fn [& rest] (apply + rest))', () => {
+      const result = parseForms(tokenize('#(apply + %&)'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([cljSymbol('&'), cljSymbol('rest')]),
+          cljList([cljSymbol('apply'), cljSymbol('+'), cljSymbol('rest')]),
+        ]),
+      ])
+    })
+
+    it('should expand #(str %1 "-" %2 %&) with fixed and rest params', () => {
+      const result = parseForms(tokenize('#(str %1 "-" %2 %&)'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([
+            cljSymbol('p1'),
+            cljSymbol('p2'),
+            cljSymbol('&'),
+            cljSymbol('rest'),
+          ]),
+          cljList([
+            cljSymbol('str'),
+            cljSymbol('p1'),
+            cljString('-'),
+            cljSymbol('p2'),
+            cljSymbol('rest'),
+          ]),
+        ]),
+      ])
+    })
+
+    it('should expand zero-param #(println "hi") to (fn [] (println "hi"))', () => {
+      const result = parseForms(tokenize('#(println "hi")'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([]),
+          cljList([cljSymbol('println'), cljString('hi')]),
+        ]),
+      ])
+    })
+
+    it('should infer arity from highest %N index', () => {
+      const result = parseForms(tokenize('#(+ %3 %1)'))
+      expect(result).toEqual([
+        cljList([
+          cljSymbol('fn'),
+          cljVector([cljSymbol('p1'), cljSymbol('p2'), cljSymbol('p3')]),
+          cljList([cljSymbol('+'), cljSymbol('p3'), cljSymbol('p1')]),
+        ]),
+      ])
+    })
+
+    it('should throw on nested anonymous functions', () => {
+      expect(() => parseForms(tokenize('#(#(+ % %))'))).toThrow(ParserError)
+    })
+
+    it('should throw on unmatched #(...)', () => {
+      expect(() => parseForms(tokenize('#(+ 1 2'))).toThrow(ParserError)
+    })
+  })
+
+  describe('auto-qualified keywords (::)', () => {
+    it('expands ::foo to :user/foo using default namespace', () => {
+      const result = parseForms(tokenize('::foo'))
+      expect(result).toEqual([cljKeyword(':user/foo')])
+    })
+
+    it('expands ::foo to :my.ns/foo when currentNs is provided', () => {
+      const result = parseForms(tokenize('::foo'), 'my.ns')
+      expect(result).toEqual([cljKeyword(':my.ns/foo')])
+    })
+
+    it('expands ::some-key with hyphens correctly', () => {
+      const result = parseForms(tokenize('::some-key'), 'app.domain')
+      expect(result).toEqual([cljKeyword(':app.domain/some-key')])
+    })
+
+    it('does not modify regular qualified keyword :ns/foo', () => {
+      const result = parseForms(tokenize(':ns/foo'), 'user')
+      expect(result).toEqual([cljKeyword(':ns/foo')])
+    })
+
+    it('does not modify unqualified keyword :foo', () => {
+      const result = parseForms(tokenize(':foo'), 'user')
+      expect(result).toEqual([cljKeyword(':foo')])
+    })
+
+    it('expands ::foo inside a map', () => {
+      const result = parseForms(tokenize('{::foo 1}'), 'user')
+      expect(result).toEqual([cljMap([[cljKeyword(':user/foo'), cljNumber(1)]])])
+    })
+
+    it('throws ParserError for ::alias/foo (not yet supported)', () => {
+      expect(() => parseForms(tokenize('::ns/foo'), 'user')).toThrow(ParserError)
+    })
+  })
 })

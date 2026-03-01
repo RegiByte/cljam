@@ -6,6 +6,7 @@ import {
   type CljList,
   type CljMacro,
   type CljMap,
+  type CljMultiMethod,
   type CljNativeFunction,
   type CljNumber,
   type CljString,
@@ -46,6 +47,8 @@ export const isAFunction = (
   value: CljValue
 ): value is CljFunction | CljNativeFunction =>
   isFunction(value) || isNativeFunction(value)
+export const isMultiMethod = (value: CljValue): value is CljMultiMethod =>
+  value.kind === 'multi-method'
 export const isCollection = (
   value: CljValue
 ): value is CljList | CljVector | CljMap =>

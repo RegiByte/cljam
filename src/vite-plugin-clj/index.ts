@@ -19,7 +19,6 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
   let projectRoot = ''
   let serverSession: Session
   let coreIndexPath: string
-  let macrosPath: string
   let codegenCtx: CodegenContext
 
   function collectCljFiles(dir: string): string[] {
@@ -65,7 +64,6 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
 
   function initServerSession() {
     serverSession = createSession({
-      entries: [readFileSync(macrosPath, 'utf-8')],
       sourceRoots,
       readFile: (filePath: string) =>
         readFileSync(resolve(projectRoot, filePath), 'utf-8'),
@@ -96,7 +94,6 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
     configResolved(config: ResolvedConfig) {
       projectRoot = config.root
       coreIndexPath = resolve(projectRoot, 'src/core/index.ts')
-      macrosPath = resolve(projectRoot, 'src/clojure/macros.clj')
       initServerSession()
       eagerlyGenerateDts()
     },
@@ -115,12 +112,11 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
       if (id === RESOLVED_VIRTUAL_SESSION_ID) {
         return [
           `import { createSession } from ${JSON.stringify(coreIndexPath)};`,
-          `import macrosSource from ${JSON.stringify(macrosPath + '?raw')};`,
           ``,
           `let _session = null;`,
           `export function getSession() {`,
           `  if (!_session) {`,
-          `    _session = createSession({ entries: [macrosSource] });`,
+          `    _session = createSession();`,
           `  }`,
           `  return _session;`,
           `}`,

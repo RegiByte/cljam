@@ -11,6 +11,7 @@ export const valueKeywords = {
   function: 'function',
   nativeFunction: 'native-function',
   macro: 'macro',
+  multiMethod: 'multi-method',
 } as const
 export type ValueKeywords = (typeof valueKeywords)[keyof typeof valueKeywords]
 
@@ -28,6 +29,7 @@ export type Env = {
   outer: Env | null
   namespace?: string // only present on namespace-root envs
   aliases?: Map<string, Env> // only present on namespace-root envs
+  resolveNs?: (name: string) => Env | null // only present on the root coreEnv
 }
 
 export type Arity = {
@@ -46,6 +48,14 @@ export type CljMacro = {
   kind: 'macro'
   arities: Arity[]
   env: Env
+}
+
+export type CljMultiMethod = {
+  kind: 'multi-method'
+  name: string
+  dispatchFn: CljFunction | CljNativeFunction
+  methods: Array<{ dispatchVal: CljValue; fn: CljFunction | CljNativeFunction }>
+  defaultMethod?: CljFunction | CljNativeFunction
 }
 
 export type CljNativeFunction = {
@@ -67,6 +77,7 @@ export type CljValue =
   | CljFunction
   | CljNativeFunction
   | CljMacro
+  | CljMultiMethod
 
 /** Tokens */
 export const tokenKeywords = {
@@ -86,6 +97,7 @@ export const tokenKeywords = {
   Comment: 'Comment',
   Whitespace: 'Whitespace',
   Symbol: 'Symbol',
+  AnonFnStart: 'AnonFnStart',
 } as const
 export const tokenSymbols = {
   Quote: 'quote',
@@ -171,6 +183,9 @@ export type TokenUnquoteSplicing = {
   kind: 'UnquoteSplicing'
   value: 'unquote-splicing'
 }
+export type TokenAnonFnStart = {
+  kind: 'AnonFnStart'
+}
 export type Token = (
   | TokenLParen
   | TokenRParen
@@ -188,4 +203,5 @@ export type Token = (
   | TokenQuasiquote
   | TokenUnquote
   | TokenUnquoteSplicing
+  | TokenAnonFnStart
 ) & { start: Cursor; end: Cursor }

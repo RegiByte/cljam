@@ -234,4 +234,83 @@ bar"`,
       { kind: 'RParen', value: ')' },
     ])
   })
+
+  describe('dispatch (#)', () => {
+    it('should tokenize #(...) as AnonFnStart followed by body tokens', () => {
+      const tokens = tokenize('#(+ %1 %2)')
+      expect(tokens).toMatchObject([
+        { kind: 'AnonFnStart' },
+        { kind: 'Symbol', value: '+' },
+        { kind: 'Symbol', value: '%1' },
+        { kind: 'Symbol', value: '%2' },
+        { kind: 'RParen', value: ')' },
+      ])
+    })
+
+    it('should tokenize a simple #(%) expression', () => {
+      const tokens = tokenize('#(* 2 %)')
+      expect(tokens).toMatchObject([
+        { kind: 'AnonFnStart' },
+        { kind: 'Symbol', value: '*' },
+        { kind: 'Number', value: 2 },
+        { kind: 'Symbol', value: '%' },
+        { kind: 'RParen', value: ')' },
+      ])
+    })
+
+    it('should tokenize #(... %&) with a rest param', () => {
+      const tokens = tokenize('#(apply + %&)')
+      expect(tokens).toMatchObject([
+        { kind: 'AnonFnStart' },
+        { kind: 'Symbol', value: 'apply' },
+        { kind: 'Symbol', value: '+' },
+        { kind: 'Symbol', value: '%&' },
+        { kind: 'RParen', value: ')' },
+      ])
+    })
+
+    it('should throw on regex dispatch #"..."', () => {
+      expect(() => tokenize('#"foo"')).toThrow(TokenizerError)
+    })
+
+    it('should throw on set dispatch #{...}', () => {
+      expect(() => tokenize('#{1 2 3}')).toThrow(TokenizerError)
+    })
+
+    it('should throw on unknown dispatch character', () => {
+      expect(() => tokenize('#?foo')).toThrow(TokenizerError)
+    })
+  })
+
+  describe('auto-qualified keywords (::)', () => {
+    it('tokenizes ::foo as a single Keyword token with value "::foo"', () => {
+      const tokens = tokenize('::foo')
+      expect(tokens).toMatchObject([{ kind: 'Keyword', value: '::foo' }])
+    })
+
+    it('tokenizes ::some-key as a single Keyword token', () => {
+      const tokens = tokenize('::some-key')
+      expect(tokens).toMatchObject([{ kind: 'Keyword', value: '::some-key' }])
+    })
+
+    it('tokenizes ::ns/local as a single Keyword token', () => {
+      const tokens = tokenize('::ns/local')
+      expect(tokens).toMatchObject([{ kind: 'Keyword', value: '::ns/local' }])
+    })
+
+    it('tokenizes a regular qualified keyword :ns/name as a single Keyword token', () => {
+      const tokens = tokenize(':ns/name')
+      expect(tokens).toMatchObject([{ kind: 'Keyword', value: ':ns/name' }])
+    })
+
+    it('tokenizes ::foo inside a list', () => {
+      const tokens = tokenize('(::foo 1)')
+      expect(tokens).toMatchObject([
+        { kind: 'LParen' },
+        { kind: 'Keyword', value: '::foo' },
+        { kind: 'Number', value: 1 },
+        { kind: 'RParen' },
+      ])
+    })
+  })
 })

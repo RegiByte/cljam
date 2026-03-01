@@ -45,6 +45,15 @@ x
 ((constantly 3) 1 2 3)
 ((constantly nil) true false (println 1 2 3))
 
+(defmulti area :shape)
+
+(defmethod area :rect
+  ([r]       (* (:w r) (:h r)))
+  ([r scale] (* (:w r) (:h r) scale)))
+
+(area {:shape :rect :w 10 :h 20})
+(area {:shape :rect :w 10 :h 20} 2)
+
 (comment
   "This is a comment"
   (println "These forms are not evaluated")
@@ -74,7 +83,13 @@ x
        :val value
        :squared (* value value)}) 
     [1 2 3 4])
+
+  (map #(+ 1 %) [1 2 3])
+  (map-indexed #(* (max %1 1) %2) [1 2 3 4 5 6 7 8 9])
+
+  (max 1 2 3)  
 )
+
 `
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
@@ -184,8 +199,7 @@ function createPlayground(appEl: HTMLElement): void {
     language: 'clojure',
     theme: THEME_ID,
     fontSize: 14,
-    fontFamily:
-      "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'SF Mono', ui-monospace, monospace",
+    fontFamily: "'JetBrains Mono', 'SF Mono', ui-monospace, monospace",
     fontLigatures: true,
     lineNumbers: 'on',
     minimap: { enabled: false },

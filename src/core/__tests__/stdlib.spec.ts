@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import macrosSource from '../../clojure/macros.clj?raw'
-import { cljBoolean, cljNil, cljNumber, cljString, cljVector } from '../factories'
+import { cljBoolean, cljKeyword, cljNil, cljNumber, cljString, cljVector } from '../factories'
 import { printString } from '../printer'
 import { createSession } from '../session'
 
 function session() {
-  return createSession({ entries: [macrosSource] })
+  return createSession()
 }
 
 describe('stdlib macros', () => {
@@ -593,5 +592,102 @@ describe('not-every?', () => {
 
   it('returns true when some elements fail pred', () => {
     expect(session().evaluate("(not-every? number? '(1 \"a\" 3))")).toEqual(cljBoolean(true))
+  })
+})
+
+describe('qualified-keyword?', () => {
+  it('returns true for a qualified keyword', () => {
+    expect(session().evaluate('(qualified-keyword? :user/foo)')).toEqual(cljBoolean(true))
+  })
+
+  it('returns false for an unqualified keyword', () => {
+    expect(session().evaluate('(qualified-keyword? :foo)')).toEqual(cljBoolean(false))
+  })
+
+  it('returns false for a non-keyword', () => {
+    expect(session().evaluate('(qualified-keyword? "user/foo")')).toEqual(cljBoolean(false))
+    expect(session().evaluate("(qualified-keyword? 'user/foo)")).toEqual(cljBoolean(false))
+  })
+})
+
+describe('qualified-symbol?', () => {
+  it('returns true for a qualified symbol', () => {
+    expect(session().evaluate("(qualified-symbol? 'user/foo)")).toEqual(cljBoolean(true))
+  })
+
+  it('returns false for an unqualified symbol', () => {
+    expect(session().evaluate("(qualified-symbol? 'foo)")).toEqual(cljBoolean(false))
+  })
+
+  it('returns false for a non-symbol', () => {
+    expect(session().evaluate('(qualified-symbol? :user/foo)')).toEqual(cljBoolean(false))
+  })
+})
+
+describe('namespace', () => {
+  it('returns the namespace string of a qualified keyword', () => {
+    expect(session().evaluate('(namespace :user/foo)')).toEqual(cljString('user'))
+  })
+
+  it('returns nil for an unqualified keyword', () => {
+    expect(session().evaluate('(namespace :foo)')).toEqual(cljNil())
+  })
+
+  it('returns the namespace string of a qualified symbol', () => {
+    expect(session().evaluate("(namespace 'my.ns/bar)")).toEqual(cljString('my.ns'))
+  })
+
+  it('returns nil for an unqualified symbol', () => {
+    expect(session().evaluate("(namespace 'foo)")).toEqual(cljNil())
+  })
+
+  it('throws for non-keyword/symbol argument', () => {
+    expect(() => session().evaluate('(namespace "user/foo")')).toThrow()
+  })
+})
+
+describe('name', () => {
+  it('returns the local name of a qualified keyword', () => {
+    expect(session().evaluate('(name :user/foo)')).toEqual(cljString('foo'))
+  })
+
+  it('returns the name of an unqualified keyword', () => {
+    expect(session().evaluate('(name :foo)')).toEqual(cljString('foo'))
+  })
+
+  it('returns the local name of a qualified symbol', () => {
+    expect(session().evaluate("(name 'my.ns/bar)")).toEqual(cljString('bar'))
+  })
+
+  it('returns the name of an unqualified symbol', () => {
+    expect(session().evaluate("(name 'baz)")).toEqual(cljString('baz'))
+  })
+
+  it('returns the string itself when given a string', () => {
+    expect(session().evaluate('(name "hello")')).toEqual(cljString('hello'))
+  })
+})
+
+describe('keyword constructor', () => {
+  it('creates an unqualified keyword from a single string', () => {
+    expect(session().evaluate('(keyword "foo")')).toEqual(cljKeyword(':foo'))
+  })
+
+  it('creates a qualified keyword from two strings', () => {
+    expect(session().evaluate('(keyword "user" "foo")')).toEqual(cljKeyword(':user/foo'))
+  })
+
+  it('creates a keyword with namespace containing dots', () => {
+    expect(session().evaluate('(keyword "my.domain" "event")')).toEqual(
+      cljKeyword(':my.domain/event')
+    )
+  })
+
+  it('throws with zero arguments', () => {
+    expect(() => session().evaluate('(keyword)')).toThrow()
+  })
+
+  it('throws with non-string first argument', () => {
+    expect(() => session().evaluate('(keyword 42)')).toThrow()
   })
 })
