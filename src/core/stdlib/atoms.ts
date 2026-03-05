@@ -28,7 +28,7 @@ export const atomFunctions: Record<string, CljValue> = {
         { value }
       )
     }),
-    'Unwraps the value of wrapped values, returns the value itself.',
+    'Returns the wrapped value from an atom, volatile, or reduced value.',
     [['value']]
   ),
 

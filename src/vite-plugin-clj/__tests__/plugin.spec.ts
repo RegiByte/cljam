@@ -7,9 +7,22 @@ import { createSession } from '../../core/session'
 
 const projectRoot = resolve(__dirname, '../../..')
 
+type HookLike<T extends (this: any, ...args: any[]) => any> = T | { handler: T }
+
+function getHookHandler<T extends (this: any, ...args: any[]) => any>(
+  hook: HookLike<T> | undefined,
+  name: string
+): OmitThisParameter<T> {
+  if (!hook) {
+    throw new Error(`Missing plugin hook: ${name}`)
+  }
+  return (typeof hook === 'function' ? hook : hook.handler) as OmitThisParameter<T>
+}
+
 function makePlugin(sourceRoots?: string[]) {
-  const plugin = cljPlugin({ sourceRoots }) as Plugin & Record<string, any>
-  plugin.configResolved({
+  const plugin = cljPlugin({ sourceRoots }) as Plugin & Record<string, unknown>
+  const configResolved = getHookHandler(plugin.configResolved, 'configResolved')
+  configResolved({
     root: projectRoot,
   } as ResolvedConfig)
   return plugin
@@ -96,7 +109,8 @@ describe('cljPlugin', () => {
 
   describe('resolveId', () => {
     it('resolves virtual:clj-session to the resolved ID', () => {
-      const result = plugin.resolveId('virtual:clj-session', undefined, {
+      const resolveId = getHookHandler(plugin.resolveId, 'resolveId')
+      const result = resolveId('virtual:clj-session', undefined, {
         attributes: {},
         isEntry: false,
       })
@@ -104,7 +118,8 @@ describe('cljPlugin', () => {
     })
 
     it('returns undefined for non-clj imports', () => {
-      const result = plugin.resolveId('./utils.ts', undefined, {
+      const resolveId = getHookHandler(plugin.resolveId, 'resolveId')
+      const result = resolveId('./utils.ts', undefined, {
         attributes: {},
         isEntry: false,
       })
@@ -112,7 +127,8 @@ describe('cljPlugin', () => {
     })
 
     it('returns null for .clj imports (let Vite resolve the path)', () => {
-      const result = plugin.resolveId('./utils.clj', undefined, {
+      const resolveId = getHookHandler(plugin.resolveId, 'resolveId')
+      const result = resolveId('./utils.clj', undefined, {
         attributes: {},
         isEntry: false,
       })
@@ -120,7 +136,8 @@ describe('cljPlugin', () => {
     })
 
     it('returns undefined for .clj?raw imports (let Vite handle)', () => {
-      const result = plugin.resolveId('./utils.clj?raw', undefined, {
+      const resolveId = getHookHandler(plugin.resolveId, 'resolveId')
+      const result = resolveId('./utils.clj?raw', undefined, {
         attributes: {},
         isEntry: false,
       })
@@ -130,18 +147,21 @@ describe('cljPlugin', () => {
 
   describe('load virtual session module', () => {
     it('generates session module code for virtual:clj-session', () => {
-      const code = plugin.load('\0virtual:clj-session', {})
+      const load = getHookHandler(plugin.load, 'load')
+      const code = load('\0virtual:clj-session', {})
       expect(code).toContain('import { createSession }')
       expect(code).toContain('export function getSession()')
       expect(code).toContain('createSession()')
     })
 
     it('returns undefined for non-clj files', () => {
-      expect(plugin.load('some-file.ts', {})).toBeUndefined()
+      const load = getHookHandler(plugin.load, 'load')
+      expect(load('some-file.ts', {})).toBeUndefined()
     })
 
     it('returns undefined for .clj?raw files', () => {
-      expect(plugin.load('some-file.clj?raw', {})).toBeUndefined()
+      const load = getHookHandler(plugin.load, 'load')
+      expect(load('some-file.clj?raw', {})).toBeUndefined()
     })
   })
 })
