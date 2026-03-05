@@ -373,3 +373,9 @@
                       args#))]
      (println (str (if args-str# (str args-str# "\n\n") "")
                    (or d# "No documentation available.")))))
+
+(defn err
+  "Creates an error map with type, message, data and optionally cause"
+  ([type message] (err type message nil nil))
+  ([type message data] (err type message data nil))
+  ([type message data cause] {:type type :message message :data data :cause cause}))

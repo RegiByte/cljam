@@ -105,6 +105,28 @@ x
         (recur (dec i) (* acc i)))))
 (map factorial [1 2 3 4 5 6 7 8 9 10, 30])
 
+(try
+  (/ 1 0)
+  (catch :default e
+    (println (str "Got an error here: " (ex-message e)))))
+
+(try
+  (+ 1 2 "ops")
+  (catch :default e
+    (println (str "Got an error here: " (ex-message e)))))
+
+(try
+  (throw 42)
+  (catch number? e
+    (+ e 1)))
+
+(try
+  (throw (assoc (ex-info "Got something funny here" {:offending "arg"}) 
+      :type 
+      :error/unexpected))
+  (catch :error/unexpected e
+    (println (str "Error here: " (ex-message e)))))
+
 `
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
@@ -139,7 +161,7 @@ function appendEntries(
       entryEl.appendChild(outEl)
     } else if (entry.kind === 'result') {
       const resEl = el('div', 'pg-entry__result')
-      resEl.textContent = `→ ${entry.output}`
+      resEl.textContent = `→ ${entry.output} (${formatDuration(entry.durationMs)})`
       entryEl.appendChild(resEl)
     } else if (entry.kind === 'error') {
       const errEl = el('div', 'pg-entry__result pg-entry__result--error')
@@ -149,6 +171,13 @@ function appendEntries(
   }
 
   outputInner.appendChild(entryEl)
+}
+
+function formatDuration(durationMs: number): string {
+  if (durationMs < 1) return `${durationMs.toFixed(3)} ms`
+  if (durationMs < 10) return `${durationMs.toFixed(2)} ms`
+  if (durationMs < 100) return `${durationMs.toFixed(1)} ms`
+  return `${Math.round(durationMs)} ms`
 }
 
 // ── Playground bootstrap ──────────────────────────────────────────────────────
@@ -222,7 +251,7 @@ function createPlayground(appEl: HTMLElement): void {
     automaticLayout: true,
     padding: { top: 16, bottom: 16 },
     renderLineHighlight: 'gutter',
-    bracketPairColorization: { enabled: false },
+    bracketPairColorization: { enabled: true },
     // Clojure uses () [] {} — turn on bracket matching
     matchBrackets: 'always',
     overviewRulerLanes: 0,

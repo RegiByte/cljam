@@ -7,7 +7,12 @@ import {
   type EvaluationContext,
 } from '../types.ts'
 import { applyFunctionWithContext, applyMacroWithContext } from './apply.ts'
-import { evaluateFormsWithContext, evaluateWithContext } from './evaluate.ts'
+import {
+  type EvaluationMeasurement,
+  evaluateFormsWithContext,
+  evaluateWithContext,
+  evaluateWithMeasurementsWithContext,
+} from './evaluate.ts'
 
 // Forward to external consumers
 export { RecurSignal } from './arity.ts'
@@ -42,4 +47,12 @@ export function evaluate(expr: CljValue, env: Env): CljValue {
 }
 export function evaluateForms(forms: CljValue[], env: Env): CljValue {
   return createEvaluationContext().evaluateForms(forms, env)
+}
+
+export function evaluateWithMeasurements(
+  expr: CljValue,
+  env: Env,
+  ctx: EvaluationContext = createEvaluationContext()
+): EvaluationMeasurement {
+  return evaluateWithMeasurementsWithContext(expr, env, ctx)
 }

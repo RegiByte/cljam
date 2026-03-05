@@ -11,6 +11,7 @@ export type ReplEntrySource = {
 export type ReplEntryResult = {
   kind: 'result'
   output: string
+  durationMs: number
 }
 
 export type ReplEntryError = {
@@ -65,7 +66,9 @@ export function evalSource(state: ReplState, source: string): ReplEntry[] {
   state.outputs = []
 
   try {
+    const start = performance.now()
     const result = state.session.evaluate(trimmed)
+    const end = performance.now()
 
     // Build entries in correct order: source, outputs, result
     const entries: ReplEntry[] = []
@@ -76,7 +79,11 @@ export function evalSource(state: ReplState, source: string): ReplEntry[] {
       entries.push({ kind: 'output', text })
     }
 
-    entries.push({ kind: 'result', output: printString(result) })
+    entries.push({
+      kind: 'result',
+      output: printString(result),
+      durationMs: end - start,
+    })
 
     state.entries.push(...entries)
     return entries

@@ -53,7 +53,7 @@ function renderEntry(entry: ReplEntry): HTMLElement | HTMLElement[] {
 
   if (entry.kind === 'result') {
     const resultEl = el('div', 'repl-entry__result repl-entry__result--ok')
-    resultEl.textContent = entry.output
+    resultEl.textContent = `${entry.output} (${formatDuration(entry.durationMs)})`
     return resultEl
   }
 
@@ -64,6 +64,13 @@ function renderEntry(entry: ReplEntry): HTMLElement | HTMLElement[] {
   errorEl.textContent = `Error: ${entry.message}`
 
   return [sourceEl, errorEl]
+}
+
+function formatDuration(durationMs: number): string {
+  if (durationMs < 1) return `${durationMs.toFixed(3)} ms`
+  if (durationMs < 10) return `${durationMs.toFixed(2)} ms`
+  if (durationMs < 100) return `${durationMs.toFixed(1)} ms`
+  return `${Math.round(durationMs)} ms`
 }
 
 // ─── Editor helpers ─────────────────────────────────────────────────────────

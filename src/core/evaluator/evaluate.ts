@@ -8,6 +8,16 @@ import type { CljValue, Env, EvaluationContext } from '../types'
 import { evaluateMap, evaluateVector } from './collections'
 import { evaluateList } from './dispatch'
 
+export type EvaluationMeasurement = {
+  result: CljValue
+  durationMs: number
+}
+
+function nowMs(): number {
+  if (typeof performance !== 'undefined') return performance.now()
+  return Date.now()
+}
+
 export function evaluateWithContext(
   expr: CljValue,
   env: Env,
@@ -72,4 +82,18 @@ export function evaluateFormsWithContext(
     result = ctx.evaluate(form, env)
   }
   return result
+}
+
+export function evaluateWithMeasurementsWithContext(
+  expr: CljValue,
+  env: Env,
+  ctx: EvaluationContext
+): EvaluationMeasurement {
+  const start = nowMs()
+  const result = ctx.evaluate(expr, env)
+  const end = nowMs()
+  return {
+    result,
+    durationMs: end - start,
+  }
 }

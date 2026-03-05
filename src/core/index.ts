@@ -6,7 +6,7 @@ export type { Session } from './session'
 export { cljToJs, jsToClj, ConversionError } from './conversions'
 
 // Evaluator
-export { applyFunction, applyMacro } from './evaluator'
+export { applyFunction, applyMacro, evaluateWithMeasurements } from './evaluator'
 
 // Errors
 export { EvaluationError, ReaderError, TokenizerError } from './errors'
