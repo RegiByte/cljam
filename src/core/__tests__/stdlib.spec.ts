@@ -289,6 +289,52 @@ describe('stdlib macros', () => {
       )
     })
   })
+
+  describe('macroexpand-all', () => {
+    it('expands macros in sub-forms recursively', () => {
+      expect(
+        printString(session().evaluate("(macroexpand-all '(when true 42))"))
+      ).toEqual('(if true (do 42) nil)')
+    })
+
+    it('expands nested macros inside a let binding value', () => {
+      expect(
+        printString(
+          session().evaluate("(macroexpand-all '(let [x (when true 1)] x))")
+        )
+      ).toEqual('(let [x (if true (do 1) nil)] x)')
+    })
+
+    it('expands macros inside an if branch', () => {
+      expect(
+        printString(
+          session().evaluate(
+            "(macroexpand-all '(if test (when a 1) (when b 2)))"
+          )
+        )
+      ).toEqual('(if test (if a (do 1) nil) (if b (do 2) nil))')
+    })
+
+    it('does not expand inside quote', () => {
+      expect(
+        printString(session().evaluate("(macroexpand-all '(quote (when true 1)))"))
+      ).toEqual("(quote (when true 1))")
+    })
+
+    it('returns non-macro forms unchanged', () => {
+      expect(
+        printString(session().evaluate("(macroexpand-all '(+ 1 2))"))
+      ).toEqual('(+ 1 2)')
+    })
+
+    it('expands chained macros (cond) fully', () => {
+      expect(
+        printString(
+          session().evaluate("(macroexpand-all '(cond (zero? n) 0 :else n))")
+        )
+      ).toEqual('(if (zero? n) 0 (if :else n nil))')
+    })
+  })
 })
 
 describe('range', () => {

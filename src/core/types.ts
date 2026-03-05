@@ -77,6 +77,7 @@ export type EvaluationContext = {
     args: CljValue[]
   ) => CljValue
   applyMacro: (macro: CljMacro, rawArgs: CljValue[]) => CljValue
+  expandAll: (form: CljValue, env: Env) => CljValue
 }
 
 export type CljNativeFunction = {

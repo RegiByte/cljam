@@ -1,7 +1,7 @@
 import { isKeyword, isList, isSymbol, isVector } from './assertions'
 import { loadCoreFunctions } from './core-env'
 import { define, lookup, makeEnv } from './env'
-import { evaluateForms, RecurSignal } from './evaluator'
+import { createEvaluationContext, RecurSignal } from './evaluator'
 import { CljThrownSignal, EvaluationError, ReaderError } from './errors'
 import { cljNativeFunction, cljNil } from './factories'
 import { formatErrorContext } from './positions'
@@ -277,6 +277,11 @@ export function createSession(options?: SessionOptions): Session {
 
   let currentNs = 'user'
 
+  // One shared evaluation context for the lifetime of this session.
+  // All macro expansion and evaluation share the same ctx instance so
+  // ctx.expandAll / ctx.evaluate / ctx.applyFunction are always consistent.
+  const ctx = createEvaluationContext()
+
   const resolveNamespace = (nsName: string): boolean => {
     const builtInLoader = builtInNamespaceSources[nsName]
     if (builtInLoader) {
@@ -347,7 +352,10 @@ export function createSession(options?: SessionOptions): Session {
     const forms = readForms(tokens, targetNs, aliasMap)
     const env = ensureNs(targetNs)
     processNsRequires(forms, env)
-    evaluateForms(forms, env)
+    for (const form of forms) {
+      const expanded = ctx.expandAll(form, env)
+      ctx.evaluate(expanded, env)
+    }
   }
 
   const coreLoader = builtInNamespaceSources['clojure.core']
@@ -383,7 +391,12 @@ export function createSession(options?: SessionOptions): Session {
         })
         const forms = readForms(tokens, currentNs, aliasMap)
         processNsRequires(forms, env)
-        return evaluateForms(forms, env)
+        let result: CljValue = cljNil()
+        for (const form of forms) {
+          const expanded = ctx.expandAll(form, env)
+          result = ctx.evaluate(expanded, env)
+        }
+        return result
       } catch (e) {
         if (e instanceof CljThrownSignal) {
           throw new EvaluationError(
@@ -407,7 +420,13 @@ export function createSession(options?: SessionOptions): Session {
     },
     evaluateForms(forms: CljValue[]) {
       try {
-        return evaluateForms(forms, getNs(currentNs)!)
+        const env = getNs(currentNs)!
+        let result: CljValue = cljNil()
+        for (const form of forms) {
+          const expanded = ctx.expandAll(form, env)
+          result = ctx.evaluate(expanded, env)
+        }
+        return result
       } catch (e) {
         if (e instanceof CljThrownSignal) {
           throw new EvaluationError(

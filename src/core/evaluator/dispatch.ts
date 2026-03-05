@@ -2,7 +2,6 @@ import {
   isAFunction,
   isEqual,
   isKeyword,
-  isMacro,
   isMap,
   isMultiMethod,
   isSpecialForm,
@@ -20,7 +19,6 @@ import type {
   CljMultiMethod,
 } from '../types'
 
-import { applyMacroWithContext } from './apply'
 import { evaluateSpecialForm } from './special-forms'
 
 function dispatchMultiMethod(
@@ -62,11 +60,13 @@ export function evaluateList(
   }
 
   const evaledFirst = ctx.evaluate(first, env)
-  if (isMacro(evaledFirst)) {
-    const rawArgs = list.value.slice(1)
-    const expanded = applyMacroWithContext(evaledFirst, rawArgs, ctx)
-    return ctx.evaluate(expanded, env)
-  }
+  // Macro expansion now happens as a dedicated phase before evaluation
+  // (see session.ts and ctx.expandAll). This branch is kept commented for reference.
+  // if (isMacro(evaledFirst)) {
+  //   const rawArgs = list.value.slice(1)
+  //   const expanded = applyMacroWithContext(evaledFirst, rawArgs, ctx)
+  //   return ctx.evaluate(expanded, env)
+  // }
   if (isAFunction(evaledFirst)) {
     const args = list.value.slice(1).map((v) => ctx.evaluate(v, env))
     return ctx.applyFunction(evaledFirst, args)

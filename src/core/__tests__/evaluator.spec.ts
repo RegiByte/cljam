@@ -1982,6 +1982,106 @@ describe('evaluator spec', () => {
       expectEvalError('(recur 1)', 'recur called outside of loop or fn')
     })
 
+    describe('tail-position validation', () => {
+      it('throws when recur is not the last form in a fn body', () => {
+        expectEvalError(
+          '(fn [n] (recur n) n)',
+          'Can only recur from tail position'
+        )
+      })
+
+      it('throws when recur is not the last form in a loop body', () => {
+        expectEvalError(
+          '(loop [i 0] (recur (inc i)) i)',
+          'Can only recur from tail position'
+        )
+      })
+
+      it('throws when recur appears as an argument to a function call', () => {
+        expectEvalError(
+          '(fn [n] (+ 1 (recur n)))',
+          'Can only recur from tail position'
+        )
+      })
+
+      it('throws when recur appears in the condition of if', () => {
+        expectEvalError(
+          '(fn [n] (if (recur n) 1 2))',
+          'Can only recur from tail position'
+        )
+      })
+
+      it('throws when recur is not last in a do block inside fn', () => {
+        expectEvalError(
+          '(fn [n] (do (recur n) n))',
+          'Can only recur from tail position'
+        )
+      })
+
+      it('throws when recur appears in a let binding value', () => {
+        expectEvalError(
+          '(fn [n] (let [x (recur n)] x))',
+          'Can only recur from tail position'
+        )
+      })
+
+      it('allows recur as the last form of an if then-branch', () => {
+        const session = createSession()
+        expect(() =>
+          session.evaluate('(fn [n] (if (zero? n) 0 (recur (dec n))))')
+        ).not.toThrow()
+      })
+
+      it('allows recur as the last form of an if else-branch', () => {
+        const session = createSession()
+        expect(() =>
+          session.evaluate('(fn [n] (if (pos? n) (recur (dec n)) 0))')
+        ).not.toThrow()
+      })
+
+      it('allows recur as the last form of a let body', () => {
+        const session = createSession()
+        expect(() =>
+          session.evaluate('(fn [n] (let [m (dec n)] (recur m)))')
+        ).not.toThrow()
+      })
+
+      it('allows recur via cond (macro expands before check — no false positive)', () => {
+        const session = createSession()
+        expect(() =>
+          session.evaluate(
+            '(fn [n acc] (cond (zero? n) acc :else (recur (dec n) (+ acc n))))'
+          )
+        ).not.toThrow()
+      })
+
+      it('allows recur via when (macro expands before check — no false positive)', () => {
+        const session = createSession()
+        expect(() =>
+          session.evaluate('(fn [n] (when (pos? n) (recur (dec n))))')
+        ).not.toThrow()
+      })
+
+      it('recur in nested fn does not trigger outer fn check', () => {
+        const session = createSession()
+        expect(() =>
+          session.evaluate('(fn [n] (fn [m] (recur (dec m))))')
+        ).not.toThrow()
+      })
+
+      it('cond-based recursion actually produces correct results', () => {
+        const session = createSession()
+        const result = session.evaluate(`
+          (defn sum-to [n acc]
+            (cond
+              (zero? n) acc
+              :else (recur (dec n) (+ acc n))))
+          (sum-to 10 0)
+        `)
+        expect(result).toMatchObject(toCljValue(55))
+      })
+    })
+
     it('should support recur with rest params in fn', () => {
       const session = createSession()
       const result = session.evaluate(`

@@ -34,6 +34,7 @@ import type {
 } from '../types'
 import { parseArities, RecurSignal } from './arity'
 import { evaluateQuasiquote } from './quasiquote'
+import { assertRecurInTailPosition } from './recur-check'
 
 export const specialFormKeywords = {
   quote: 'quote',
@@ -289,6 +290,9 @@ function evaluateFn(
   _ctx: EvaluationContext
 ): CljValue {
   const arities = parseArities(list.value.slice(1), env)
+  for (const arity of arities) {
+    assertRecurInTailPosition(arity.body)
+  }
   return cljMultiArityFunction(arities, env)
 }
 
@@ -330,6 +334,7 @@ function evaluateLoop(
     )
   }
   const loopBody = list.value.slice(2)
+  assertRecurInTailPosition(loopBody)
 
   const names: string[] = []
   let initEnv = env

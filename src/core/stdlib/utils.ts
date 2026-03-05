@@ -113,7 +113,8 @@ export function getUtilFunctions(globalEnv: Env): Record<string, CljValue> {
               form,
             })
           }
-          return ctx.evaluate(form, globalEnv)
+          const expanded = ctx.expandAll(form, globalEnv)
+          return ctx.evaluate(expanded, globalEnv)
         }
       ),
       'Evaluates the given form in the global environment and returns the result.',
@@ -165,6 +166,20 @@ export function getUtilFunctions(globalEnv: Env): Record<string, CljValue> {
         'Expands all macros until the expansion is stable (head is no longer a macro)',
         '',
         'Note neither macroexpand-1 nor macroexpand will expand macros in sub-forms',
+      ]),
+      [['form']]
+    ),
+
+    'macroexpand-all': withDoc(
+      cljNativeFunctionWithContext(
+        'macroexpand-all',
+        (ctx: EvaluationContext, form: CljValue) => ctx.expandAll(form, globalEnv)
+      ),
+      joinLines([
+        'Fully expands all macros in a form recursively — including in sub-forms.',
+        '',
+        'Unlike macroexpand, this descends into every sub-expression.',
+        'Expansion stops at quote/quasiquote boundaries and fn/loop bodies.',
       ]),
       [['form']]
     ),
