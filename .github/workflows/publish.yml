@@ -14,6 +14,8 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -23,6 +25,10 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Update npm to latest
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: bun install
@@ -41,5 +47,4 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # NO NODE_AUTH_TOKEN is needed because we are using OIDC
