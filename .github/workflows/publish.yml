@@ -33,9 +33,6 @@ jobs:
       - name: Build TypeScript
         run: bun run build
 
-      - name: Install latest npm
-        run: npm install -g npm@latest
-
       - name: Publish to npm
         run: npm publish --provenance
         env:
