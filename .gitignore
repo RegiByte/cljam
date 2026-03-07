@@ -39,3 +39,4 @@ conjure
 # Generated version file
 src/bin/version.ts
 
+.calva/
