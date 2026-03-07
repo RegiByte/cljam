@@ -95,9 +95,9 @@ function getSourceRoots(filePath?: string): string[] {
 
 function printUsage(io: CliIo) {
   io.writeLine('Usage:')
-  io.writeLine('  conjure repl')
-  io.writeLine('  conjure run <file.clj>')
-  io.writeLine('  conjure nrepl-server [--port <number>] [--host <string>]')
+  io.writeLine('  conjure-js repl')
+  io.writeLine('  conjure-js run <file.clj>')
+  io.writeLine('  conjure-js nrepl-server [--port <number>] [--host <string>]')
 }
 
 export function runFile(fileArg: string, io: CliIo = makeCliIo()): number {

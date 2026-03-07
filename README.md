@@ -128,7 +128,7 @@ You may need to install [Bun](https://bun.sh) for certain features.
 ### Interactive REPL
 
 ```bash
-conjure repl
+conjure-js repl
 ```
 
 ```
@@ -146,20 +146,20 @@ user=> (exit)
 ### Run a File
 
 ```bash
-conjure run my-script.clj
+conjure-js run my-script.clj
 ```
 
 ### nREPL Server
 
 ```bash
-conjure nrepl-server
+conjure-js nrepl-server
 # Conjure nREPL server 0.0.1 started on port 7888
 ```
 
 Options:
 
 ```bash
-conjure nrepl-server --port 7889 --host 0.0.0.0
+conjure-js nrepl-server --port 7889 --host 0.0.0.0
 ```
 
 #### Connecting with Calva (VS Code)
@@ -211,7 +211,7 @@ console.log(printString(result)) // (2 3 4)
 
 ## Source Root Discovery
 
-When running `conjure nrepl-server` or `conjure run`, Conjure looks for source roots by reading the `conjure.sourceRoots` field in `package.json`:
+When running `conjure-js nrepl-server` or `conjure-js run`, Conjure looks for source roots by reading the `conjure.sourceRoots` field in `package.json`:
 
 ```json
 {

@@ -1,7 +1,7 @@
 {
   "name": "conjure-js",
   "private": false,
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "repository": {
     "type": "git",
@@ -11,7 +11,7 @@
   "homepage": "https://github.com/RegiByte/conjure-js",
   "license": "MIT",
   "bin": {
-    "conjure": "./dist/bin/conjure.mjs"
+    "conjure-js": "./dist/bin/conjure-js.mjs"
   },
   "files": [
     "dist/**/*",
@@ -38,7 +38,7 @@
     "repl": "bun run src/bin/cli.ts repl",
     "run": "bun run src/bin/cli.ts run",
     "nrepl": "bun run src/bin/cli.ts nrepl-server",
-    "build-cli": "node scripts/gen-version.mjs && bun build --compile src/bin/cli.ts --outfile conjure",
+    "build-cli": "node scripts/gen-version.mjs && bun build --compile src/bin/cli.ts --outfile conjure-js",
     "build-npm-bin": "node scripts/gen-version.mjs && node scripts/build-npm-bin.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
