@@ -1,12 +1,23 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { createSession, printString, type Session } from '../core'
+import {
+  createSession,
+  printString,
+  define,
+  cljNativeFunction,
+  cljNil,
+  cljString,
+  valueToString,
+  type Session,
+  type CljValue,
+} from '../core'
 import { extractNsName } from '../vite-plugin-clj/namespace-utils'
 import { inferSourceRoot, discoverSourceRoots } from './nrepl-utils'
 import { startNreplServer } from './nrepl'
+import { VERSION } from './version'
 
 type CliIo = {
   writeLine: (text: string) => void
@@ -20,12 +31,57 @@ function makeCliIo(): CliIo {
   }
 }
 
-function createCliSession(sourceRoots: string[], io: CliIo): Session {
-  return createSession({
+function injectHostFunctions(session: Session): void {
+  const coreEnv = session.getNs('clojure.core')!
+
+  define(
+    'slurp',
+    cljNativeFunction('slurp', (pathVal: CljValue) => {
+      const filePath = resolve(valueToString(pathVal))
+      if (!existsSync(filePath)) {
+        throw new Error(`slurp: file not found: ${filePath}`)
+      }
+      return cljString(readFileSync(filePath, 'utf8'))
+    }),
+    coreEnv
+  )
+
+  define(
+    'spit',
+    cljNativeFunction('spit', (pathVal: CljValue, content: CljValue) => {
+      const filePath = resolve(valueToString(pathVal))
+      writeFileSync(filePath, valueToString(content), 'utf8')
+      return cljNil()
+    }),
+    coreEnv
+  )
+
+  define(
+    'load',
+    cljNativeFunction('load', (pathVal: CljValue) => {
+      const filePath = resolve(valueToString(pathVal))
+      if (!existsSync(filePath)) {
+        throw new Error(`load: file not found: ${filePath}`)
+      }
+      const source = readFileSync(filePath, 'utf8')
+      const inferred = inferSourceRoot(filePath, source)
+      if (inferred) session.addSourceRoot(inferred)
+      const loadedNs = session.loadFile(source)
+      session.setNs(loadedNs)
+      return cljNil()
+    }),
+    coreEnv
+  )
+}
+
+export function createCliSession(sourceRoots: string[], io: CliIo): Session {
+  const session = createSession({
     output: (text) => io.writeLine(text),
     sourceRoots,
     readFile: (filePath) => readFileSync(filePath, 'utf8'),
   })
+  injectHostFunctions(session)
+  return session
 }
 
 function getSourceRoots(filePath?: string): string[] {
@@ -133,8 +189,8 @@ async function startStreamRepl(session: Session, io: CliIo): Promise<number> {
 export async function startRepl(io: CliIo = makeCliIo()): Promise<number> {
   const session = createCliSession(getSourceRoots(), io)
 
-  io.writeLine('Conjure REPL')
-  io.writeLine("Type (exit) to exit the REPL.")
+  io.writeLine(`Conjure v${VERSION}`)
+  io.writeLine('Type (exit) to exit the REPL.')
 
   if (!input.isTTY) {
     return startStreamRepl(session, io)

@@ -1,17 +1,25 @@
 import * as net from 'net'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { BDecoderStream, BEncoderStream } from './bencode'
 import {
   createSession,
   createSessionFromSnapshot,
   printString,
   snapshotSession,
+  define,
+  cljNativeFunction,
+  cljNil,
+  cljString,
+  valueToString,
   type Session,
   type SessionSnapshot,
+  type CljValue,
 } from '../core'
 import { inferSourceRoot } from './nrepl-utils'
+import { VERSION } from './version'
 
-const CONJURE_VERSION = '0.1.0'
+const CONJURE_VERSION = VERSION
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +42,49 @@ function makeSessionId(): string {
   return crypto.randomUUID()
 }
 
+function injectHostFunctions(session: Session): void {
+  const coreEnv = session.getNs('clojure.core')!
+
+  define(
+    'slurp',
+    cljNativeFunction('slurp', (pathVal: CljValue) => {
+      const filePath = resolve(valueToString(pathVal))
+      if (!existsSync(filePath)) {
+        throw new Error(`slurp: file not found: ${filePath}`)
+      }
+      return cljString(readFileSync(filePath, 'utf8'))
+    }),
+    coreEnv
+  )
+
+  define(
+    'spit',
+    cljNativeFunction('spit', (pathVal: CljValue, content: CljValue) => {
+      const filePath = resolve(valueToString(pathVal))
+      writeFileSync(filePath, valueToString(content), 'utf8')
+      return cljNil()
+    }),
+    coreEnv
+  )
+
+  define(
+    'load',
+    cljNativeFunction('load', (pathVal: CljValue) => {
+      const filePath = resolve(valueToString(pathVal))
+      if (!existsSync(filePath)) {
+        throw new Error(`load: file not found: ${filePath}`)
+      }
+      const source = readFileSync(filePath, 'utf8')
+      const inferred = inferSourceRoot(filePath, source)
+      if (inferred) session.addSourceRoot(inferred)
+      const loadedNs = session.loadFile(source)
+      session.setNs(loadedNs)
+      return cljNil()
+    }),
+    coreEnv
+  )
+}
+
 function createManagedSession(
   id: string,
   snapshot: SessionSnapshot,
@@ -47,6 +98,8 @@ function createManagedSession(
     },
     readFile: (filePath) => readFileSync(filePath, 'utf8'),
   })
+
+  injectHostFunctions(session)
 
   return {
     id,
@@ -108,6 +161,7 @@ function handleDescribe(msg: NreplMessage, encoder: BEncoderStream) {
       eval: {},
       clone: {},
       close: {},
+      complete: {},
       describe: {},
       'load-file': {},
     },
@@ -134,8 +188,10 @@ function handleEval(
       ns: managed.session.currentNs,
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     done(encoder, id, managed.id, {
-      ex: error instanceof Error ? error.message : String(error),
+      ex: message,
+      err: message + '\n',
       ns: managed.session.currentNs,
       status: ['eval-error', 'done'],
     })
@@ -165,8 +221,14 @@ function handleLoadFile(
       }
     }
 
-    const nsHint = fileName.replace(/\.clj$/, '').replace(/\//g, '.') || undefined
-    managed.session.loadFile(source, nsHint)
+    const nsHint =
+      fileName.replace(/\.clj$/, '').replace(/\//g, '.') || undefined
+    const loadedNs = managed.session.loadFile(source, nsHint)
+
+    // Switch the session's active namespace to the one declared in the loaded
+    // file. Without this, subsequent eval ops land in the wrong namespace and
+    // can't see the defs that were just loaded.
+    managed.session.setNs(loadedNs)
 
     done(encoder, id, managed.id, {
       value: 'nil',
@@ -181,14 +243,35 @@ function handleLoadFile(
   }
 }
 
+function handleComplete(
+  msg: NreplMessage,
+  managed: ManagedSession,
+  encoder: BEncoderStream
+) {
+  const id = (msg['id'] as string) ?? ''
+  const prefix = (msg['prefix'] as string) ?? ''
+  const nsName = msg['ns'] as string | undefined
+
+  const names = managed.session.getCompletions(prefix, nsName)
+  const completions = names.map((c) => ({
+    candidate: c,
+    type: 'var',
+    ns: managed.session.currentNs,
+  }))
+
+  done(encoder, id, managed.id, { completions })
+}
+
 function handleClose(
   msg: NreplMessage,
   sessions: Map<string, ManagedSession>,
   encoder: BEncoderStream
 ) {
+  // cider sends a close message with an id
+  const id = (msg['id'] as string) ?? ''
   const sessionId = (msg['session'] as string) ?? ''
   sessions.delete(sessionId)
-  send(encoder, { session: sessionId, status: ['done'] })
+  send(encoder, { id, session: sessionId, status: ['done'] })
 }
 
 function handleUnknown(msg: NreplMessage, encoder: BEncoderStream) {
@@ -209,7 +292,9 @@ function handleMessage(
 ) {
   const op = msg['op'] as string
   const sessionId = msg['session'] as string | undefined
-  const managed = sessionId ? sessions.get(sessionId) ?? defaultSession : defaultSession
+  const managed = sessionId
+    ? (sessions.get(sessionId) ?? defaultSession)
+    : defaultSession
 
   switch (op) {
     case 'clone':
@@ -223,6 +308,9 @@ function handleMessage(
       break
     case 'load-file':
       handleLoadFile(msg, managed, encoder)
+      break
+    case 'complete':
+      handleComplete(msg, managed, encoder)
       break
     case 'close':
       handleClose(msg, sessions, encoder)
@@ -281,8 +369,24 @@ export function startNreplServer(options: NreplServerOptions = {}): net.Server {
     })
   })
 
+  const portFile = join(process.cwd(), '.nrepl-port')
+
   server.listen(port, host, () => {
-    process.stdout.write(`nREPL server started on port ${port}\n`)
+    writeFileSync(portFile, String(port), 'utf8')
+    process.stdout.write(`Conjure nREPL server v${VERSION} started on port ${port}\n`)
+  })
+
+  const cleanup = () => {
+    if (existsSync(portFile)) unlinkSync(portFile)
+  }
+  process.on('exit', cleanup)
+  process.on('SIGINT', () => {
+    cleanup()
+    process.exit(0)
+  })
+  process.on('SIGTERM', () => {
+    cleanup()
+    process.exit(0)
   })
 
   return server

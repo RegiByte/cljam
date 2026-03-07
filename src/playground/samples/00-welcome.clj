@@ -144,7 +144,7 @@
   ;; Variadic — `&` collects remaining args as a sequence
   (defn sum [& nums]
     (reduce + nums))
-
+  
   (sum 1 2 3 4 5)   ;; => 15
 
   ;; Closures — functions capture their lexical environment

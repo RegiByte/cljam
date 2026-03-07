@@ -304,4 +304,75 @@ describe('nREPL server', () => {
 
     client.close()
   })
+
+  it('complete returns candidates matching a prefix', async () => {
+    const client = await connectClient(TEST_PORT)
+
+    client.send({ op: 'complete', prefix: 'map', id: 'cmp-1' })
+    const msgs = await collectUntilDone(client.receive)
+
+    const done = msgs.find((m) => (m['status'] as string[])?.includes('done'))
+    const completions = done?.['completions'] as Array<Record<string, unknown>>
+    expect(Array.isArray(completions)).toBe(true)
+    const candidates = completions.map((c) => c['candidate'])
+    expect(candidates).toContain('map')
+    expect(candidates).toContain('map-indexed')
+    expect(candidates.every((c) => (c as string).startsWith('map'))).toBe(true)
+
+    client.close()
+  })
+
+  it('complete with empty prefix returns a non-empty list', async () => {
+    const client = await connectClient(TEST_PORT)
+
+    client.send({ op: 'complete', prefix: '', id: 'cmp-2' })
+    const msgs = await collectUntilDone(client.receive)
+
+    const done = msgs.find((m) => (m['status'] as string[])?.includes('done'))
+    const completions = done?.['completions'] as Array<Record<string, unknown>>
+    expect(Array.isArray(completions)).toBe(true)
+    expect(completions.length).toBeGreaterThan(50)
+
+    client.close()
+  })
+
+  it('complete with unmatched prefix returns empty completions', async () => {
+    const client = await connectClient(TEST_PORT)
+
+    client.send({ op: 'complete', prefix: 'zzz-no-such-prefix-xyz', id: 'cmp-3' })
+    const msgs = await collectUntilDone(client.receive)
+
+    const done = msgs.find((m) => (m['status'] as string[])?.includes('done'))
+    const completions = done?.['completions'] as Array<Record<string, unknown>>
+    expect(Array.isArray(completions)).toBe(true)
+    expect(completions.length).toBe(0)
+
+    client.close()
+  })
+
+  it('describe lists complete in ops', async () => {
+    const client = await connectClient(TEST_PORT)
+
+    client.send({ op: 'describe', id: 'desc-cmp' })
+    const msgs = await collectUntilDone(client.receive)
+
+    const done = msgs.find((m) => (m['status'] as string[])?.includes('done'))
+    const ops = done?.['ops'] as Record<string, unknown>
+    expect(ops['complete']).toBeDefined()
+
+    client.close()
+  })
+
+  it('when-let evaluates cleanly (Calva startup scenario)', async () => {
+    const client = await connectClient(TEST_PORT)
+
+    client.send({ op: 'eval', code: '(when-let [x 1] x)', id: 'wl-1' })
+    const msgs = await collectUntilDone(client.receive)
+
+    const done = msgs.find((m) => (m['status'] as string[])?.includes('done'))
+    expect((done?.['status'] as string[])?.includes('eval-error')).toBeFalsy()
+    expect(done?.['value']).toBe('1')
+
+    client.close()
+  })
 })

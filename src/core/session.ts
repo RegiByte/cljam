@@ -1,6 +1,6 @@
 import { isKeyword, isList, isSymbol, isVector } from './assertions'
 import { loadCoreFunctions } from './core-env'
-import { define, lookup, makeEnv } from './env'
+import { define, lookup, makeEnv, tryLookup } from './env'
 import { valueToString } from './transformations'
 import { createEvaluationContext, RecurSignal } from './evaluator'
 import { CljThrownSignal, EvaluationError, ReaderError } from './errors'
@@ -26,10 +26,11 @@ export type Session = {
   readonly currentNs: string
   setNs: (namespace: string) => void
   getNs: (namespace: string) => Env | null
-  loadFile: (source: string, nsName?: string) => void
+  loadFile: (source: string, nsName?: string) => string
   evaluate: (source: string) => CljValue
   evaluateForms: (forms: CljValue[]) => CljValue
   addSourceRoot: (path: string) => void
+  getCompletions: (prefix: string, nsName?: string) => string[]
 }
 
 // Lightweight token scan to extract the namespace name before full parsing.
@@ -402,6 +403,24 @@ function buildSessionApi(
     coreEnv
   )
 
+  define(
+    'resolve',
+    cljNativeFunction('resolve', (sym: CljValue) => {
+      if (!isSymbol(sym)) return cljNil()
+      const slashIdx = sym.name.indexOf('/')
+      if (slashIdx > 0) {
+        const nsName = sym.name.slice(0, slashIdx)
+        const symName = sym.name.slice(slashIdx + 1)
+        const nsEnv = registry.get(nsName) ?? null
+        if (!nsEnv) return cljNil()
+        return tryLookup(symName, nsEnv) ?? cljNil()
+      }
+      const currentEnv = registry.get(currentNs)!
+      return tryLookup(sym.name, currentEnv) ?? cljNil()
+    }),
+    coreEnv
+  )
+
   function processNsRequires(forms: CljValue[], env: Env) {
     const requireClauses = extractRequireClauses(forms)
     for (const specs of requireClauses) {
@@ -411,7 +430,7 @@ function buildSessionApi(
     }
   }
 
-  function loadFile(source: string, nsName?: string) {
+  function loadFile(source: string, nsName?: string): string {
     const tokens = tokenize(source)
     const targetNs = extractNsNameFromTokens(tokens) ?? nsName ?? 'user'
     const aliasMap = extractAliasMapFromTokens(tokens)
@@ -422,6 +441,7 @@ function buildSessionApi(
       const expanded = ctx.expandAll(form, env)
       ctx.evaluate(expanded, env)
     }
+    return targetNs
   }
 
   const api: Session = {
@@ -498,6 +518,17 @@ function buildSessionApi(
         }
         throw e
       }
+    },
+    getCompletions(prefix: string, nsName?: string): string[] {
+      let env: Env | null = registry.get(nsName ?? currentNs) ?? null
+      const seen = new Set<string>()
+      while (env) {
+        for (const key of env.bindings.keys()) seen.add(key)
+        env = env.outer
+      }
+      const candidates = [...seen]
+      if (!prefix) return candidates.sort()
+      return candidates.filter((k) => k.startsWith(prefix)).sort()
     },
   }
   return api

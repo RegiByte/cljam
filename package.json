@@ -9,26 +9,52 @@
   },
   "author": "Regibyte",
   "homepage": "https://github.com/regibyte/conjure-js",
+  "license": "MIT",
+  "bin": {
+    "conjure": "./conjure"
+  },
+  "files": [
+    "conjure",
+    "dist/**/*",
+    "src/**/*.ts",
+    "src/**/*.clj",
+    "!src/**/__tests__/**",
+    "!src/**/*.spec.ts",
+    "!src/**/*.test.ts",
+    "!src/demo-entry.ts",
+    "!src/vite-plugin-clj/**",
+    "tsconfig.json",
+    "tsconfig.build.json"
+  ],
+  "keywords": [
+    "clojure",
+    "lisp",
+    "interpreter",
+    "nrepl",
+    "repl"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.build.json && vite build",
-    "bun:repl": "bun run src/bin/cli.ts repl",
-    "bun:run": "bun run src/bin/cli.ts run",
-    "bun:nrepl": "bun run src/bin/cli.ts nrepl-server",
-    "bun:build-cli": "bun build --compile src/bin/cli.ts --outfile conjure",
+    "build": "node scripts/gen-version.mjs && tsc -p tsconfig.build.json && vite build",
+    "repl": "bun run src/bin/cli.ts repl",
+    "run": "bun run src/bin/cli.ts run",
+    "nrepl": "bun run src/bin/cli.ts nrepl-server",
+    "build-cli": "node scripts/gen-version.mjs && bun build --compile src/bin/cli.ts --outfile conjure",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest",
-    "gen:core-source": "node scripts/gen-core-source.mjs"
+    "gen:core-source": "bun run scripts/gen-core-source.mjs",
+    "gen:version": "node scripts/gen-version.mjs"
   },
   "devDependencies": {
+    "@bithero/monaco-editor-vite-plugin": "^1.0.3",
+    "@types/bun": "^1.3.10",
     "@types/node": "^25.3.5",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.18",
     "prettier": "^3.8.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
-    "vite-plugin-monaco-editor": "^1.1.0",
     "vitest": "^4.0.18"
   },
   "dependencies": {

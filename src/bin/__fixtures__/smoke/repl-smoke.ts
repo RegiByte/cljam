@@ -1,16 +1,12 @@
-import { spawnSync } from 'node:child_process'
-
 const input = '(def x 41)\n(+ x 1)\n(exit)\n'
-const result = spawnSync(
-  'bun',
-  ['run', 'src/bin/cli.ts', 'repl'],
+const result = Bun.spawnSync(
+  ['bun', 'run', 'src/bin/cli.ts', 'repl'],
   {
     cwd: process.cwd(),
-    encoding: 'utf8',
-    input,
+    stdin: Buffer.from(input),
   }
 )
 
-process.stdout.write(result.stdout)
-process.stderr.write(result.stderr)
-process.exit(result.status ?? 1)
+process.stdout.write(new TextDecoder().decode(result.stdout))
+process.stderr.write(new TextDecoder().decode(result.stderr))
+process.exit(result.exitCode ?? 1)

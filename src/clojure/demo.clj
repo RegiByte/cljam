@@ -3,9 +3,13 @@
 
 (def greeting "Hello from Clojure!")
 
+
+greeting
 (def add m/add)
 
 (add 1 2)
+
+(slurp "test.txt")
 
 (doc reduce)
 
@@ -19,6 +23,8 @@
     (if (= i n)
       a
       (recur (inc i) b (+ a b)))))
+
+(map fibonacci [1 2 3 4 5 6])
 
 (+ 1 2)
 

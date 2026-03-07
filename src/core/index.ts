@@ -47,6 +47,12 @@ export {
   isEqual,
 } from './assertions'
 
+// Env
+export { define } from './env'
+
+// Transformations
+export { valueToString } from './transformations'
+
 // Printer
 export { printString } from './printer'
 

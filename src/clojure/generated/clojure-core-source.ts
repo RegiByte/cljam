@@ -35,6 +35,20 @@ export const clojure_coreSource = `\
 (defmacro when-not [condition & body]
   \`(if ~condition nil (do ~@body)))
 
+(defmacro if-let
+  ([bindings then] \`(if-let ~bindings ~then nil))
+  ([bindings then else]
+   (let [form (first bindings)
+         tst  (second bindings)]
+     \`(let [~form ~tst]
+        (if ~form ~then ~else)))))
+
+(defmacro when-let [bindings & body]
+  (let [form (first bindings)
+        tst  (second bindings)]
+    \`(let [~form ~tst]
+       (when ~form ~@body))))
+
 (defmacro and [& forms]
   (if (nil? forms)
     true

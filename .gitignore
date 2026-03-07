@@ -33,3 +33,9 @@ calva-example/
 
 # Build output
 conjure
+
+# nREPL port file (written at server start, deleted on exit)
+.nrepl-port
+# Generated version file
+src/bin/version.ts
+
