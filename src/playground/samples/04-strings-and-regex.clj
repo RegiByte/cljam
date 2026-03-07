@@ -3,16 +3,10 @@
 
 ;; Deep Dive: Strings & Regex
 ;;
-;; Strings are immutable sequences of characters.
-;; This file covers str construction, the full clojure.string API,
-;; strings as seqable collections, and regex.
-;;
 ;; Press ⌘+Enter on any form to evaluate it.
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 1 — Building & Inspecting Strings
-;; ─────────────────────────────────────────────
+;; Building & Inspecting Strings
 
 (comment
   ;; str — concatenate anything into a string
@@ -22,23 +16,18 @@
   (str nil)                          ;; => ""  (nil becomes empty string)
   (str true false)                   ;; => "truefalse"
 
-  ;; subs — substring by offset
   (subs "hello world" 6)             ;; => "world"
   (subs "hello world" 0 5)           ;; => "hello"
 
-  ;; count — number of characters
   (count "hello")                    ;; => 5
   (count "")                         ;; => 0
 
-  ;; type check
   (string? "hello")                  ;; => true
   (string? :not-a-string)            ;; => false
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 2 — clojure.string  (require'd as str)
-;; ─────────────────────────────────────────────
+;; clojure.string  (required as str)
 
 (comment
   ;; Case
@@ -68,24 +57,20 @@
   (str/blank?       "   ")                  ;; => true
   (str/blank?       "  x  ")               ;; => false
 
-  ;; Index
-  (str/index-of     "hello world" "world")  ;; => 6
-  (str/last-index-of "abcabc" "b")          ;; => 4
+  (str/index-of      "hello world" "world")  ;; => 6
+  (str/last-index-of "abcabc" "b")           ;; => 4
 
-  ;; Reverse
   (str/reverse "hello")             ;; => "olleh"
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 3 — Replace
-;; ─────────────────────────────────────────────
+;; Replace
 
 (comment
-  ;; String replacement — literal match
+  ;; Literal match
   (str/replace "hello world" "world" "Clojure") ;; => "hello Clojure"
 
-  ;; Regex replacement — all matches
+  ;; Regex — all matches
   (str/replace "hello world" #"[aeiou]" "*")    ;; => "h*ll* w*rld"
 
   ;; Regex + function — receives match vector, returns replacement string
@@ -104,28 +89,22 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 4 — Strings as Sequences
-;; ─────────────────────────────────────────────
+;; Strings as Sequences
 ;;
 ;; Strings are seqable — all sequence functions work on them.
 
 (comment
-  ;; seq converts a string to a list of single-char strings
   (seq "hello")                      ;; => ("h" "e" "l" "l" "o")
 
-  ;; first / rest
   (first "hello")                    ;; => "h"
   (rest  "hello")                    ;; => ("e" "l" "l" "o")
   (last  "hello")                    ;; => "o"
 
-  ;; count
   (count "hello")                    ;; => 5
 
-  ;; Works with map, filter, reduce
   (map str/upper-case (seq "hello")) ;; => ("H" "E" "L" "L" "O")
-  ;; In real Clojure, sets work as membership predicates: (filter #{...} coll)
-  ;; Set literals are not yet supported here, so we use an explicit check:
+
+  ;; Set literals not supported yet — use an explicit membership check:
   (filter (fn [c] (some #(= c %) ["a" "e" "i" "o" "u"])) (seq "hello world"))
   ;; => ("e" "o" "o")  (vowels only)
 
@@ -133,25 +112,19 @@
   (apply str (filter (fn [c] (some #(= c %) ["a" "e" "i" "o" "u"])) (seq "hello world")))
   ;; => "eoo"
 
-  ;; Unicode-safe — emoji and multi-byte chars treated correctly
   (count "café")                     ;; => 4  (not byte count)
   (seq "café")                       ;; => ("c" "a" "f" "é")
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 5 — Regex Literals
-;; ─────────────────────────────────────────────
+;; Regex Literals
 ;;
-;; Regex literals use the #"..." syntax.
 ;; Patterns follow JavaScript regex rules.
 
 (comment
-  ;; Self-evaluating — a regex is just a value
   #"[0-9]+"                          ;; => #"[0-9]+"
-  #"hello"                           ;; => #"hello"
 
-  ;; re-find — return first match (string if no groups, vector if groups)
+  ;; re-find — first match (string if no groups, vector if groups)
   (re-find #"\d+" "abc123def456")    ;; => "123"
   (re-find #"(\w+)@(\w+)" "me@example.com")
   ;; => ["me@example.com" "me" "example"]  (full match + groups)
@@ -172,32 +145,24 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 6 — Inline Regex Flags
-;; ─────────────────────────────────────────────
+;; Inline Regex Flags
 ;;
-;; Flags go at the START of the pattern as (?flag) groups.
 ;;   (?i)  case-insensitive
 ;;   (?m)  multiline  (^ and $ match line boundaries)
 ;;   (?s)  dotAll     (. matches newlines too)
 
 (comment
-  ;; (?i) — case-insensitive
   (re-find #"(?i)hello" "say HELLO!")     ;; => "HELLO"
   (re-matches #"(?i)[a-z]+" "HeLLo")     ;; => "HeLLo"
 
-  ;; (?m) — multiline
   (re-seq #"(?m)^\w+" "one\ntwo\nthree") ;; => ("one" "two" "three")
 
-  ;; Combining flags
   (re-seq #"(?im)^hello" "Hello\nHELLO\nhello")
   ;; => ("Hello" "HELLO" "hello")
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 7 — Practical String Patterns
-;; ─────────────────────────────────────────────
+;; Practical Patterns
 
 (comment
   ;; Parse a CSV row

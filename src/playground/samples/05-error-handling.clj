@@ -2,19 +2,13 @@
 
 ;; Deep Dive: Error Handling
 ;;
-;; This language uses try/catch/finally for structured error handling.
-;; You can throw and catch any value, and use `ex-info` to carry
-;; structured data alongside an error message.
-;;
 ;; Press ⌘+Enter on any form to evaluate it.
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 1 — try / catch / finally Basics
-;; ─────────────────────────────────────────────
+;; try / catch / finally
 
 (comment
-  ;; A simple try — no error, returns the value of the body
+  ;; No error — returns the value of the body
   (try
     (+ 1 2))           ;; => 3
 
@@ -30,7 +24,6 @@
     (finally
       (println "always runs")))   ;; prints, returns 3
 
-  ;; finally after a catch
   (try
     (/ 1 0)
     (catch :default e
@@ -41,32 +34,26 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 2 — throw
-;; ─────────────────────────────────────────────
+;; throw
 ;;
 ;; You can throw any value — not just error objects.
 
 (comment
-  ;; Throw a string
   (try
     (throw "something went wrong")
     (catch string? e
       (str "got a string: " e)))
 
-  ;; Throw a keyword
   (try
     (throw :not-found)
     (catch keyword? e
       (str "got a keyword: " e)))
 
-  ;; Throw a number
   (try
     (throw 42)
     (catch number? e
       (str "got a number: " (+ e 1))))
 
-  ;; Throw a map
   (try
     (throw {:type :validation :field :email :msg "invalid"})
     (catch map? e
@@ -74,11 +61,9 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 3 — Catch Discriminators
-;; ─────────────────────────────────────────────
+;; Catch Discriminators
 ;;
-;; The catch clause tests the thrown value with a DISCRIMINATOR:
+;; The catch clause tests the thrown value with a discriminator:
 ;;
 ;;   :default        — catches everything
 ;;   :error/runtime  — catches evaluator errors (type errors, etc.)
@@ -86,7 +71,6 @@
 ;;   predicate fn    — checks (pred thrown-value)
 
 (comment
-  ;; Keyword discriminator — exact keyword match
   (defn find-user [id]
     (if (pos? id)
       {:id id :name "Alice"}
@@ -115,26 +99,17 @@
 
   ;; :error/runtime — catches interpreter-level errors
   (try
-    (get nil :key :ok)            ;; this is fine
-    (catch :error/runtime e
-      (str "runtime error: " (ex-message e))))
-
-  (try
     (+ 1 "not a number")
     (catch :error/runtime e
       (str "type error caught: " (ex-message e))))
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 4 — ex-info: Structured Errors
-;; ─────────────────────────────────────────────
+;; ex-info: Structured Errors
 ;;
-;; `ex-info` creates an error object with a message AND a data map.
-;; This is the idiomatic way to carry context with an error.
+;; `ex-info` creates an error with a message AND a data map.
 
 (comment
-  ;; Create and throw an ex-info
   (try
     (throw (ex-info "User validation failed"
                     {:field  :email
@@ -159,12 +134,9 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 5 — Keyword-typed Errors with ex-info
-;; ─────────────────────────────────────────────
+;; Keyword-typed Errors with ex-info
 ;;
-;; A common pattern: attach a :type keyword to an ex-info map,
-;; then catch it by that keyword.
+;; Attach a :type keyword to the ex-info map, then catch by that keyword.
 
 (defn parse-age [x]
   (cond
@@ -193,12 +165,10 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 6 — Practical Error Handling Patterns
-;; ─────────────────────────────────────────────
+;; Practical Patterns
 
 (comment
-  ;; Pattern: return a result map {ok? result/error}
+  ;; Result map {ok? result/error}
   (defn safe-divide [a b]
     (try
       {:ok? true  :result (/ a b)}
@@ -208,7 +178,7 @@
   (safe-divide 10 2)   ;; => {:ok? true  :result 5}
   (safe-divide 10 0)   ;; => {:ok? false :error "..."}
 
-  ;; Pattern: validate before computing
+  ;; Validate before computing
   (defn sqrt [n]
     (when (neg? n)
       (throw (ex-info "Cannot take sqrt of negative number"
@@ -223,7 +193,7 @@
   (try (sqrt 9)  (catch :default e (ex-message e)))   ;; => 3.0
   (try (sqrt -1) (catch :error/domain e (ex-message e)))
 
-  ;; Pattern: wrapping external errors with context
+  ;; Wrapping external errors with context
   (defn load-user [id]
     (try
       (if (= id 42)

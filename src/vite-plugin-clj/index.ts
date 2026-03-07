@@ -81,6 +81,7 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
       sourceRoots,
       readFile: (filePath: string) =>
         readFileSync(resolve(projectRoot, filePath), 'utf-8'),
+      output: () => {},
     })
     codegenCtx = {
       session: serverSession,

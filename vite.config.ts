@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import { cljPlugin } from './src/vite-plugin-clj/index'
 
 export default defineConfig({
-  base: '/conjure/',
+  base: '/conjure-js/',
   plugins: [cljPlugin({ sourceRoots: ['src/clojure'] })],
   build: {
     rollupOptions: {

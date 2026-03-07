@@ -2,24 +2,21 @@
 
 ;; Deep Dive: Destructuring
 ;;
-;; Destructuring lets you bind names to parts of a data structure in one step.
+;; Bind names to parts of a data structure in one step.
 ;; Works in `let`, `fn` params, `defn` params, `loop`, and `defmacro`.
 ;;
 ;; Press ⌘+Enter on any form to evaluate it.
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 1 — Vector (Sequential) Destructuring
-;; ─────────────────────────────────────────────
+;; Vector (Sequential) Destructuring
 ;;
 ;; Bind names to positions, left to right.
 
 (comment
-  ;; Basic positional binding
   (let [[a b c] [10 20 30]]
     (+ a b c))           ;; => 60
 
-  ;; Skipping positions with _
+  ;; Skip positions with _
   (let [[_ second _ fourth] [1 2 3 4]]
     [second fourth])     ;; => [2 4]
 
@@ -42,9 +39,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 2 — Map Destructuring
-;; ─────────────────────────────────────────────
+;; Map Destructuring
 ;;
 ;; Bind names to values by key.
 
@@ -64,7 +59,7 @@
   ;; :as — bind the whole map too
   (let [{:keys [name] :as person} {:name "Carol" :age 32}]
     {:greeting (str "Hello " name)
-     :full     person}) ;; full map still available
+     :full     person})
 
   ;; :or — default values when key is absent (NOT when value is nil)
   (let [{:keys [name role] :or {role :guest}} {:name "Dave"}]
@@ -76,9 +71,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 3 — Destructuring in Function Params
-;; ─────────────────────────────────────────────
+;; Destructuring in Function Params
 
 ;; Vector destructuring in fn params
 (defn sum-pair [[a b]]
@@ -100,9 +93,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 4 — Nested Destructuring
-;; ─────────────────────────────────────────────
+;; Nested Destructuring
 
 (comment
   ;; Map inside vector
@@ -132,19 +123,15 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 5 — Destructuring in loop/recur
-;; ─────────────────────────────────────────────
+;; Destructuring in loop/recur
 
 (comment
-  ;; loop bindings are destructured the same as let
   (loop [[x & xs] [1 2 3 4 5]
          acc      0]
     (if x
       (recur xs (+ acc x))
       acc))                    ;; => 15
 
-  ;; With a map
   (loop [{:keys [n acc]} {:n 5 :acc 1}]
     (if (zero? n)
       acc
@@ -153,12 +140,9 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 6 — Kwargs Destructuring (& {:keys})
-;; ─────────────────────────────────────────────
+;; Kwargs Destructuring (& {:keys})
 ;;
-;; A variadic `& rest` where rest is treated as a flat key/value sequence.
-;; Clojure callers can pass keyword arguments naturally.
+;; `& rest` where rest is treated as a flat key/value sequence.
 
 (defn configure [& {:keys [host port timeout]
                     :or   {host "localhost"
@@ -168,17 +152,14 @@
 
 (comment
   (configure)                               ;; all defaults
-  (configure :port 3000)                    ;; override port
+  (configure :port 3000)
   (configure :host "prod.example.com" :port 443 :timeout 30000)
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 7 — Qualified :keys (Clojure 1.11)
-;; ─────────────────────────────────────────────
+;; Qualified :keys
 ;;
-;; When map keys are namespaced keywords, use qualified :keys.
-;; The local binding name is the unqualified part.
+;; When map keys are namespaced keywords, the local name is the unqualified part.
 
 (comment
   (let [{:keys [user/name user/role]}
@@ -187,11 +168,8 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 8 — Practical Patterns
-;; ─────────────────────────────────────────────
+;; Practical Patterns
 
-;; Transform a collection of records
 (defn summarize [{:keys [name scores]}]
   {:name    name
    :average (/ (reduce + scores) (count scores))
@@ -205,13 +183,11 @@
 (comment
   (map summarize students)
 
-  ;; Destructure in a pipeline
   (->> students
        (map summarize)
        (sort-by :average >)
        (map :name))               ;; => ("Carol" "Alice" "Bob")
 
-  ;; let* pattern — compute fields from destructured values
   (let [{:keys [scores]} (first students)
         [best & _] (sort > scores)]
     best)                         ;; => 95

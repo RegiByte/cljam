@@ -3,15 +3,10 @@
 
 ;; Deep Dive: Higher-Order Functions & Transducers
 ;;
-;; A higher-order function (HOF) is one that takes functions as arguments
-;; or returns them as results.  This is where Clojure's expressiveness shines.
-;;
 ;; Press ⌘+Enter on any form to evaluate it.
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 1 — map
-;; ─────────────────────────────────────────────
+;; map
 
 (comment
   ;; Basic: apply f to every element
@@ -19,7 +14,6 @@
   (map str [:a :b :c])                   ;; => ("a" "b" "c")
   (map count ["hi" "hello" "hey"])        ;; => (2 5 3)
 
-  ;; With an anonymous function
   (map (fn [x] (* x x)) (range 1 6))    ;; => (1 4 9 16 25)
   (map #(* % %) (range 1 6))            ;; same, shorter syntax
 
@@ -35,9 +29,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 2 — filter / remove
-;; ─────────────────────────────────────────────
+;; filter / remove
 
 (comment
   (filter even?  [1 2 3 4 5 6])         ;; => (2 4 6)
@@ -50,17 +42,14 @@
   (remove even? [1 2 3 4 5 6])          ;; => (1 3 5)
   (remove nil?  [1 nil 2 nil 3])        ;; => (1 2 3)
 
-  ;; Custom predicates
   (filter #(> (count %) 3) ["hi" "hello" "hey" "howdy"])
   ;; => ("hello" "howdy")
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 3 — reduce
-;; ─────────────────────────────────────────────
+;; reduce
 ;;
-;; reduce is the Swiss army knife — it can implement almost everything else.
+;; The Swiss army knife — it can implement almost everything else.
 
 (comment
   ;; Two-arity: uses first two elements to start
@@ -81,8 +70,7 @@
           {}
           [:a :b :a :c :b :a])           ;; => {:a 3 :b 2 :c 1}
 
-  ;; Early termination with `reduced`
-  ;; `reduced` wraps a value to signal "stop now"
+  ;; Early termination with `reduced` — wraps a value to signal "stop now"
   (reduce (fn [acc x]
             (if (nil? x)
               (reduced acc)
@@ -90,7 +78,6 @@
           []
           [1 2 3 nil 4 5])               ;; => [1 2 3]  (stopped at nil)
 
-  ;; find the first number > 100 in a large sequence
   (reduce (fn [_ x]
             (when (> x 100) (reduced x)))
           nil
@@ -98,9 +85,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 4 — apply, partial, comp
-;; ─────────────────────────────────────────────
+;; apply, partial, comp
 
 (comment
   ;; apply — call f with a collection as its argument list
@@ -126,8 +111,7 @@
   ((comp inc inc inc) 0)           ;; => 3
   ((comp str/upper-case str/trim) "  hello  ") ;; => "HELLO"
 
-  ;; identity — returns its argument unchanged (useful as a no-op)
-  (map identity [1 2 3])           ;; => (1 2 3)
+  ;; identity — returns its argument unchanged
   (filter identity [1 nil 2 false 3]) ;; => (1 2 3)
 
   ;; constantly — returns a function that always returns the same value
@@ -136,9 +120,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 5 — complement, juxt, some, every?
-;; ─────────────────────────────────────────────
+;; complement, juxt, some, every?
 
 (comment
   ;; complement — logical NOT of a predicate
@@ -159,15 +141,12 @@
   (every? even? [2 4 6])           ;; => true
   (every? even? [2 4 5])           ;; => false
 
-  ;; not-any? / not-every?
-  (not-any?  odd? [2 4 6])         ;; => true
+  (not-any?   odd? [2 4 6])        ;; => true
   (not-every? odd? [1 2 3])        ;; => true
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 6 — sort, sort-by, group-by, frequencies
-;; ─────────────────────────────────────────────
+;; sort, sort-by, group-by, frequencies
 
 (def people
   [{:name "Carol" :age 32 :dept :eng}
@@ -176,49 +155,38 @@
    {:name "Dave"  :age 28 :dept :design}])
 
 (comment
-  ;; sort
   (sort [3 1 4 1 5 9 2 6])           ;; => (1 1 2 3 4 5 6 9)
   (sort > [3 1 4 1 5 9 2 6])         ;; => (9 6 5 4 3 2 1 1)
   (sort ["banana" "apple" "cherry"])  ;; => ("apple" "banana" "cherry")
 
-  ;; sort-by — extract a key to sort on
   (sort-by :age  people)             ;; youngest first
   (sort-by :name people)             ;; alphabetical
 
-  ;; group-by — partition into a map of lists
   (group-by :dept  people)           ;; => {:eng [...] :design [...]}
   (group-by :age   people)           ;; groups by age
 
-  ;; frequencies
   (frequencies [:a :b :a :c :b :a]) ;; => {:a 3 :b 2 :c 1}
-
-  ;; distinct — remove duplicates, preserve order
   (distinct [1 2 3 1 2 4])           ;; => (1 2 3 4)
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 7 — Transducers
-;; ─────────────────────────────────────────────
+;; Transducers
 ;;
-;; Transducers are composable, reusable transformation pipelines.
-;; They separate "what to transform" from "how to collect".
-;; A transducer form (1-arg map/filter/etc) returns a transducer.
+;; Composable transformation pipelines decoupled from the source and sink.
+;; A 1-arg call to map/filter/etc returns a transducer instead of a result.
+;; Transducer `comp` applies LEFT-to-RIGHT (unlike function comp).
 
 (comment
-  ;; `into` with a transducer — transform while building a collection
+  ;; `into` with a transducer
   (into [] (map inc) [1 2 3 4 5])             ;; => [2 3 4 5 6]
   (into [] (filter even?) [1 2 3 4 5 6])      ;; => [2 4 6]
 
-  ;; `comp` to chain transducers — applied LEFT-to-RIGHT (unlike fn comp)
+  ;; Chain with comp — one pass, no intermediate sequences
   (into []
         (comp (filter odd?)
               (map #(* % %)))
         [1 2 3 4 5 6 7])
   ;; => [1 9 25 49]  (squares of odd numbers)
-
-  ;; Compare: nested map+filter creates an intermediate sequence each step
-  ;; Transducer chain processes each element in one pass — no intermediates
 
   ;; `transduce` — apply a transducer with reduce semantics
   (transduce (comp (filter odd?)
@@ -241,7 +209,7 @@
   (into [] (dedupe) [1 1 2 3 3 3 4 1])
   ;; => [1 2 3 4 1]
 
-  ;; take as a transducer
+  ;; take as a transducer — stops early, never touches the rest
   (into [] (take 3) (range 1000))
-  ;; => [0 1 2]  (stops early, never touches rest of the range)
+  ;; => [0 1 2]
 )

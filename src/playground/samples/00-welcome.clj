@@ -1,12 +1,11 @@
 (ns user
   (:require [clojure.string :as str]))
 
-;; Welcome to the Regibyte Clojure Playground!
+;; Welcome to the Conjure Web REPL!
 ;;
-;; HOW TO USE THIS FILE:
-;;   ⌘+Enter  (Ctrl+Enter)        — evaluate the form under/before the cursor
-;;   Shift+⌘+Enter                — evaluate the entire file
-;;   "Run all" button             — same as Shift+⌘+Enter
+;;   ⌘+Enter  (Ctrl+Enter)  — evaluate the form under/before the cursor
+;;   Shift+⌘+Enter          — evaluate the entire file
+;;   "Run all" button       — same as Shift+⌘+Enter
 ;;
 ;; Forms inside (comment ...) blocks are safe to eval one by one.
 ;; Place your cursor inside any form and press ⌘+Enter.
@@ -14,12 +13,7 @@
 ;; Select a topic from the dropdown above to load a deep-dive sample.
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 1 — Primitives & Literals
-;; ─────────────────────────────────────────────
-;;
-;; Every value in this language is an expression that evaluates to itself,
-;; or to a computed result.  Primitives are the atoms.
+;; Primitives & Literals
 
 (comment
   ;; Numbers
@@ -54,12 +48,9 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 2 — Collections
-;; ─────────────────────────────────────────────
+;; Collections
 ;;
-;; Four built-in collection types.  All are immutable — operations
-;; always return new values, never mutate the original.
+;; All are immutable — operations return new values, never mutate.
 
 (comment
   ;; Vectors — ordered, indexed, literal syntax []
@@ -92,9 +83,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 3 — Binding Values
-;; ─────────────────────────────────────────────
+;; Binding Values
 
 (comment
   ;; `def` — bind a name at namespace scope
@@ -119,11 +108,9 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 4 — Functions
-;; ─────────────────────────────────────────────
-
-;; Functions are first-class values.  `defn` is the common shorthand.
+;; Functions
+;;
+;; Functions are first-class values. `defn` is the common shorthand.
 
 (defn greet
   "Returns a greeting string."
@@ -170,12 +157,9 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 5 — Control Flow
-;; ─────────────────────────────────────────────
+;; Control Flow
 ;;
-;; Only `false` and `nil` are falsy.  Everything else (including 0 and "")
-;; is truthy.
+;; Only `false` and `nil` are falsy. Everything else (including 0 and "") is truthy.
 
 (comment
   ;; if
@@ -203,18 +187,13 @@
   (classify 99)  ;; => :large
 
   ;; and / or — short-circuit, return the deciding value
-  (and 1 2 3)      ;; => 3  (last truthy)
-  (and 1 false 3)  ;; => false
+  (and 1 2 3)       ;; => 3  (last truthy)
+  (and 1 false 3)   ;; => false
   (or false nil 42) ;; => 42  (first truthy)
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 6 — Higher-Order Functions
-;; ─────────────────────────────────────────────
-;;
-;; Functions are values — they can be passed as arguments and returned
-;; as results.
+;; Higher-Order Functions
 
 (comment
   ;; map — apply a function to every element, return a new sequence
@@ -245,36 +224,30 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 7 — Threading Macros
-;; ─────────────────────────────────────────────
+;; Threading Macros
 ;;
-;; Threading macros pipe a value through a chain of transformations,
-;; making data-processing pipelines easy to read.
+;; `->` inserts the value as the FIRST argument at each step.
+;; `->>` inserts it as the LAST argument.
 
 (comment
-  ;; -> threads the value as the FIRST argument
   (-> "  hello world  "
       str/trim
       str/upper-case
       (str/split #" "))
   ;; => ["HELLO" "WORLD"]
 
-  ;; ->> threads the value as the LAST argument
   (->> [1 2 3 4 5 6 7 8 9 10]
        (filter odd?)
        (map #(* % %))
        (reduce +))
-  ;; => sum of squares of odd numbers 1-10 => 165
+  ;; => 165  (sum of squares of odd numbers 1–10)
 
   ;; Without threading (hard to read):
   (reduce + (map #(* % %) (filter odd? [1 2 3 4 5 6 7 8 9 10])))
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 8 — Data Transformation
-;; ─────────────────────────────────────────────
+;; Data Transformation
 
 (def game
   {:name       "Colt Express"
@@ -305,7 +278,6 @@
   (update-in game [:ratings :bob] inc)
   (get-in    game [:ratings :alice])       ;; => 5
 
-  ;; Pipelines with ->
   (-> game
       (assoc  :play-time 50)
       (update :categories conj "Card")
@@ -313,75 +285,58 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 9 — Strings
-;; ─────────────────────────────────────────────
+;; Strings
 
 (comment
-  ;; String construction
   (str "Hello" ", " "World" "!")        ;; => "Hello, World!"
   (str/join ", " ["one" "two" "three"]) ;; => "one, two, three"
   (str/join ["H" "e" "l" "l" "o"])      ;; => "Hello"
 
-  ;; Inspection
   (count "hello")                        ;; => 5
   (str/upper-case "hello")               ;; => "HELLO"
   (str/lower-case "WORLD")               ;; => "world"
   (str/trim "  hello  ")                 ;; => "hello"
 
-  ;; Search
-  (str/includes?   "hello world" "world") ;; => true
-  (str/starts-with? "hello" "hel")        ;; => true
-  (str/ends-with?   "hello" "llo")        ;; => true
+  (str/includes?    "hello world" "world") ;; => true
+  (str/starts-with? "hello" "hel")         ;; => true
+  (str/ends-with?   "hello" "llo")         ;; => true
 
-  ;; Slicing and splitting
   (subs "hello world" 6)                 ;; => "world"
   (subs "hello world" 0 5)               ;; => "hello"
   (str/split "a,b,c" #",")              ;; => ["a" "b" "c"]
 
-  ;; Replace
   (str/replace "hello world" "world" "Clojure") ;; => "hello Clojure"
   (str/replace "hello" #"[aeiou]" "*")          ;; => "h*ll*"
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 10 — Atoms (Mutable State)
-;; ─────────────────────────────────────────────
+;; Atoms (Mutable State)
 ;;
-;; Atoms are the one sanctioned place for mutable state.
 ;; `swap!` applies a function to the current value atomically.
 
 (def counter (atom 0))
 (def cart    (atom []))
 
 (comment
-  ;; deref with @ to read the current value
   @counter                     ;; => 0
 
-  ;; swap! — apply fn to current value, store result
   (swap! counter inc)          ;; => 1
   (swap! counter inc)          ;; => 2
   (swap! counter + 10)         ;; => 12
   @counter                     ;; => 12
 
-  ;; reset! — overwrite unconditionally
   (reset! counter 0)
   @counter                     ;; => 0
 
-  ;; More realistic: a cart
   (swap! cart conj {:item "apple" :qty 2})
   (swap! cart conj {:item "bread" :qty 1})
   @cart
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 11 — Error Handling
-;; ─────────────────────────────────────────────
+;; Error Handling
 
 (comment
-  ;; try / catch / finally
   (try
     (/ 1 0)
     (catch :default e
@@ -409,9 +364,7 @@
 )
 
 
-;; ─────────────────────────────────────────────
-;; SECTION 12 — Macros & Metaprogramming
-;; ─────────────────────────────────────────────
+;; Macros & Metaprogramming
 
 (comment
   ;; defmacro — define a macro that transforms code before evaluation
@@ -430,16 +383,3 @@
   (macroexpand-all '(-> x str/trim str/upper-case))
   ;; shows the fully expanded threading chain
 )
-
-
-;; ─────────────────────────────────────────────
-;; WHAT'S NEXT?
-;; ─────────────────────────────────────────────
-;;
-;; Select a topic from the dropdown for a deep dive:
-;;
-;;   Collections          — seq, conj, into, range, map/keyword as IFn
-;;   Higher-Order Fns     — map/filter/reduce depth, comp/juxt, transducers
-;;   Destructuring        — vector, map, :keys, :or, nested, kwargs
-;;   Strings & Regex      — clojure.string API, regex literals, re-find/re-seq
-;;   Error Handling       — try/catch patterns, ex-info, discriminators
