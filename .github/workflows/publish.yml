@@ -39,10 +39,10 @@ jobs:
       - name: Run tests
         run: bun test
 
-      - name: Build CLI binary
-        run: bun run build-cli
+      - name: Build CLI (portable JS bundle)
+        run: bun run build-npm-bin
 
-      - name: Build TypeScript
+      - name: Build playground
         run: bun run build
 
       - name: Publish to npm

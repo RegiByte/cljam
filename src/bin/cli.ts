@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
@@ -244,7 +244,8 @@ export async function runCli(
 }
 
 const entryPath = fileURLToPath(import.meta.url)
-if (process.argv[1] && resolve(process.argv[1]) === entryPath) {
+const invokedPath = process.argv[1] ? realpathSync(resolve(process.argv[1])) : ''
+if (invokedPath === entryPath) {
   const exitCode = await runCli(process.argv.slice(2))
   process.exitCode = exitCode
 }
