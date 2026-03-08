@@ -42,4 +42,7 @@ jobs:
         run: bun run build-npm-bin
 
       - name: Publish to npm
-        run: npm publish --provenance --workspace packages/conjure-js
+        working-directory: packages/conjure-js
+        run: |
+          npm config delete //registry.npmjs.org/:_authToken
+          npm publish --provenance
