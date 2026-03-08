@@ -50,7 +50,7 @@ export {
 } from './assertions'
 
 // Env
-export { define, lookupVar } from './env'
+export { define, derefValue, lookupVar, makeNamespace } from './env'
 
 // Transformations
 export { valueToString } from './transformations'
@@ -77,6 +77,7 @@ export type {
   CljNativeFunction,
   CljMacro,
   CljVar,
+  CljNamespace,
   Env,
   Arity,
 } from './types'

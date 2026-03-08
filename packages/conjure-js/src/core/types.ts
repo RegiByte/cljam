@@ -29,13 +29,18 @@ export type CljSymbol = { kind: 'symbol'; name: string }
 export type CljList = { kind: 'list'; value: CljValue[] }
 export type CljVector = { kind: 'vector'; value: CljValue[] }
 export type CljMap = { kind: 'map'; entries: [CljValue, CljValue][] }
+export type CljNamespace = {
+  name: string
+  vars: Map<string, CljVar>            // user defs from (def ...)
+  aliases: Map<string, CljNamespace>   // :as namespace aliases
+  readerAliases: Map<string, string>   // :as-alias reader aliases
+}
+
 export type Env = {
-  bindings: Map<string, CljValue>
+  bindings: Map<string, CljValue>      // native fns, macros, multimethods, local values
   outer: Env | null
-  namespace?: string // only present on namespace-root envs
-  aliases?: Map<string, Env> // only present on namespace-root envs; set by :as
-  readerAliases?: Map<string, string> // only present on namespace-root envs; set by :as-alias
-  resolveNs?: (name: string) => Env | null // only present on the root coreEnv
+  ns?: CljNamespace                    // set on namespace-root envs only
+  resolveNs?: (name: string) => Env | null // set on coreEnv only
 }
 
 export type DestructurePattern = CljSymbol | CljVector | CljMap

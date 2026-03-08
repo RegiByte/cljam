@@ -177,7 +177,7 @@ describe('generateModuleCode', () => {
     const code = generateModuleCode(ctx, 'test.gen', source)
 
     expect(code).toContain('export function helper(...args)')
-    expect(code).toContain('__ns.bindings.get("helper")')
+    expect(code).toContain('__ns.vars.get("helper")')
     expect(code).toContain('args.map(jsToClj)')
     expect(code).toContain('applyFunction(fn, cljArgs)')
     expect(code).toContain('cljToJs(result)')

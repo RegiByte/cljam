@@ -224,14 +224,14 @@ function evaluateDef(
   if (list.value[2] === undefined) return cljNil()
 
   const nsEnv = getNamespaceEnv(env)
-  const nsName = nsEnv.namespace ?? 'user'
+  const cljNs = nsEnv.ns!
   const newValue = ctx.evaluate(list.value[2], env)
 
-  const existing = nsEnv.bindings.get(name.name)
-  if (existing?.kind === 'var') {
+  const existing = cljNs.vars.get(name.name)
+  if (existing) {
     existing.value = newValue
   } else {
-    nsEnv.bindings.set(name.name, cljVar(nsName, name.name, newValue))
+    cljNs.vars.set(name.name, cljVar(cljNs.name, name.name, newValue))
   }
   return cljNil()
 }
@@ -497,7 +497,15 @@ function evaluateVar(
     const alias = sym.name.slice(0, slashIdx)
     const localName = sym.name.slice(slashIdx + 1)
     const nsEnv = getNamespaceEnv(env)
-    const targetEnv = nsEnv.aliases?.get(alias) ?? getRootEnv(env).resolveNs?.(alias) ?? null
+    // Try alias lookup (CljNamespace) first
+    const aliasCljNs = nsEnv.ns?.aliases.get(alias)
+    if (aliasCljNs) {
+      const v = aliasCljNs.vars.get(localName)
+      if (!v) throw new EvaluationError(`Var ${sym.name} not found`, { sym })
+      return v
+    }
+    // Fall back to full namespace Env chain (handles clojure.core/sym etc.)
+    const targetEnv = getRootEnv(env).resolveNs?.(alias) ?? null
     if (!targetEnv) {
       throw new EvaluationError(`No such namespace: ${alias}`, { sym })
     }
