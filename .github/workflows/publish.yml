@@ -44,5 +44,5 @@ jobs:
       - name: Publish to npm
         working-directory: packages/conjure-js
         run: |
-          npm config delete //registry.npmjs.org/:_authToken
-          npm publish --provenance
+          npm config delete //registry.npmjs.org/:_authToken --no-workspaces
+          npm publish --provenance --no-workspaces
