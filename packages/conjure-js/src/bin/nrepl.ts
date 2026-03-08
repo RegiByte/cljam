@@ -145,8 +145,14 @@ function handleEval(
 
   managed.currentMsgId = id
 
+  // Calva sends 1-based :line and :column for the start of the evaluated form
+  // in the original file. Convert to 0-based offsets so evaluateDef can add
+  // them to the relative positions the reader computes from the snippet.
+  const lineOffset = typeof msg['line']   === 'number' ? (msg['line']   as number) - 1 : 0
+  const colOffset  = typeof msg['column'] === 'number' ? (msg['column'] as number) - 1 : 0
+
   try {
-    const result = managed.session.evaluate(code)
+    const result = managed.session.evaluate(code, { lineOffset, colOffset })
     done(encoder, id, managed.id, {
       value: printString(result),
       ns: managed.session.currentNs,
@@ -187,7 +193,7 @@ function handleLoadFile(
 
     const nsHint =
       fileName.replace(/\.clj$/, '').replace(/\//g, '.') || undefined
-    const loadedNs = managed.session.loadFile(source, nsHint)
+    const loadedNs = managed.session.loadFile(source, nsHint, filePath || undefined)
 
     // Track the file path for this namespace so info/lookup can return :file
     // for go-to-definition support.
@@ -397,13 +403,29 @@ function handleInfo(
 
   const meta = extractMeta(resolved.value)
   const file = managed.nsToFile.get(resolved.resolvedNs)
+
+  // Extract :line/:column/:file from var meta if present (stamped by evaluateDef).
+  let varLine: number | undefined
+  let varColumn: number | undefined
+  let varFile: string | undefined
+  if (resolved.value.kind === 'var' && resolved.value.meta) {
+    for (const [k, v] of resolved.value.meta.entries) {
+      if (k.kind !== 'keyword') continue
+      if (k.name === ':line'   && v.kind === 'number') varLine   = v.value
+      if (k.name === ':column' && v.kind === 'number') varColumn = v.value
+      if (k.name === ':file'   && v.kind === 'string') varFile   = v.value
+    }
+  }
+
   done(encoder, id, managed.id, {
     ns: resolved.resolvedNs,
     name: resolved.localName,
     doc: meta.doc,
     'arglists-str': meta.arglistsStr,
     type: meta.type,
-    ...(file ? { file } : {}),
+    ...(varFile ?? file ? { file: varFile ?? file } : {}),
+    ...(varLine   !== undefined ? { line: varLine }     : {}),
+    ...(varColumn !== undefined ? { column: varColumn } : {}),
   })
 }
 

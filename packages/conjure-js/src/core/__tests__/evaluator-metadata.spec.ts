@@ -310,3 +310,264 @@ describe('scientific notation literals', () => {
     expect(s.evaluate('(+ 1e3 2e3)')).toEqual(cljNumber(3000))
   })
 })
+
+describe('metadata on collections', () => {
+  it('with-meta attaches metadata to a vector', () => {
+    const s = freshSession()
+    expect(s.evaluate('(with-meta [1 2 3] {:tag "vec"})')).toMatchObject({
+      kind: 'vector',
+      meta: { kind: 'map' },
+    })
+  })
+
+  it('meta returns the attached map from a vector', () => {
+    const s = freshSession()
+    expect(s.evaluate('(meta (with-meta [1 2 3] {:tag "vec"}))')).toMatchObject(
+      cljMap([[cljKeyword(':tag'), cljString('vec')]])
+    )
+  })
+
+  it('meta returns the attached map from a map', () => {
+    const s = freshSession()
+    expect(s.evaluate('(meta (with-meta {:a 1} {:source "db"}))')).toMatchObject(
+      cljMap([[cljKeyword(':source'), cljString('db')]])
+    )
+  })
+
+  it('meta returns the attached map from a list', () => {
+    const s = freshSession()
+    expect(s.evaluate("(meta (with-meta '(1 2 3) {:kind \"list\"}))")).toMatchObject(
+      cljMap([[cljKeyword(':kind'), cljString('list')]])
+    )
+  })
+
+  it('meta returns nil for a vector with no metadata', () => {
+    const s = freshSession()
+    expect(s.evaluate('(meta [1 2 3])')).toMatchObject(cljNil())
+  })
+
+  it('equality is transparent to metadata on collections', () => {
+    const s = freshSession()
+    expect(s.evaluate('(= [1 2] (with-meta [1 2] {:foo 1}))')).toMatchObject(
+      cljBoolean(true)
+    )
+  })
+})
+
+describe('metadata on symbols', () => {
+  it('with-meta attaches metadata to a quoted symbol', () => {
+    const s = freshSession()
+    expect(s.evaluate("(meta (with-meta 'foo {:tag \"sym\"}))")).toMatchObject(
+      cljMap([[cljKeyword(':tag'), cljString('sym')]])
+    )
+  })
+
+  it('meta returns nil for an unadorned quoted symbol', () => {
+    const s = freshSession()
+    expect(s.evaluate("(meta 'foo)")).toMatchObject(cljNil())
+  })
+})
+
+describe('^ reader macro on collections', () => {
+  it('^:keyword attaches boolean true metadata to a vector', () => {
+    const s = freshSession()
+    expect(s.evaluate('(meta ^:special [1 2 3])')).toMatchObject(
+      cljMap([[cljKeyword(':special'), cljBoolean(true)]])
+    )
+  })
+
+  it('^{map} attaches map metadata to a vector', () => {
+    const s = freshSession()
+    expect(s.evaluate('(meta ^{:tag "vec"} [1 2 3])')).toMatchObject(
+      cljMap([[cljKeyword(':tag'), cljString('vec')]])
+    )
+  })
+
+  it('^:keyword attaches metadata to a map literal', () => {
+    const s = freshSession()
+    expect(s.evaluate('(meta ^:indexed {:a 1})')).toMatchObject(
+      cljMap([[cljKeyword(':indexed'), cljBoolean(true)]])
+    )
+  })
+})
+
+describe('vary-meta', () => {
+  it('adds a key to metadata', () => {
+    const s = freshSession()
+    expect(s.evaluate('(:extra (meta (vary-meta [1 2] assoc :extra "val")))')).toMatchObject(
+      cljString('val')
+    )
+  })
+
+  it('merges onto existing metadata', () => {
+    const s = freshSession()
+    s.evaluate('(def v (with-meta [1 2] {:a 1}))')
+    const result = s.evaluate('(meta (vary-meta v assoc :b 2))')
+    expect(result).toMatchObject({ kind: 'map' })
+    expect(s.evaluate('(:a (meta (vary-meta v assoc :b 2)))')).toMatchObject(cljNumber(1))
+    expect(s.evaluate('(:b (meta (vary-meta v assoc :b 2)))')).toMatchObject(cljNumber(2))
+  })
+
+  it('equality still ignores metadata after vary-meta', () => {
+    const s = freshSession()
+    expect(s.evaluate('(= (vary-meta [1 2] assoc :x 1) [1 2])')).toMatchObject(
+      cljBoolean(true)
+    )
+  })
+})
+
+describe('var source positions', () => {
+  it('stamps :line and :column on a def', () => {
+    const s = freshSession()
+    // "(def foo 42)" — "foo" starts at offset 5 → line 1, col 5
+    s.evaluate('(def foo 42)')
+    expect(s.evaluate('(:line   (meta #\'foo))')).toMatchObject(cljNumber(1))
+    expect(s.evaluate('(:column (meta #\'foo))')).toMatchObject(cljNumber(5))
+  })
+
+  it('applies lineOffset when provided', () => {
+    const s = freshSession()
+    s.evaluate('(def foo 42)', { lineOffset: 9 })
+    // line 1 in snippet + offset 9 = line 10
+    expect(s.evaluate('(:line (meta #\'foo))')).toMatchObject(cljNumber(10))
+  })
+
+  it('applies colOffset on line 1 only', () => {
+    const s = freshSession()
+    // offset 3 columns: col 5 + 3 = 8
+    s.evaluate('(def foo 42)', { colOffset: 3 })
+    expect(s.evaluate('(:column (meta #\'foo))')).toMatchObject(cljNumber(8))
+    // second def is on line 2 — colOffset must NOT apply
+    s.evaluate('(def bar 1)\n(def baz 2)', { colOffset: 3 })
+    expect(s.evaluate('(:column (meta #\'bar))')).toMatchObject(cljNumber(8)) // line 1, col 5+3
+    expect(s.evaluate('(:column (meta #\'baz))')).toMatchObject(cljNumber(5)) // line 2, col 5 (no offset)
+  })
+
+  it('stamps :line on second form in a multi-line evaluate', () => {
+    const s = freshSession()
+    s.evaluate('(def bar 1)\n(def baz 2)')
+    expect(s.evaluate('(:line (meta #\'bar))')).toMatchObject(cljNumber(1))
+    expect(s.evaluate('(:line (meta #\'baz))')).toMatchObject(cljNumber(2))
+  })
+
+  it('stamps :file when loadFile provides a filePath', () => {
+    const s = freshSession()
+    s.loadFile('(ns demo.math)\n(def pi 3.14)', 'demo.math', '/src/demo/math.clj')
+    s.setNs('demo.math')
+    expect(s.evaluate('(:file (meta #\'pi))')).toMatchObject(cljString('/src/demo/math.clj'))
+    expect(s.evaluate('(:line (meta #\'pi))')).toMatchObject(cljNumber(2))
+  })
+
+  it('no :file when loadFile is called without a filePath', () => {
+    const s = freshSession()
+    s.loadFile('(ns demo.core)\n(def x 1)', 'demo.core')
+    s.setNs('demo.core')
+    expect(s.evaluate('(:file (meta #\'x))')).toMatchObject(cljNil())
+  })
+
+  it('preserves ^:dynamic alongside position metadata', () => {
+    const s = freshSession()
+    s.evaluate('(def ^:dynamic *level* 0)')
+    expect(s.evaluate('(:dynamic (meta #\'*level*))')).toMatchObject(cljBoolean(true))
+    expect(s.evaluate('(:line   (meta #\'*level*))')).toMatchObject(cljNumber(1))
+  })
+
+  it('updates position on re-def', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    s.evaluate('\n(def x 2)', { lineOffset: 5 })
+    // second def is on line 2 of the snippet + offset 5 = line 7
+    expect(s.evaluate('(:line (meta #\'x))')).toMatchObject(cljNumber(7))
+  })
+})
+
+describe('alter-meta!', () => {
+  it('adds a key to var metadata', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    s.evaluate('(alter-meta! #\'x assoc :my-key "hello")')
+    expect(s.evaluate('(:my-key (meta #\'x))')).toMatchObject(cljString('hello'))
+  })
+
+  it('returns the new metadata map', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    const result = s.evaluate('(alter-meta! #\'x assoc :k 42)')
+    expect(result.kind).toBe('map')
+    expect(s.evaluate('(:k (alter-meta! #\'x assoc :k 42))')).toMatchObject(cljNumber(42))
+  })
+
+  it('f receives nil when var has no prior user metadata', () => {
+    const s = freshSession()
+    // def with no source context so no auto-stamped meta
+    s.evaluate('(def bare-x 1)')
+    // clear meta first, then check f receives the current meta (could be a map with pos, or nil)
+    s.evaluate('(alter-meta! #\'bare-x (fn [_] nil))')
+    expect(s.evaluate('(meta #\'bare-x)')).toMatchObject(cljNil())
+    // now f receives nil
+    s.evaluate('(alter-meta! #\'bare-x (fn [m] (assoc (or m {}) :added true)))')
+    expect(s.evaluate('(:added (meta #\'bare-x))')).toMatchObject(cljBoolean(true))
+  })
+
+  it('extra args are forwarded to f', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    s.evaluate('(alter-meta! #\'x assoc :a 1 :b 2)')
+    expect(s.evaluate('(:a (meta #\'x))')).toMatchObject(cljNumber(1))
+    expect(s.evaluate('(:b (meta #\'x))')).toMatchObject(cljNumber(2))
+  })
+
+  it('preserves existing meta keys while adding new ones', () => {
+    const s = freshSession()
+    s.evaluate('(def ^:dynamic *x* 1)')
+    s.evaluate('(alter-meta! #\'*x* assoc :tag :extra)')
+    expect(s.evaluate('(:dynamic (meta #\'*x*))')).toMatchObject(cljBoolean(true))
+    expect(s.evaluate('(:tag (meta #\'*x*))')).toMatchObject(cljKeyword(':extra'))
+  })
+
+  it('setting meta to nil clears it', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    s.evaluate('(alter-meta! #\'x (fn [_] nil))')
+    expect(s.evaluate('(meta #\'x)')).toMatchObject(cljNil())
+  })
+
+  it('does not affect the var value', () => {
+    const s = freshSession()
+    s.evaluate('(def x 42)')
+    s.evaluate('(alter-meta! #\'x assoc :k "v")')
+    expect(s.evaluate('x')).toMatchObject(cljNumber(42))
+  })
+
+  it('works on atoms', () => {
+    const s = freshSession()
+    s.evaluate('(def a (atom 1))')
+    s.evaluate('(alter-meta! a assoc :tag :x)')
+    expect(s.evaluate('(:tag (meta a))')).toMatchObject(cljKeyword(':x'))
+  })
+
+  it('(meta atom) returns atom metadata', () => {
+    const s = freshSession()
+    s.evaluate('(def a (atom 99))')
+    expect(s.evaluate('(meta a)')).toMatchObject(cljNil())
+    s.evaluate('(alter-meta! a assoc :k 1)')
+    expect(s.evaluate('(:k (meta a))')).toMatchObject(cljNumber(1))
+  })
+
+  it('error: first arg not a var or atom', () => {
+    const s = freshSession()
+    expect(() => s.evaluate('(alter-meta! 42 assoc :k 1)')).toThrow(/Var or Atom/)
+  })
+
+  it('error: second arg not a function', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    expect(() => s.evaluate('(alter-meta! #\'x :not-a-fn)')).toThrow(/function/)
+  })
+
+  it('error: f returns non-map', () => {
+    const s = freshSession()
+    s.evaluate('(def x 1)')
+    expect(() => s.evaluate('(alter-meta! #\'x (fn [_] "bad"))')).toThrow(/map or nil/)
+  })
+})

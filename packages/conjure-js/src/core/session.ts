@@ -26,8 +26,8 @@ export type Session = {
   readonly currentNs: string
   setNs: (namespace: string) => void
   getNs: (namespace: string) => CljNamespace | null
-  loadFile: (source: string, nsName?: string) => string
-  evaluate: (source: string) => CljValue
+  loadFile: (source: string, nsName?: string, filePath?: string) => string
+  evaluate: (source: string, opts?: { lineOffset?: number; colOffset?: number; file?: string }) => CljValue
   evaluateForms: (forms: CljValue[]) => CljValue
   addSourceRoot: (path: string) => void
   getCompletions: (prefix: string, nsName?: string) => string[]
@@ -455,16 +455,25 @@ function buildSessionApi(
     }
   }
 
-  function loadFile(source: string, nsName?: string): string {
+  function loadFile(source: string, nsName?: string, filePath?: string): string {
     const tokens = tokenize(source)
     const targetNs = extractNsNameFromTokens(tokens) ?? nsName ?? 'user'
     const aliasMap = extractAliasMapFromTokens(tokens)
     const forms = readForms(tokens, targetNs, aliasMap)
     const env = ensureNs(targetNs)
+    ctx.currentSource = source
+    ctx.currentFile = filePath
+    ctx.currentLineOffset = 0
+    ctx.currentColOffset = 0
     processNsRequires(forms, env)
-    for (const form of forms) {
-      const expanded = ctx.expandAll(form, env)
-      ctx.evaluate(expanded, env)
+    try {
+      for (const form of forms) {
+        const expanded = ctx.expandAll(form, env)
+        ctx.evaluate(expanded, env)
+      }
+    } finally {
+      ctx.currentSource = undefined
+      ctx.currentFile = undefined
     }
     return targetNs
   }
@@ -478,7 +487,11 @@ function buildSessionApi(
     getNs,
     loadFile,
     addSourceRoot,
-    evaluate(source: string) {
+    evaluate(source: string, opts?: { lineOffset?: number; colOffset?: number; file?: string }) {
+      ctx.currentSource = source
+      ctx.currentFile = opts?.file
+      ctx.currentLineOffset = opts?.lineOffset ?? 0
+      ctx.currentColOffset  = opts?.colOffset  ?? 0
       try {
         const tokens = tokenize(source)
         // If source opens with an ns declaration, switch to that namespace
@@ -523,9 +536,15 @@ function buildSessionApi(
           (e instanceof EvaluationError || e instanceof ReaderError) &&
           e.pos
         ) {
-          e.message += formatErrorContext(source, e.pos)
+          e.message += formatErrorContext(source, e.pos, {
+            lineOffset: ctx.currentLineOffset,
+            colOffset:  ctx.currentColOffset,
+          })
         }
         throw e
+      } finally {
+        ctx.currentSource = undefined
+        ctx.currentFile = undefined
       }
     },
     evaluateForms(forms: CljValue[]) {

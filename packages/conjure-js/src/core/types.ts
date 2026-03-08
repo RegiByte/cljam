@@ -26,9 +26,9 @@ export type CljBoolean = { kind: 'boolean'; value: boolean }
 export type CljKeyword = { kind: 'keyword'; name: string }
 export type CljNil = { kind: 'nil'; value: null }
 export type CljSymbol = { kind: 'symbol'; name: string; meta?: CljMap }
-export type CljList = { kind: 'list'; value: CljValue[] }
-export type CljVector = { kind: 'vector'; value: CljValue[] }
-export type CljMap = { kind: 'map'; entries: [CljValue, CljValue][] }
+export type CljList = { kind: 'list'; value: CljValue[]; meta?: CljMap }
+export type CljVector = { kind: 'vector'; value: CljValue[]; meta?: CljMap }
+export type CljMap = { kind: 'map'; entries: [CljValue, CljValue][]; meta?: CljMap }
 export type CljNamespace = {
   name: string
   vars: Map<string, CljVar>            // user defs from (def ...)
@@ -64,7 +64,7 @@ export type CljMacro = {
   env: Env
 }
 
-export type CljAtom = { kind: 'atom'; value: CljValue }
+export type CljAtom = { kind: 'atom'; value: CljValue; meta?: CljMap }
 export type CljReduced = { kind: 'reduced'; value: CljValue }
 export type CljVolatile = { kind: 'volatile'; value: CljValue }
 export type CljRegex = { kind: 'regex'; pattern: string; flags: string }
@@ -99,6 +99,15 @@ export type EvaluationContext = {
   applyCallable: (fn: CljValue, args: CljValue[], callEnv: Env) => CljValue
   applyMacro: (macro: CljMacro, rawArgs: CljValue[]) => CljValue
   expandAll: (form: CljValue, env: Env) => CljValue
+  /**
+   * Mutable per-call fields set by session.evaluate / loadFile before
+   * executing forms. Used by evaluateDef to stamp :line/:column/:file onto
+   * vars. This codebase is synchronous, so mutation is safe.
+   */
+  currentSource?: string
+  currentFile?: string
+  currentLineOffset?: number
+  currentColOffset?: number
 }
 
 export type CljNativeFunction = {

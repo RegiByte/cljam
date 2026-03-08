@@ -20,9 +20,11 @@ import {
   cljMultiMethod,
   cljNativeFunction,
   cljNil,
+  cljNumber,
   cljString,
   cljVar,
 } from '../factories'
+import { getLineCol, getPos } from '../positions'
 import type {
   CljFunction,
   CljKeyword,
@@ -66,6 +68,7 @@ export const specialFormKeywords = {
   try: 'try',
   var: 'var',
   binding: 'binding',
+  'set!': 'set!',
 } as const
 
 function keywordToDispatchFn(kw: CljKeyword): CljNativeFunction {
@@ -217,6 +220,43 @@ function evalQuasiquote(
   return evaluateQuasiquote(list.value[1], env, new Map(), ctx)
 }
 
+/**
+ * Merge reader-attached symbol metadata with source-position metadata
+ * (:line, :column, :file) derived from the current evaluation context.
+ * Returns undefined if there is nothing to attach.
+ */
+function buildVarMeta(
+  symMeta: CljMap | undefined,
+  ctx: EvaluationContext,
+  nameVal?: CljValue
+): CljMap | undefined {
+  const pos = nameVal ? getPos(nameVal) : undefined
+  const hasPosInfo = pos && ctx.currentSource
+
+  if (!symMeta && !hasPosInfo) return undefined
+
+  const posEntries: [CljValue, CljValue][] = []
+  if (hasPosInfo) {
+    const { line, col } = getLineCol(ctx.currentSource!, pos!.start)
+    const lineOffset = ctx.currentLineOffset ?? 0
+    const colOffset  = ctx.currentColOffset  ?? 0
+    posEntries.push([cljKeyword(':line'),   cljNumber(line + lineOffset)])
+    posEntries.push([cljKeyword(':column'), cljNumber(line === 1 ? col + colOffset : col)])
+    if (ctx.currentFile) {
+      posEntries.push([cljKeyword(':file'), cljString(ctx.currentFile)])
+    }
+  }
+
+  // Preserve all existing symMeta entries except the three we're stamping.
+  const POS_KEYS = new Set([':line', ':column', ':file'])
+  const baseEntries = (symMeta?.entries ?? []).filter(
+    ([k]) => !(k.kind === 'keyword' && POS_KEYS.has(k.name))
+  )
+
+  const allEntries = [...baseEntries, ...posEntries]
+  return allEntries.length > 0 ? cljMap(allEntries) : undefined
+}
+
 function evaluateDef(
   list: CljList,
   env: Env,
@@ -238,18 +278,20 @@ function evaluateDef(
   const nsEnv = getNamespaceEnv(env)
   const cljNs = nsEnv.ns!
   const newValue = ctx.evaluate(list.value[2], env)
-  const symMeta = name.meta
+
+  // Compute source position metadata (:line/:column/:file) if available.
+  const varMeta = buildVarMeta(name.meta, ctx, name)
 
   const existing = cljNs.vars.get(name.name)
   if (existing) {
     existing.value = newValue
-    if (symMeta) {
-      existing.meta = symMeta
-      if (hasDynamicMeta(symMeta)) existing.dynamic = true
+    if (varMeta) {
+      existing.meta = varMeta
+      if (hasDynamicMeta(varMeta)) existing.dynamic = true
     }
   } else {
-    const v = cljVar(cljNs.name, name.name, newValue, symMeta)
-    if (hasDynamicMeta(symMeta)) v.dynamic = true
+    const v = cljVar(cljNs.name, name.name, newValue, varMeta)
+    if (hasDynamicMeta(varMeta)) v.dynamic = true
     cljNs.vars.set(name.name, v)
   }
   return cljNil()
@@ -606,6 +648,44 @@ function evaluateBinding(
   }
 }
 
+function evaluateSet(list: CljList, env: Env, ctx: EvaluationContext): CljValue {
+  if (list.value.length !== 3) {
+    throw new EvaluationError(
+      `set! requires exactly 2 arguments, got ${list.value.length - 1}`,
+      { list, env }
+    )
+  }
+  const symForm = list.value[1]
+  if (!isSymbol(symForm)) {
+    throw new EvaluationError(
+      `set! first argument must be a symbol, got ${symForm.kind}`,
+      { symForm, env }
+    )
+  }
+  const v = lookupVar(symForm.name, env)
+  if (!v) {
+    throw new EvaluationError(
+      `Unable to resolve var: ${symForm.name} in this context`,
+      { symForm, env }
+    )
+  }
+  if (!v.dynamic) {
+    throw new EvaluationError(
+      `Cannot set! non-dynamic var ${v.ns}/${v.name}. Mark it with ^:dynamic.`,
+      { symForm, env }
+    )
+  }
+  if (!v.bindingStack || v.bindingStack.length === 0) {
+    throw new EvaluationError(
+      `Cannot set! ${v.ns}/${v.name} — no active binding. Use set! only inside a (binding [...] ...) form.`,
+      { symForm, env }
+    )
+  }
+  const newVal = ctx.evaluate(list.value[2], env)
+  v.bindingStack[v.bindingStack.length - 1] = newVal
+  return newVal
+}
+
 type SpecialFormEvaluatorFn = (
   list: CljList,
   env: Env,
@@ -629,6 +709,7 @@ const specialFormEvaluatorEntries = {
   defmethod: evaluateDefmethod,
   var: evaluateVar,
   binding: evaluateBinding,
+  'set!': evaluateSet,
 } as const satisfies Record<
   keyof typeof specialFormKeywords,
   SpecialFormEvaluatorFn

@@ -1,0 +1,12 @@
+{
+  "name": "ring-server-experiment",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun server.ts"
+  },
+  "dependencies": {
+    "conjure-js": "file:../../packages/conjure-js"
+  }
+}

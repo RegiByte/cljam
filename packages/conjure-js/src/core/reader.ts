@@ -13,7 +13,7 @@ import { makeTokenScanner, type TokenScanner } from './scanners'
 import { getTokenValue } from './tokenizer'
 import { valueKeywords, tokenKeywords, type Token } from './types'
 import type { CljValue, TokenKinds } from './types'
-import { setPos } from './positions'
+import { getPos, setPos } from './positions'
 
 function readAtom(ctx: ReaderCtx): CljValue {
   const scanner = ctx.scanner
@@ -149,11 +149,19 @@ const readMeta = (ctx: ReaderCtx): CljValue => {
     throw new ReaderError('Metadata must be a keyword, map, or symbol', token)
   }
 
-  // Attach metadata to symbol targets (the annotated name in def position).
-  // For other forms, metadata is silently ignored.
-  if (target.kind === 'symbol') {
+  // Attach metadata to IMeta targets: symbols, lists, vectors, maps.
+  if (
+    target.kind === 'symbol' ||
+    target.kind === 'list' ||
+    target.kind === 'vector' ||
+    target.kind === 'map'
+  ) {
     const existingEntries = target.meta ? target.meta.entries : []
-    return { ...target, meta: cljMap([...existingEntries, ...metaEntries]) }
+    const result = { ...target, meta: cljMap([...existingEntries, ...metaEntries]) }
+    // Spread drops non-enumerable properties like _pos — re-attach it.
+    const pos = getPos(target)
+    if (pos) setPos(result, pos)
+    return result
   }
   return target
 }

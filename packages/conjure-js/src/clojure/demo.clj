@@ -26,7 +26,7 @@ pi
 pi
 
 (slurp "test.txt")
-(spit "test.txt" "hello from the runtime")
+(spit "test.txt" "hello from the runtime brooo")
 
 (doc reduce)
 
@@ -46,6 +46,15 @@ pi
 (map fibonacci [1 2 3 4 5 6])
 
 m/factorial
+
+(m/factorial 5)
+(m/factorial 10)
+
+(+ 1
+   (/ 1 0))
+
+(meta m/factorial)
+
 
 (+ 1 2)
 

@@ -7,7 +7,9 @@ export function evaluateVector(
   env: Env,
   ctx: EvaluationContext
 ): CljValue {
-  return cljVector(vector.value.map((v) => ctx.evaluate(v, env)))
+  const evaluated = vector.value.map((v) => ctx.evaluate(v, env))
+  if (vector.meta) return { kind: 'vector' as const, value: evaluated, meta: vector.meta }
+  return cljVector(evaluated)
 }
 
 export function evaluateMap(
@@ -21,5 +23,6 @@ export function evaluateMap(
     const evaluatedValue = ctx.evaluate(value, env)
     entries.push([evaluatedKey, evaluatedValue])
   }
+  if (map.meta) return { kind: 'map' as const, entries, meta: map.meta }
   return cljMap(entries)
 }

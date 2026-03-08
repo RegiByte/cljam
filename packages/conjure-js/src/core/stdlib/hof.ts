@@ -100,10 +100,7 @@ export const hofFunctions: Record<string, CljValue> = {
         ...rest: CljValue[]
       ) => {
         if (fn === undefined || !isAFunction(fn)) {
-          throw new EvaluationError(
-            `reduce expects a function as first argument${fn !== undefined ? `, got ${printString(fn)}` : ''}`,
-            { fn }
-          )
+          throw EvaluationError.atArg(`reduce expects a function as first argument${fn !== undefined ? `, got ${printString(fn)}` : ''}`, { fn }, 0)
         }
         if (rest.length === 0 || rest.length > 2) {
           throw new EvaluationError(
@@ -128,10 +125,8 @@ export const hofFunctions: Record<string, CljValue> = {
         }
 
         if (!isSeqable(collection)) {
-          throw new EvaluationError(
-            `reduce expects a collection or string, got ${printString(collection)}`,
-            { collection }
-          )
+          // collection is at args[rest.length]: 1 for (reduce f coll), 2 for (reduce f init coll)
+          throw EvaluationError.atArg(`reduce expects a collection or string, got ${printString(collection)}`, { collection }, rest.length)
         }
 
         const items = toSeq(collection)
@@ -179,10 +174,7 @@ export const hofFunctions: Record<string, CljValue> = {
         ...rest: CljValue[]
       ) => {
         if (fn === undefined || !isCallable(fn)) {
-          throw new EvaluationError(
-            `apply expects a callable as first argument${fn !== undefined ? `, got ${printString(fn)}` : ''}`,
-            { fn }
-          )
+          throw EvaluationError.atArg(`apply expects a callable as first argument${fn !== undefined ? `, got ${printString(fn)}` : ''}`, { fn }, 0)
         }
         if (rest.length === 0) {
           throw new EvaluationError('apply expects at least 2 arguments', {
@@ -191,10 +183,8 @@ export const hofFunctions: Record<string, CljValue> = {
         }
         const lastArg = rest[rest.length - 1]
         if (!isNil(lastArg) && !isSeqable(lastArg)) {
-          throw new EvaluationError(
-            `apply expects a collection or string as last argument, got ${printString(lastArg)}`,
-            { lastArg }
-          )
+          // last arg is at index rest.length (fn=0, rest[0]=1, ..., rest[n-1]=n)
+          throw EvaluationError.atArg(`apply expects a collection or string as last argument, got ${printString(lastArg)}`, { lastArg }, rest.length)
         }
 
         const args = [
@@ -214,10 +204,7 @@ export const hofFunctions: Record<string, CljValue> = {
   partial: withDoc(
     cljNativeFunction('partial', (fn: CljValue, ...preArgs: CljValue[]) => {
       if (fn === undefined || !isCallable(fn)) {
-        throw new EvaluationError(
-          `partial expects a callable as first argument${fn !== undefined ? `, got ${printString(fn)}` : ''}`,
-          { fn }
-        )
+        throw EvaluationError.atArg(`partial expects a callable as first argument${fn !== undefined ? `, got ${printString(fn)}` : ''}`, { fn }, 0)
       }
       const capturedFn = fn
       return cljNativeFunctionWithContext(
@@ -240,11 +227,9 @@ export const hofFunctions: Record<string, CljValue> = {
       if (fns.length === 0) {
         return cljNativeFunction('identity', (x: CljValue) => x)
       }
-      if (fns.some((f) => !isCallable(f))) {
-        throw new EvaluationError(
-          'comp expects functions or other callable values (keywords, maps)',
-          { fns }
-        )
+      const badIdx = fns.findIndex((f) => !isCallable(f))
+      if (badIdx !== -1) {
+        throw EvaluationError.atArg('comp expects functions or other callable values (keywords, maps)', { fns }, badIdx)
       }
       const capturedFns = fns
       return cljNativeFunctionWithContext(
@@ -297,7 +282,7 @@ export const hofFunctions: Record<string, CljValue> = {
   identity: withDoc(
     cljNativeFunction('identity', (x: CljValue) => {
       if (x === undefined) {
-        throw new EvaluationError('identity expects one argument', {})
+        throw EvaluationError.atArg('identity expects one argument', {}, 0)
       }
       return x
     }),

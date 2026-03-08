@@ -10,6 +10,18 @@ import {
 import { EvaluationError } from '../errors'
 import { expectError, freshSession } from './evaluator-test-utils'
 
+function catchError(code: string): EvaluationError {
+  const s = freshSession()
+  let err: EvaluationError | undefined
+  try {
+    s.evaluate(code)
+  } catch (e) {
+    if (e instanceof EvaluationError) err = e
+  }
+  if (!err) throw new Error(`Expected an EvaluationError but none was thrown`)
+  return err
+}
+
 describe('try / catch / finally / throw', () => {
   describe('try with no error', () => {
     it('returns body value when no exception is thrown', () => {
@@ -353,6 +365,84 @@ describe('try / catch / finally / throw', () => {
           },
         }
       )
+    })
+  })
+})
+
+describe('per-argument error positions (argIndex)', () => {
+  describe('/ division by zero', () => {
+    it('caret points at the divisor arg, not the whole expression', () => {
+      // "(/ 1 0)" — "0" is at col 5, displayed as col 6
+      const err = catchError('(/ 1 0)')
+      expect(err.message).toContain('col 6')
+      expect(err.message).toContain('     ^') // 5 spaces before caret
+    })
+
+    it('caret points at the correct arg in a multi-divisor call', () => {
+      // "(/ 10 2 0)" — "0" (third arg) is at col 8, displayed as col 9
+      const err = catchError('(/ 10 2 0)')
+      expect(err.message).toContain('col 9')
+    })
+
+    it('first divisor division by zero — argIndex 1', () => {
+      // "(/ 5 0)" — "0" at col 5, col 6
+      const err = catchError('(/ 5 0)')
+      expect(err.message).toContain('col 6')
+    })
+  })
+
+  describe('mod division by zero', () => {
+    it('caret points at the divisor arg', () => {
+      // "(mod 7 0)" — "0" is at col 7, displayed as col 8
+      const err = catchError('(mod 7 0)')
+      expect(err.message).toContain('col 8')
+    })
+  })
+
+  describe('nth out of bounds', () => {
+    it('caret points at the index arg', () => {
+      // "(nth [1] 5)" — "5" is at col 9, displayed as col 10
+      const err = catchError('(nth [1] 5)')
+      expect(err.message).toContain('col 10')
+    })
+
+    it('caret points at the index for negative index', () => {
+      // "(nth [1 2] -1)" — "-1" is at col 11
+      const err = catchError('(nth [1 2] -1)')
+      expect(err.message).toContain('col 12')
+    })
+  })
+
+  describe('!e.pos guard — deep errors keep inner position', () => {
+    it('error thrown inside a fn body keeps its inner arg position, not the call site', () => {
+      // Define a fn that internally calls (/ 1 0)
+      // When (bad) is called, the error pos should point at the 0 inside bad's body
+      const s = freshSession()
+      s.evaluate('(defn bad [] (/ 1 0))')
+      let err: EvaluationError | undefined
+      try {
+        s.evaluate('(bad)')
+      } catch (e) {
+        if (e instanceof EvaluationError) err = e
+      }
+      expect(err).toBeDefined()
+      // The error message has position context from inside bad's body, not from (bad) call
+      expect(err!.message).toContain('division by zero')
+    })
+
+    it('error pos is NOT overwritten when applyCallable re-throws a positioned error', () => {
+      // When an already-positioned error bubbles through another evaluateList,
+      // the outer argIndex intercept must not touch it (!e.pos guard)
+      const s = freshSession()
+      s.evaluate('(defn wrapper [f] (f))')
+      let err: EvaluationError | undefined
+      try {
+        s.evaluate('(wrapper (fn [] (/ 1 0)))')
+      } catch (e) {
+        if (e instanceof EvaluationError) err = e
+      }
+      expect(err).toBeDefined()
+      expect(err!.message).toContain('division by zero')
     })
   })
 })

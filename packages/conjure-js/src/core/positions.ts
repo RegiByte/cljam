@@ -30,9 +30,16 @@ export function getLineCol(
   return { line: lines.length, col: last.length, lineText: last }
 }
 
-export function formatErrorContext(source: string, pos: Pos): string {
+export function formatErrorContext(
+  source: string,
+  pos: Pos,
+  opts?: { lineOffset?: number; colOffset?: number }
+): string {
   const { line, col, lineText } = getLineCol(source, pos.start)
+  const absLine = line + (opts?.lineOffset ?? 0)
+  const absCol  = line === 1 ? col + (opts?.colOffset ?? 0) : col
   const span = Math.max(1, pos.end - pos.start)
+  // Caret uses raw col so it aligns with the displayed lineText snippet.
   const caret = ' '.repeat(col) + '^'.repeat(span)
-  return `\n  at line ${line}, col ${col + 1}:\n  ${lineText}\n  ${caret}`
+  return `\n  at line ${absLine}, col ${absCol + 1}:\n  ${lineText}\n  ${caret}`
 }

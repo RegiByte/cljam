@@ -1,5 +1,9 @@
-import { describe, it, expect, beforeAll } from 'bun:test'
-import { createSession, snapshotSession, createSessionFromSnapshot } from '../session'
+import { describe, it, expect, beforeAll } from 'vitest'
+import {
+  createSession,
+  snapshotSession,
+  createSessionFromSnapshot,
+} from '../session'
 import type { Session, SessionSnapshot } from '../session'
 import { printString } from '../printer'
 
@@ -52,14 +56,14 @@ describe('Var system', () => {
     expect((s.evaluate('x') as any).value).toBe(6)
   })
 
-  it('printer formats Var as #\'ns/name', () => {
+  it("printer formats Var as #'ns/name", () => {
     const s = mkSession()
     s.evaluate('(def x 5)')
     const v = s.evaluate("#'x")
     expect(printString(v)).toBe("#'user/x")
   })
 
-  it('#\'x returns a Var object', () => {
+  it("#'x returns a Var object", () => {
     const s = mkSession()
     s.evaluate('(def x 42)')
     const v = s.evaluate("#'x")
@@ -108,17 +112,17 @@ describe('Dynamic vars and binding form', () => {
   it('^:dynamic meta is stored on the var', () => {
     const s = mkSession()
     s.evaluate('(def ^:dynamic *x* 1)')
-    expect((s.evaluate('(:dynamic (meta #\'*x*))')).kind).toBe('boolean')
-    expect((s.evaluate('(:dynamic (meta #\'*x*))') as any).value).toBe(true)
+    expect(s.evaluate("(:dynamic (meta #'*x*))").kind).toBe('boolean')
+    expect((s.evaluate("(:dynamic (meta #'*x*))") as any).value).toBe(true)
   })
 
   it('binding temporarily rebinds a dynamic var', () => {
     const s = mkSession()
     s.evaluate('(def ^:dynamic *level* :global)')
     expect((s.evaluate('*level*') as any).name).toBe(':global')
-    expect(
-      (s.evaluate('(binding [*level* :local] *level*)') as any).name
-    ).toBe(':local')
+    expect((s.evaluate('(binding [*level* :local] *level*)') as any).name).toBe(
+      ':local'
+    )
     // After binding, the original value is restored
     expect((s.evaluate('*level*') as any).name).toBe(':global')
   })
@@ -150,9 +154,9 @@ describe('Dynamic vars and binding form', () => {
     s.evaluate('(def ^:dynamic *env* :prod)')
     s.evaluate('(defn env-name [] *env*)')
     expect((s.evaluate('(env-name)') as any).name).toBe(':prod')
-    expect(
-      (s.evaluate('(binding [*env* :test] (env-name))') as any).name
-    ).toBe(':test')
+    expect((s.evaluate('(binding [*env* :test] (env-name))') as any).name).toBe(
+      ':test'
+    )
     // Restored after
     expect((s.evaluate('(env-name)') as any).name).toBe(':prod')
   })
@@ -179,7 +183,7 @@ describe('defmacro and defmulti as Vars', () => {
     expect(ns?.vars.get('my-macro')?.value.kind).toBe('macro')
   })
 
-  it('defmacro-defined macro is retrievable via #\'', () => {
+  it("defmacro-defined macro is retrievable via #'", () => {
     const s = mkSession()
     s.evaluate('(defmacro add1 [x] `(+ ~x 1))')
     const v = s.evaluate("#'add1")
@@ -206,7 +210,7 @@ describe('defmacro and defmulti as Vars', () => {
 })
 
 describe('Native functions as Vars', () => {
-  it('#\'clojure.core/map returns a var', () => {
+  it("#'clojure.core/map returns a var", () => {
     const s = mkSession()
     const v = s.evaluate("#'clojure.core/map")
     expect(v.kind).toBe('var')
@@ -214,7 +218,7 @@ describe('Native functions as Vars', () => {
     expect((v as any).name).toBe('map')
   })
 
-  it('#\'clojure.core/+ returns a var wrapping the native function', () => {
+  it("#'clojure.core/+ returns a var wrapping the native function", () => {
     const s = mkSession()
     const v = s.evaluate("#'clojure.core/+")
     expect(v.kind).toBe('var')
@@ -235,5 +239,85 @@ describe('Native functions as Vars', () => {
     const v = s.evaluate("#'clojure.core/println")
     expect(v.kind).toBe('var')
     expect((v as any).value.kind).toBe('native-function')
+  })
+})
+
+describe('set!', () => {
+  it('mutates the active binding slot', () => {
+    const s = mkSession()
+    s.evaluate('(def ^:dynamic *n* 0)')
+    const result = s.evaluate('(binding [*n* 1] (set! *n* 42) *n*)')
+    expect((result as any).value).toBe(42)
+  })
+
+  it('returns the new value', () => {
+    const s = mkSession()
+    s.evaluate('(def ^:dynamic *n* 0)')
+    const result = s.evaluate('(binding [*n* 1] (set! *n* 99))')
+    expect((result as any).value).toBe(99)
+  })
+
+  it('does not mutate the root value', () => {
+    const s = mkSession()
+    s.evaluate('(def ^:dynamic *n* 0)')
+    s.evaluate('(binding [*n* 1] (set! *n* 42))')
+    expect((s.evaluate('*n*') as any).value).toBe(0)
+  })
+
+  it('only affects the innermost binding frame', () => {
+    const s = mkSession()
+    s.evaluate('(def ^:dynamic *v* 1)')
+    const result = s.evaluate(`
+      (binding [*v* 2]
+        (binding [*v* 3]
+          (set! *v* 99))
+        *v*)
+    `)
+    // outer frame still has 2 — set! only mutated innermost
+    expect((result as any).value).toBe(2)
+  })
+
+  it('root is restored after binding exits following set!', () => {
+    const s = mkSession()
+    s.evaluate('(def ^:dynamic *n* 0)')
+    s.evaluate('(binding [*n* 1] (set! *n* 42))')
+    expect((s.evaluate('*n*') as any).value).toBe(0)
+  })
+
+  it('error: first arg not a symbol', () => {
+    const s = mkSession()
+    expect(() => s.evaluate('(set! 42 1)')).toThrow(/symbol/)
+  })
+
+  it('error: wrong arity — 0 args', () => {
+    const s = mkSession()
+    expect(() => s.evaluate('(set!)')).toThrow(/2 arguments/)
+  })
+
+  it('error: wrong arity — 1 arg', () => {
+    const s = mkSession()
+    expect(() => s.evaluate('(set! x)')).toThrow(/2 arguments/)
+  })
+
+  it('error: wrong arity — 3 args', () => {
+    const s = mkSession()
+    expect(() => s.evaluate('(set! x 1 2)')).toThrow(/2 arguments/)
+  })
+
+  it('error: var is not dynamic', () => {
+    const s = mkSession()
+    s.evaluate('(def x 1)')
+    expect(() => s.evaluate('(binding [] (set! x 2))')).toThrow(/not dynamic|Cannot set!/)
+  })
+
+  it('error: no active binding', () => {
+    const s = mkSession()
+    s.evaluate('(def ^:dynamic *n* 0)')
+    expect(() => s.evaluate('(set! *n* 1)')).toThrow(/no active binding/)
+  })
+
+  it('error: symbol does not resolve to a var', () => {
+    const s = mkSession()
+    expect(() => s.evaluate('(set! undefined-sym 1)')).toThrow()
   })
 })

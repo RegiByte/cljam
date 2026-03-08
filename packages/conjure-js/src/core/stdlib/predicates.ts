@@ -187,19 +187,13 @@ export const predicateFunctions: Record<string, CljValue> = {
   some: withDoc(
     cljNativeFunction('some', (pred: CljValue, coll: CljValue): CljValue => {
       if (pred === undefined || !isAFunction(pred)) {
-        throw new EvaluationError(
-          `some expects a function as first argument${pred !== undefined ? `, got ${printString(pred)}` : ''}`,
-          { pred }
-        )
+        throw EvaluationError.atArg(`some expects a function as first argument${pred !== undefined ? `, got ${printString(pred)}` : ''}`, { pred }, 0)
       }
       if (coll === undefined) {
         return cljNil()
       }
       if (!isSeqable(coll)) {
-        throw new EvaluationError(
-          `some expects a collection or string as second argument, got ${printString(coll)}`,
-          { coll }
-        )
+        throw EvaluationError.atArg(`some expects a collection or string as second argument, got ${printString(coll)}`, { coll }, 1)
       }
       for (const item of toSeq(coll)) {
         const result = applyFunction(pred, [item])
@@ -216,16 +210,10 @@ export const predicateFunctions: Record<string, CljValue> = {
   'every?': withDoc(
     cljNativeFunction('every?', (pred: CljValue, coll: CljValue): CljValue => {
       if (pred === undefined || !isAFunction(pred)) {
-        throw new EvaluationError(
-          `every? expects a function as first argument${pred !== undefined ? `, got ${printString(pred)}` : ''}`,
-          { pred }
-        )
+        throw EvaluationError.atArg(`every? expects a function as first argument${pred !== undefined ? `, got ${printString(pred)}` : ''}`, { pred }, 0)
       }
       if (coll === undefined || !isSeqable(coll)) {
-        throw new EvaluationError(
-          `every? expects a collection or string as second argument${coll !== undefined ? `, got ${printString(coll)}` : ''}`,
-          { coll }
-        )
+        throw EvaluationError.atArg(`every? expects a collection or string as second argument${coll !== undefined ? `, got ${printString(coll)}` : ''}`, { coll }, 1)
       }
       for (const item of toSeq(coll)) {
         if (isFalsy(applyFunction(pred, [item]))) {

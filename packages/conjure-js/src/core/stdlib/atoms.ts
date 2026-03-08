@@ -23,10 +23,7 @@ export const atomFunctions: Record<string, CljValue> = {
       if (isAtom(value)) return value.value
       if (isVolatile(value)) return value.value
       if (isReduced(value)) return value.value
-      throw new EvaluationError(
-        `deref expects an atom, volatile, or reduced value, got ${value.kind}`,
-        { value }
-      )
+      throw EvaluationError.atArg(`deref expects an atom, volatile, or reduced value, got ${value.kind}`, { value }, 0)
     }),
     'Returns the wrapped value from an atom, volatile, or reduced value.',
     [['value']]
@@ -43,16 +40,10 @@ export const atomFunctions: Record<string, CljValue> = {
         ...extraArgs: CljValue[]
       ) => {
         if (!isAtom(atomVal)) {
-          throw new EvaluationError(
-            `swap! expects an atom as its first argument, got ${atomVal.kind}`,
-            { atomVal }
-          )
+          throw EvaluationError.atArg(`swap! expects an atom as its first argument, got ${atomVal.kind}`, { atomVal }, 0)
         }
         if (!isAFunction(fn)) {
-          throw new EvaluationError(
-            `swap! expects a function as its second argument, got ${fn.kind}`,
-            { fn }
-          )
+          throw EvaluationError.atArg(`swap! expects a function as its second argument, got ${fn.kind}`, { fn }, 1)
         }
         const newVal = ctx.applyFunction(fn, [atomVal.value, ...extraArgs], callEnv)
         atomVal.value = newVal
@@ -66,10 +57,7 @@ export const atomFunctions: Record<string, CljValue> = {
   'reset!': withDoc(
     cljNativeFunction('reset!', (atomVal: CljValue, newVal: CljValue) => {
       if (!isAtom(atomVal)) {
-        throw new EvaluationError(
-          `reset! expects an atom as its first argument, got ${atomVal.kind}`,
-          { atomVal }
-        )
+        throw EvaluationError.atArg(`reset! expects an atom as its first argument, got ${atomVal.kind}`, { atomVal }, 0)
       }
       atomVal.value = newVal
       return newVal

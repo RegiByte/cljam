@@ -23,11 +23,19 @@ export class ReaderError extends Error {
 export class EvaluationError extends Error {
   context: unknown
   pos?: Pos
+  data?: Record<string, unknown>
   constructor(message: string, context: unknown, pos?: Pos) {
     super(message)
     this.name = 'EvaluationError'
     this.context = context
     this.pos = pos
+  }
+
+  /** Convenience factory: create an error that points at a specific argument. */
+  static atArg(message: string, context: unknown, argIndex: number): EvaluationError {
+    const err = new EvaluationError(message, context)
+    err.data = { argIndex }
+    return err
   }
 }
 

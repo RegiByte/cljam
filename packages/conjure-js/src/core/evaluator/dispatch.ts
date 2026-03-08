@@ -7,6 +7,7 @@ import {
 } from '../assertions'
 import { EvaluationError } from '../errors'
 import { printString } from '../printer'
+import { getPos } from '../positions'
 import type {
   CljList,
   CljValue,
@@ -69,5 +70,16 @@ export function evaluateList(
   }
 
   const args = list.value.slice(1).map((v) => ctx.evaluate(v, env))
-  return ctx.applyCallable(evaledFirst, args, env)
+  try {
+    return ctx.applyCallable(evaledFirst, args, env)
+  } catch (e) {
+    if (e instanceof EvaluationError && e.data?.argIndex !== undefined && !e.pos) {
+      const argForm = list.value[(e.data.argIndex as number) + 1]
+      if (argForm) {
+        const pos = getPos(argForm)
+        if (pos) e.pos = pos
+      }
+    }
+    throw e
+  }
 }
