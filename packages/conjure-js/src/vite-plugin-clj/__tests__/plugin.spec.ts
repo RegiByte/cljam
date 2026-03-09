@@ -153,7 +153,7 @@ describe('cljPlugin', () => {
     it('generates session module code for virtual:clj-session', () => {
       const load = getHookHandler(plugin.load, 'load')
       const code = load('\0virtual:clj-session', {})
-      expect(code).toContain('import { createSession }')
+      expect(code).toContain('import { createSession, printString }')
       expect(code).toContain('export function getSession()')
       expect(code).toContain('createSession()')
     })

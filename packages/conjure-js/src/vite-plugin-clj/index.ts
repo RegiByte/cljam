@@ -1,15 +1,34 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
-import { resolve, relative, join } from 'node:path'
-import type { Plugin, ResolvedConfig } from 'vite'
+import { resolve, relative, join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 import { createSession } from '../core/session'
 import type { Session } from '../core/session'
 import { nsToPath, pathToNs } from './namespace-utils'
 import { generateModuleCode, generateDts, safeJsIdentifier } from './codegen'
 import type { CodegenContext } from './codegen'
+import { startBrowserNreplRelay } from './nrepl-relay'
 
 interface CljPluginOptions {
   sourceRoots?: string[]
+  nreplPort?: number
+}
+
+// Resolve the conjure-js core index path regardless of whether this plugin
+// is running from TypeScript source (src/vite-plugin-clj/) or the pre-built
+// output (dist-vite-plugin/). Never use the consuming project's root.
+function resolveCoreIndexPath(): string {
+  const thisDir = dirname(fileURLToPath(import.meta.url))
+  // Source layout: packages/conjure-js/src/vite-plugin-clj/index.ts
+  const fromSource = resolve(thisDir, '../core/index.ts')
+  try {
+    statSync(fromSource)
+    return fromSource
+  } catch {
+    // Built layout: packages/conjure-js/dist-vite-plugin/index.mjs
+    return resolve(thisDir, '../src/core/index.ts')
+  }
 }
 
 const VIRTUAL_SESSION_ID = 'virtual:clj-session'
@@ -22,6 +41,7 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
   let coreIndexPath: string
   let codegenCtx: CodegenContext
   let generatorScriptPath: string
+  let serveMode = false
 
   function writeFileIfChanged(path: string, content: string) {
     try {
@@ -105,6 +125,13 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
 
   function regenerateBuiltInNamespaceSources() {
     try {
+      statSync(generatorScriptPath)
+    } catch {
+      // Script doesn't exist in this project — pre-built sources are already
+      // included in the conjure-js package, no regeneration needed.
+      return
+    }
+    try {
       execFileSync(process.execPath, [generatorScriptPath], {
         cwd: projectRoot,
         stdio: 'pipe',
@@ -120,11 +147,21 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
 
     configResolved(config: ResolvedConfig) {
       projectRoot = config.root
+      serveMode = config.command === 'serve'
       generatorScriptPath = resolve(projectRoot, 'scripts/gen-core-source.mjs')
       regenerateBuiltInNamespaceSources()
-      coreIndexPath = resolve(projectRoot, 'src/core/index.ts')
+      coreIndexPath = resolveCoreIndexPath()
       initServerSession()
       eagerlyGenerateDts()
+    },
+
+    configureServer(server: ViteDevServer) {
+      startBrowserNreplRelay({
+        port: options?.nreplPort,
+        cwd: projectRoot,
+        ws: server.ws,
+        serverSession,
+      })
     },
 
     resolveId(source: string) {
@@ -139,8 +176,8 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
 
     load(id: string) {
       if (id === RESOLVED_VIRTUAL_SESSION_ID) {
-        return [
-          `import { createSession } from ${JSON.stringify(coreIndexPath)};`,
+        const lines = [
+          `import { createSession, printString } from ${JSON.stringify(coreIndexPath)};`,
           ``,
           `let _session = null;`,
           `export function getSession() {`,
@@ -149,7 +186,39 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
           `  }`,
           `  return _session;`,
           `}`,
-        ].join('\n')
+        ]
+
+        if (serveMode) {
+          lines.push(
+            ``,
+            `// Browser nREPL relay — active only in Vite dev server`,
+            `if (import.meta.hot) {`,
+            `  import.meta.hot.on('conjure:eval', ({ id, code, ns }) => {`,
+            `    const session = getSession();`,
+            `    try {`,
+            `      if (ns && ns !== session.currentNs) session.setNs(ns);`,
+            `      const result = session.evaluate(code);`,
+            `      import.meta.hot.send('conjure:eval-result', { id, value: printString(result), ns: session.currentNs });`,
+            `    } catch (err) {`,
+            `      import.meta.hot.send('conjure:eval-result', { id, error: err instanceof Error ? err.message : String(err), ns: session.currentNs });`,
+            `    }`,
+            `  });`,
+            ``,
+            `  import.meta.hot.on('conjure:load-file', ({ id, source, nsHint, filePath }) => {`,
+            `    const session = getSession();`,
+            `    try {`,
+            `      const loadedNs = session.loadFile(source, nsHint, filePath || undefined);`,
+            `      if (loadedNs) session.setNs(loadedNs);`,
+            `      import.meta.hot.send('conjure:load-file-result', { id, value: 'nil', ns: session.currentNs });`,
+            `    } catch (err) {`,
+            `      import.meta.hot.send('conjure:load-file-result', { id, error: err instanceof Error ? err.message : String(err), ns: session.currentNs });`,
+            `    }`,
+            `  });`,
+            `}`,
+          )
+        }
+
+        return lines.join('\n')
       }
 
       if (id.endsWith('.clj') && !id.includes('?')) {

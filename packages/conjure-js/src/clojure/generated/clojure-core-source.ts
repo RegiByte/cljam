@@ -13,6 +13,7 @@ export const clojure_coreSource = `\
       \`(def ~name (with-meta (fn ~@rest-decl) {:doc ~doc :arglists '~arglists}))
       \`(def ~name (with-meta (fn ~@rest-decl) {:arglists '~arglists})))))
 
+
 (defn vary-meta
   "Returns an object of the same type and value as obj, with
   (apply f (meta obj) args) as its metadata."

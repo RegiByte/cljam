@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { createSession, printString } from 'conjure-js/src/core'
+import { createSession, printString } from 'conjure-js'
+import { foo } from './clojure/webrepl.clj'
+
+console.log(foo)
 
 const session = createSession({
   output: (text) => console.log(text),
