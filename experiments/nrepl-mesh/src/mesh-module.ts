@@ -71,9 +71,10 @@ export function makeMeshModule(meshNode: MeshNode): RuntimeModule {
 
           // ------------------------------------------------------------------
           // (set-target! node-id-or-nil)
-          // Mutates the root value of *eval-target*. Persists across forms
-          // within the same session (not scoped to a binding frame).
-          // Pass nil to clear: (mesh/set-target! nil)
+          // Validates the node is registered, then mutates the root value of
+          // *eval-target*. Returns a CljPending so the nREPL can await the
+          // result and surface validation errors immediately.
+          // Pass nil to clear: (mesh/set-target! nil)  — resolves instantly.
           // ------------------------------------------------------------------
           map.set('set-target!', {
             value: v
@@ -86,16 +87,36 @@ export function makeMeshModule(meshNode: MeshNode): RuntimeModule {
                 ) => {
                   const meshNs = ctx.resolveNs('mesh')
                   const varObj = meshNs?.vars.get('*eval-target*')
-                  const newVal =
-                    nodeIdVal.kind === 'nil'
-                      ? cljNil()
-                      : cljString(extractId(nodeIdVal))
-                  if (varObj) varObj.value = newVal
-                  return newVal
+
+                  const promise = (async () => {
+                    if (nodeIdVal.kind === 'nil') {
+                      if (varObj) varObj.value = cljNil()
+                      return cljNil()
+                    }
+
+                    const nodeId = extractId(nodeIdVal)
+                    // Validate before setting — prevents stuck state where every
+                    // subsequent eval (including set-target! nil) gets routed to
+                    // a non-existent node and fails.
+                    const nodes = await meshNode.listNodes()
+                    if (!nodes.some((n) => n.id === nodeId)) {
+                      const known = nodes.map((n) => n.id).join(', ') || '(none)'
+                      throw new Error(
+                        `Node "${nodeId}" is not registered in the mesh. Known nodes: ${known}`
+                      )
+                    }
+
+                    const newVal = cljString(nodeId)
+                    if (varObj) varObj.value = newVal
+                    return newVal
+                  })()
+
+                  return cljPending(promise)
                 }
               )
               .doc(
-                'Sets *eval-target* to the given node-id (keyword or string), or nil to clear. ' +
+                'Validates the node is registered, then sets *eval-target* to the given ' +
+                  'node-id (keyword or string), or nil to clear. Returns a pending. ' +
                   'Subsequent nREPL evals are routed to the target node when set.',
                 [['node-id-or-nil']]
               ),

@@ -1,11 +1,18 @@
 (ns demo
-   (:require [mesh :as m]))
+  (:require [mesh :as m]))
 
 (+ 1 2 3)
 
 
+(async
+ (let [n [1 2 3]]
+   (doseq [node n]
+     (println node))))
+
 (-> (m/list-nodes)
-    (then println))
+    (then (fn [nodes]
+            (for [node nodes]
+              (println node)))))
 
 (mesh/set-target! "node2")
 

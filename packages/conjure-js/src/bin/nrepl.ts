@@ -208,7 +208,10 @@ async function handleEval(
   }
 
   try {
-    const result = managed.session.evaluate(code, { lineOffset, colOffset })
+    // evaluateAsync awaits any CljPending result before returning, so async
+    // forms, mesh/set-target!, mesh/list-nodes, etc. all resolve correctly
+    // before the nREPL response is sent. Sync evals are unaffected.
+    const result = await managed.session.evaluateAsync(code, { lineOffset, colOffset })
     const nsEnv = managed.session.registry.get(managed.session.currentNs)
     const printLen = nsEnv ? tryLookup('*print-length*', nsEnv) : undefined
     const printLvl = nsEnv ? tryLookup('*print-level*', nsEnv) : undefined
