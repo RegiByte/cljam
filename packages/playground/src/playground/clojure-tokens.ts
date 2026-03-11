@@ -26,7 +26,8 @@ export function registerClojureLanguage(monaco: typeof Monaco): void {
 
   monaco.languages.setMonarchTokensProvider('clojure', {
     ...base,
-    keywords: [...(base.keywords ?? []), 'async', 'then', 'catch*', 'pending?', 'promise-of'],
+    specialForms: [...(base.specialForms ?? []), 'async'],
+    coreSymbols: [...(base.coreSymbols ?? []), 'then', 'catch*', 'pending?', 'promise-of'],
     tokenizer: {
       ...base.tokenizer,
       whitespace: filteredWhitespace,
