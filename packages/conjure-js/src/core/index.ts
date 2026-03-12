@@ -1,5 +1,9 @@
 // Session API
-export { createSession, snapshotSession, createSessionFromSnapshot } from './session'
+export {
+  createSession,
+  snapshotSession,
+  createSessionFromSnapshot,
+} from './session'
 export type { Session, SessionSnapshot } from './session'
 
 // Runtime API (advanced embedding)
@@ -21,7 +25,11 @@ export type {
 export { cljToJs, jsToClj, ConversionError } from './conversions'
 
 // Evaluator
-export { applyFunction, applyMacro, evaluateWithMeasurements } from './evaluator'
+export {
+  applyFunction,
+  applyMacro,
+  evaluateWithMeasurements,
+} from './evaluator'
 
 // Errors
 export { EvaluationError, ReaderError, TokenizerError } from './errors'
@@ -114,7 +122,7 @@ export type {
   CljMacro,
   CljVar,
   CljNamespace,
-  CljPending,
+  CljPending, // experimental
   Env,
   Arity,
   IOContext,
