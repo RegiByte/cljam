@@ -1,7 +1,7 @@
 import { isList, isSymbol, isVector } from '../core/assertions'
 import { readForms } from '../core/reader'
 import { tokenize } from '../core/tokenizer'
-import type { Arity, CljList, CljValue, DestructurePattern } from '../core/types'
+import type { Arity, CljList, CljMap, CljValue, DestructurePattern } from '../core/types'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -47,6 +47,18 @@ export function readNamespaceVars(source: string): VarDescriptor[] {
 }
 
 // ---------------------------------------------------------------------------
+// Metadata helpers
+// ---------------------------------------------------------------------------
+
+function hasPrivateMeta(meta: CljMap | undefined): boolean {
+  return (meta?.entries ?? []).some(
+    ([k, val]) =>
+      k.kind === 'keyword' && k.name === ':private' &&
+      val.kind === 'boolean' && val.value === true
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Per-form dispatch
 // ---------------------------------------------------------------------------
 
@@ -76,6 +88,8 @@ function parseDefn(form: CljList, isPrivate: boolean, isMacro: boolean): VarDesc
   const nameSym = form.value[1]
   if (!isSymbol(nameSym)) return null
 
+  const private_ = isPrivate || hasPrivateMeta(nameSym.meta)
+
   // Elements after the name: optional docstring, then params or arity clauses
   const rest = form.value.slice(2)
   // Skip optional docstring
@@ -84,7 +98,7 @@ function parseDefn(form: CljList, isPrivate: boolean, isMacro: boolean): VarDesc
 
   if (bodyForms.length === 0) {
     // Bare defn with no param list — treat as unknown function
-    return { name: nameSym.name, kind: 'fn', arities: [], isPrivate, isMacro }
+    return { name: nameSym.name, kind: 'fn', arities: [], isPrivate: private_, isMacro }
   }
 
   const arities: Arity[] = isList(bodyForms[0])
@@ -93,7 +107,7 @@ function parseDefn(form: CljList, isPrivate: boolean, isMacro: boolean): VarDesc
     : // Single-arity: bodyForms[0] is the params vector
       isVector(bodyForms[0]) ? [vectorToArity(bodyForms[0])] : []
 
-  return { name: nameSym.name, kind: 'fn', arities, isPrivate, isMacro }
+  return { name: nameSym.name, kind: 'fn', arities, isPrivate: private_, isMacro }
 }
 
 function parseArityClause(clause: CljList): Arity {
@@ -126,25 +140,26 @@ function parseDef(form: CljList): VarDescriptor | null {
   const nameSym = form.value[1]
   if (!isSymbol(nameSym)) return null
 
+  const isPrivate = hasPrivateMeta(nameSym.meta)
   const value = form.value[2] // may be undefined for bare (def name)
 
   if (!value) {
-    return { name: nameSym.name, kind: 'unknown', isPrivate: false, isMacro: false }
+    return { name: nameSym.name, kind: 'unknown', isPrivate, isMacro: false }
   }
 
   // Inline function literal
   const fnArities = tryExtractFnArities(value)
   if (fnArities !== null) {
-    return { name: nameSym.name, kind: 'fn', arities: fnArities, isPrivate: false, isMacro: false }
+    return { name: nameSym.name, kind: 'fn', arities: fnArities, isPrivate, isMacro: false }
   }
 
   // Literal values with inferrable TypeScript types
   const tsType = inferLiteralTsType(value)
   if (tsType !== null) {
-    return { name: nameSym.name, kind: 'const', tsType, isPrivate: false, isMacro: false }
+    return { name: nameSym.name, kind: 'const', tsType, isPrivate, isMacro: false }
   }
 
-  return { name: nameSym.name, kind: 'unknown', isPrivate: false, isMacro: false }
+  return { name: nameSym.name, kind: 'unknown', isPrivate, isMacro: false }
 }
 
 function inferLiteralTsType(value: CljValue): string | null {

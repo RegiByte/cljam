@@ -16,10 +16,12 @@ interface CljPluginOptions {
   nreplPort?: number
   /**
    * Path to a user-defined session factory (relative to project root).
-   * When set, the virtual session module becomes a proxy: it imports your factory
-   * and calls it with the auto-built ImportMap so you control hostBindings, output, etc.
+   * The factory must be the default export with signature:
+   *   (importMap: Record<string, unknown>) => SessionOptions | null | undefined
    *
-   * The factory must be the default export with signature: (importMap: ImportMap) => Session
+   * The plugin automatically injects `importModule` (wired to the import map) and
+   * `output` (wired to nREPL output capture + console.log). Do NOT provide these.
+   * Return only what you need: hostBindings, modules, entries, stderr, etc.
    *
    * Example: entrypoint: 'src/conjure.ts'
    */
@@ -302,14 +304,18 @@ export function cljPlugin(options?: CljPluginOptions): Plugin {
         ]
 
         if (entrypointPath) {
-          // Mode 2: user-defined factory receives the import map and an output capture callback.
-          // The capture callback pushes text to _outputLines so that output is forwarded to
-          // Calva (and any other nREPL client) via the conjure:eval-result 'out' field.
+          // Mode 2: user-defined factory returns SessionOptions (without output/importModule).
+          // The plugin owns output capture (for nREPL relay) and importModule (import map wiring).
+          // User factory controls hostBindings, modules, entries, etc.
           lines.push(
             `export function getSession() {`,
             `  if (!_session) {`,
-            `    const _outputCapture = (text) => { _outputLines.push(text); };`,
-            `    _session = __conjureFactory(__importMap, _outputCapture);`,
+            `    const __userOpts = __conjureFactory(__importMap) ?? {};`,
+            `    _session = createSession({`,
+            `      ...(__userOpts),`,
+            `      importModule: (s) => __importMap[s],`,
+            `      output: (text) => { _outputLines.push(text); console.log(text.replace(/\\n$/, '')); },`,
+            `    });`,
             `  }`,
             `  return _session;`,
             `}`,

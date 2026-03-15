@@ -10,7 +10,7 @@ import { EvaluationError } from '../errors'
 import { v } from '../factories'
 import { printString } from '../printer'
 import { toSeq } from '../transformations'
-import { type CljNumber, type CljValue, type CljVector } from '../types'
+import { type CljNumber, type CljValue } from '../types'
 
 export const mapsSetsFunctions: Record<string, CljValue> = {
   'hash-map': v

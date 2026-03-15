@@ -195,3 +195,77 @@ describe(':refer of nonexistent symbol throws', () => {
     ).toThrow('does-not-exist')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Phase 4: :private metadata — defn-, ^:private, ns-publics filtering
+// ---------------------------------------------------------------------------
+
+describe('defn- defines a callable private function', () => {
+  it('defn- function is callable within the same namespace', () => {
+    const s = freshSession()
+    s.evaluate('(defn- helper [x] (* x 2))')
+    const result = s.evaluate('(helper 5)')
+    expect(result).toMatchObject({ kind: 'number', value: 10 })
+  })
+
+  it('defn- var has :private true in metadata', () => {
+    const s = freshSession()
+    s.evaluate('(defn- secret [x] x)')
+    const result = s.evaluate("(:private (meta (var secret)))")
+    expect(result).toMatchObject({ kind: 'boolean', value: true })
+  })
+})
+
+describe('ns-publics excludes private vars', () => {
+  it('defn- var is excluded from ns-publics', () => {
+    const s = freshSession()
+    s.evaluate('(defn- private-fn [x] x)')
+    s.evaluate('(defn public-fn [x] x)')
+    const inPublics = s.evaluate("(contains? (ns-publics 'user) 'private-fn)")
+    expect(inPublics).toMatchObject({ kind: 'boolean', value: false })
+  })
+
+  it('defn- var IS included in ns-interns', () => {
+    const s = freshSession()
+    s.evaluate('(defn- private-fn [x] x)')
+    const inInterns = s.evaluate("(contains? (ns-interns 'user) 'private-fn)")
+    expect(inInterns).toMatchObject({ kind: 'boolean', value: true })
+  })
+
+  it('public defn IS included in ns-publics', () => {
+    const s = freshSession()
+    s.evaluate('(defn public-fn [x] x)')
+    const inPublics = s.evaluate("(contains? (ns-publics 'user) 'public-fn)")
+    expect(inPublics).toMatchObject({ kind: 'boolean', value: true })
+  })
+
+  it('(def ^:private ...) var is excluded from ns-publics', () => {
+    const s = freshSession()
+    s.evaluate('(def ^:private internal-const 42)')
+    const inPublics = s.evaluate("(contains? (ns-publics 'user) 'internal-const)")
+    expect(inPublics).toMatchObject({ kind: 'boolean', value: false })
+  })
+
+  it('(def ^:private ...) var IS included in ns-interns', () => {
+    const s = freshSession()
+    s.evaluate('(def ^:private internal-const 42)')
+    const inInterns = s.evaluate("(contains? (ns-interns 'user) 'internal-const)")
+    expect(inInterns).toMatchObject({ kind: 'boolean', value: true })
+  })
+})
+
+describe('defn preserves reader metadata other than doc/arglists', () => {
+  it('(defn ^:private ...) marks the var as private', () => {
+    const s = freshSession()
+    s.evaluate('(defn ^:private priv-fn [x] x)')
+    const result = s.evaluate("(:private (meta (var priv-fn)))")
+    expect(result).toMatchObject({ kind: 'boolean', value: true })
+  })
+
+  it('(defn ^:private ...) var is excluded from ns-publics', () => {
+    const s = freshSession()
+    s.evaluate('(defn ^:private priv-fn [x] x)')
+    const inPublics = s.evaluate("(contains? (ns-publics 'user) 'priv-fn)")
+    expect(inPublics).toMatchObject({ kind: 'boolean', value: false })
+  })
+})

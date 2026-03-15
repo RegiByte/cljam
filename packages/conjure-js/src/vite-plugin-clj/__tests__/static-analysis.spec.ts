@@ -77,6 +77,11 @@ describe('readNamespaceVars — defn', () => {
     expect(vars[0]).toMatchObject({ name: 'helper', kind: 'fn', isPrivate: true, isMacro: false })
   })
 
+  it('defn with ^:private metadata marks var as private', () => {
+    const vars = readNamespaceVars('(defn ^:private helper [x] x)')
+    expect(vars[0]).toMatchObject({ name: 'helper', kind: 'fn', isPrivate: true, isMacro: false })
+  })
+
   it('defmacro marks var as macro', () => {
     const vars = readNamespaceVars('(defmacro when-let [bindings & body] nil)')
     expect(vars[0]).toMatchObject({ name: 'when-let', kind: 'fn', isPrivate: false, isMacro: true })
@@ -138,6 +143,11 @@ describe('readNamespaceVars — def', () => {
   it('def with no value (declaration only) → unknown', () => {
     const vars = readNamespaceVars('(def unbound)')
     expect(vars[0]).toMatchObject({ name: 'unbound', kind: 'unknown' })
+  })
+
+  it('def with ^:private metadata marks var as private', () => {
+    const vars = readNamespaceVars('(def ^:private secret 42)')
+    expect(vars[0]).toMatchObject({ name: 'secret', kind: 'const', tsType: 'number', isPrivate: true })
   })
 
   it('def with inline fn → fn with extracted arity', () => {

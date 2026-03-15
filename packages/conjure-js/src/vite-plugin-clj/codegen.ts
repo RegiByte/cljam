@@ -97,7 +97,7 @@ export function generateModuleCode(
 }
 
 export function generateDts(
-  ctx: CodegenContext,
+  _ctx: CodegenContext,
   nsNameFromPath: string,
   source: string
 ): string {

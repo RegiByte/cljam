@@ -4,7 +4,7 @@ export {
   snapshotSession,
   createSessionFromSnapshot,
 } from './session'
-export type { Session, SessionSnapshot } from './session'
+export type { Session, SessionSnapshot, SessionOptions } from './session'
 
 // Runtime API (advanced embedding)
 export { createRuntime, restoreRuntime } from './runtime'

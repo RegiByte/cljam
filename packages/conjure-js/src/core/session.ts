@@ -10,12 +10,8 @@ import { formatErrorContext } from './positions'
 import { printString } from './printer'
 import { readForms } from './reader'
 import type { Runtime, RuntimeSnapshot } from './runtime'
-import {
-  createRuntime,
-  extractAliasMapFromTokens,
-  extractNsNameFromTokens,
-  restoreRuntime,
-} from './runtime'
+import { createRuntime, restoreRuntime } from './runtime'
+import { extractAliasMapFromTokens, extractNsNameFromTokens } from './ns-forms'
 import { tokenize } from './tokenizer'
 import type { CljNamespace, CljValue, Env } from './types'
 
@@ -23,7 +19,7 @@ import type { CljNamespace, CljValue, Env } from './types'
 // Public types
 // ---------------------------------------------------------------------------
 
-type SessionOptions = {
+export type SessionOptions = {
   /** Primary output channel — wired to ctx.io.stdout (println, print, pr, prn, pprint, newline). */
   output?: (text: string) => void
   /** Secondary error channel — wired to ctx.io.stderr. */
