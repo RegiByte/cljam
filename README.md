@@ -9,6 +9,13 @@ A Clojure interpreter written in TypeScript. Runs on Bun as a standalone CLI, em
 
 ***
 
+## Disclaimer
+
+I am a Web developer with 12 years of experience, however, this is my first attempt at creating a language runtime. I do not recommend using this for anything serious yet. This is a learning project and I am not a Clojure expert.
+
+If even knowing this, you still want to use this, feel free to contact me and I will help you with your use case.
+Or even better, contribute to the project, open an issue or a pull request and I'll review it and merge if it's good.
+
 ## What it is
 
 Conjure is an **interpreter**. Source code is read, macro-expanded, and evaluated at runtime. There is no compilation step and no bytecode — the evaluator walks the AST directly.
