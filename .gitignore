@@ -33,8 +33,8 @@ coverage
 calva-example/
 
 # Build output
-conjure
-conjure-js
+/conjure
+/conjure-js
 packages/conjure-js/conjure-js
 
 # nREPL port file (written at server start, deleted on exit)
