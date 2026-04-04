@@ -1,4 +1,4 @@
-import type { CljValue, Pos } from './types'
+import type { CljValue, Pos, StackFrame } from './types'
 
 export class TokenizerError extends Error {
   context: unknown
@@ -24,6 +24,7 @@ export class EvaluationError extends Error {
   context: unknown
   pos?: Pos
   data?: Record<string, unknown>
+  frames?: StackFrame[]
   constructor(message: string, context: unknown, pos?: Pos) {
     super(message)
     this.name = 'EvaluationError'

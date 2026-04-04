@@ -1,13 +1,14 @@
 import { is } from '../assertions'
 import { EvaluationError } from '../errors'
 import { printString } from '../printer'
-import { maybeHydrateErrorPos } from '../positions'
+import { getLineCol, getPos, maybeHydrateErrorPos } from '../positions'
 import type {
   CljList,
   CljValue,
   Env,
   EvaluationContext,
   CljMultiMethod,
+  StackFrame,
 } from '../types'
 
 import { evaluateSpecialForm } from './special-forms'
@@ -76,10 +77,30 @@ export function evaluateList(
   const args = list.value
     .slice(LIST_BODY_POS)
     .map((arg) => ctx.evaluate(arg, env))
+  const rawPos = getPos(list)
+  let line = null as null | number
+  let col = null as null | number
+  if (rawPos && ctx.currentSource) {
+    const lc = getLineCol(ctx.currentSource, rawPos.start)
+    line = lc.line
+    col = lc.col + 1  // 1-indexed
+  }
+  const frame: StackFrame = {
+    fnName: is.symbol(head) ? head.name : null,
+    line,
+    col,
+    source: ctx.currentFile ?? null,
+  }
+  ctx.frameStack.push(frame)
   try {
     return ctx.applyCallable(evaledHead, args, env)
   } catch (e) {
     maybeHydrateErrorPos(e, list)
+    if (e instanceof EvaluationError && !e.frames) {
+      e.frames = [...ctx.frameStack].reverse()
+    }
     throw e
+  } finally {
+    ctx.frameStack.pop()
   }
 }

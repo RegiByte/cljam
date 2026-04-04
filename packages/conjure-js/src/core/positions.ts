@@ -1,5 +1,6 @@
 import { EvaluationError } from './errors'
-import type { CljList, CljValue, Pos } from './types'
+import { v } from './factories'
+import type { CljList, CljValue, Pos, StackFrame } from './types'
 
 export function setPos(val: CljValue, pos: Pos): void {
   Object.defineProperty(val, '_pos', {
@@ -43,6 +44,24 @@ export function formatErrorContext(
   // Caret uses raw col so it aligns with the displayed lineText snippet.
   const caret = ' '.repeat(col) + '^'.repeat(span)
   return `\n  at line ${absLine}, col ${absCol + 1}:\n  ${lineText}\n  ${caret}`
+}
+
+/**
+ * Converts a StackFrame array to a Clojure vector of maps.
+ * Each frame map has :fn (string or nil), :line, :col, :source.
+ * Caller is responsible for ordering (innermost-first convention).
+ */
+export function framesToClj(frames: StackFrame[]): CljValue {
+  return v.vector(
+    frames.map((frame) =>
+      v.map([
+        [v.keyword(':fn'), frame.fnName !== null ? v.string(frame.fnName) : v.nil()],
+        [v.keyword(':line'), frame.line !== null ? v.number(frame.line) : v.nil()],
+        [v.keyword(':col'), frame.col !== null ? v.number(frame.col) : v.nil()],
+        [v.keyword(':source'), frame.source !== null ? v.string(frame.source) : v.nil()],
+      ])
+    )
+  )
 }
 
 /**

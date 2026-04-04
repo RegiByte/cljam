@@ -1,9 +1,9 @@
 import { is } from '../assertions.ts'
 import { EvaluationError } from '../errors.ts'
 import { dispatchMultiMethod } from '../evaluator/dispatch.ts'
-import { maybeHydrateErrorPos } from '../positions.ts'
+import { getLineCol, getPos, maybeHydrateErrorPos } from '../positions.ts'
 import { printString } from '../printer.ts'
-import type { CljList, CompiledExpr, CompileEnv, CompileFn } from '../types.ts'
+import type { CljList, CompiledExpr, CompileEnv, CompileFn, StackFrame } from '../types.ts'
 
 export function compileCall(
   node: CljList,
@@ -31,11 +31,31 @@ export function compileCall(
       throw new EvaluationError(`${name} is not callable`, { list: node, env })
     }
     const args = compiledArgs.map((carg) => carg!(env, ctx))
+    const rawPos = getPos(node)
+    let line = null as null | number
+    let col = null as null | number
+    if (rawPos && ctx.currentSource) {
+      const lc = getLineCol(ctx.currentSource, rawPos.start)
+      line = lc.line
+      col = lc.col + 1  // 1-indexed
+    }
+    const frame: StackFrame = {
+      fnName: is.symbol(head) ? head.name : null,
+      line,
+      col,
+      source: ctx.currentFile ?? null,
+    }
+    ctx.frameStack.push(frame)
     try {
       return ctx.applyCallable(op, args, env)
     } catch (ex) {
       maybeHydrateErrorPos(ex, node)
+      if (ex instanceof EvaluationError && !ex.frames) {
+        ex.frames = [...ctx.frameStack].reverse()
+      }
       throw ex
+    } finally {
+      ctx.frameStack.pop()
     }
   }
 }

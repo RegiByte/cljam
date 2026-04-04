@@ -6,6 +6,7 @@ import {
   matchesDiscriminator,
   parseTryStructure,
 } from '../evaluator/form-parsers.ts'
+import { framesToClj } from '../positions.ts'
 import type {
   CljList,
   CljValue,
@@ -114,10 +115,14 @@ export function compileTry(
       if (e instanceof CljThrownSignal) {
         thrownValue = e.value
       } else if (e instanceof EvaluationError) {
-        thrownValue = v.map([
+        const entries: [CljValue, CljValue][] = [
           [v.keyword(':type'), v.keyword(':error/runtime')],
           [v.keyword(':message'), v.string(e.message)],
-        ])
+        ]
+        if (e.frames && e.frames.length > 0) {
+          entries.push([v.keyword(':frames'), framesToClj(e.frames)])
+        }
+        thrownValue = v.map(entries)
       } else {
         throw e
       }

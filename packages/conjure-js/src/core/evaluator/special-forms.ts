@@ -12,7 +12,7 @@ import { v } from '../factories'
 import { createAsyncEvalCtx } from './async-evaluator'
 // --- END ASYNC ---
 import { specialFormKeywords } from '../keywords.ts'
-import { getLineCol, getPos } from '../positions'
+import { framesToClj, getLineCol, getPos } from '../positions'
 import type {
   CljList,
   CljMap,
@@ -67,10 +67,14 @@ function evaluateTry(
     if (e instanceof CljThrownSignal) {
       thrownValue = e.value
     } else if (e instanceof EvaluationError) {
-      thrownValue = v.map([
+      const entries: [CljValue, CljValue][] = [
         [v.keyword(':type'), v.keyword(':error/runtime')],
         [v.keyword(':message'), v.string(e.message)],
-      ])
+      ]
+      if (e.frames && e.frames.length > 0) {
+        entries.push([v.keyword(':frames'), framesToClj(e.frames)])
+      }
+      thrownValue = v.map(entries)
     } else {
       throw e
     }

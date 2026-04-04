@@ -45,6 +45,7 @@ export function createEvaluationContext(): EvaluationContext {
       stdout: (text: string) => console.log(text),
       stderr: (text: string) => console.error(text),
     },
+    frameStack: [],
   }
   return ctx
 }

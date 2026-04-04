@@ -161,6 +161,11 @@ export type EvaluationContext = {
    * Called by `in-ns` at runtime. Without this hook, `in-ns` is a no-op.
    */
   setCurrentNs?: (name: string) => void
+  /**
+   * Clojure-level call stack for stack traces. Pushed/popped at each function
+   * call site. Snapshot (reversed, innermost-first) is stored on EvaluationError.frames.
+   */
+  frameStack: StackFrame[]
 }
 
 export type CljNativeFunction = {
@@ -222,6 +227,13 @@ export type Cursor = {
 }
 
 export type Pos = { start: number; end: number } // absolute char offsets into the source string
+
+export interface StackFrame {
+  fnName: string | null   // symbol name at the call site, null for non-symbol heads (anonymous calls)
+  line: number | null     // 1-indexed line of call site, null when source is unavailable
+  col: number | null      // 1-indexed col of call site, null when source is unavailable
+  source: string | null   // ctx.currentFile at push time
+}
 
 export type TokenLParen = {
   kind: 'LParen'
