@@ -20,7 +20,8 @@ export function dispatchMultiMethod(
   mm: CljMultiMethod,
   args: CljValue[],
   ctx: EvaluationContext,
-  env: Env
+  env: Env,
+  callSite?: CljList
 ): CljValue {
   const dispatchVal = ctx.applyFunction(mm.dispatchFn, args, env)
   const method = mm.methods.find(({ dispatchVal: dv }) =>
@@ -37,7 +38,8 @@ export function dispatchMultiMethod(
   // and thread it through defmulti, defmethod detection, and here.
   throw new EvaluationError(
     `No method in multimethod '${mm.name}' for dispatch value ${printString(dispatchVal)}`,
-    { mm, dispatchVal }
+    { mm, dispatchVal },
+    callSite ? getPos(callSite) : undefined
   )
 }
 
@@ -66,12 +68,12 @@ export function evaluateList(
     const args = list.value
       .slice(LIST_BODY_POS)
       .map((arg) => ctx.evaluate(arg, env))
-    return dispatchMultiMethod(evaledHead, args, ctx, env)
+    return dispatchMultiMethod(evaledHead, args, ctx, env, list)
   }
 
   if (!is.callable(evaledHead)) {
     const name = is.symbol(head) ? head.name : printString(head)
-    throw new EvaluationError(`${name} is not callable`, { list, env })
+    throw new EvaluationError(`${name} is not callable`, { list, env }, getPos(list))
   }
 
   const args = list.value
@@ -90,6 +92,7 @@ export function evaluateList(
     line,
     col,
     source: ctx.currentFile ?? null,
+    pos: rawPos ?? null,
   }
   ctx.frameStack.push(frame)
   try {

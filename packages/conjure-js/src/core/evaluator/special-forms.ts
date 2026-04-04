@@ -162,7 +162,7 @@ function evaluateDef(
       name,
       list,
       env,
-    })
+    }, getPos(list))
   }
   // (def name) with no value is a bare declaration — a no-op in the evaluator.
   // This lets .clj source files declare runtime-injected symbols so that
@@ -228,7 +228,8 @@ function evaluateLetStar(
     if (!is.symbol(pattern)) {
       throw new EvaluationError(
         'let* only supports simple symbol bindings; use let for destructuring',
-        { pattern, env }
+        { pattern, env },
+        getPos(pattern) ?? getPos(list)
       )
     }
     const value = ctx.evaluate(bindings.value[i + 1], localEnv)
@@ -255,14 +256,16 @@ function evaluateFnStar(
       if (!is.symbol(param)) {
         throw new EvaluationError(
           'fn* only supports simple symbol params; use fn for destructuring',
-          { param, env }
+          { param, env },
+          getPos(param) ?? getPos(list)
         )
       }
     }
     if (arity.restParam !== null && !is.symbol(arity.restParam)) {
       throw new EvaluationError(
         'fn* only supports simple symbol rest param; use fn for destructuring',
-        { restParam: arity.restParam, env }
+        { restParam: arity.restParam, env },
+        getPos(arity.restParam) ?? getPos(list)
       )
     }
     assertRecurInTailPosition(arity.body)
@@ -316,7 +319,8 @@ function evaluateLoopStar(
     if (!is.symbol(pattern)) {
       throw new EvaluationError(
         'loop* only supports simple symbol bindings; use loop for destructuring',
-        { pattern, env }
+        { pattern, env },
+        getPos(pattern) ?? getPos(list)
       )
     }
     const value = ctx.evaluate(loopBindings.value[i + 1], initEnv)
@@ -336,7 +340,8 @@ function evaluateLoopStar(
         if (e.args.length !== names.length) {
           throw new EvaluationError(
             `recur expects ${names.length} arguments but got ${e.args.length}`,
-            { list, env }
+            { list, env },
+            getPos(list)
           )
         }
         currentValues = e.args
@@ -359,12 +364,13 @@ function evaluateLetfnStar(
     throw new EvaluationError('letfn* bindings must be a vector', {
       bindings,
       env,
-    })
+    }, getPos(list))
   }
   if (bindings.value.length % 2 !== 0) {
     throw new EvaluationError(
       'letfn* bindings must have an even number of forms',
-      { bindings, env }
+      { bindings, env },
+      getPos(bindings) ?? getPos(list)
     )
   }
   const body = list.value.slice(2)
@@ -381,14 +387,14 @@ function evaluateLetfnStar(
       throw new EvaluationError('letfn* binding names must be symbols', {
         name,
         env,
-      })
+      }, getPos(name) ?? getPos(list))
     }
     const fn = ctx.evaluate(fnForm, sharedEnv)
     if (!is.aFunction(fn)) {
       throw new EvaluationError('letfn* binding values must be functions', {
         fn,
         env,
-      })
+      }, getPos(fnForm) ?? getPos(list))
     }
     if (is.function(fn)) fn.name = name.name
     sharedEnv.bindings.set(name.name, fn)
@@ -419,7 +425,7 @@ function evaluateDefmacro(
       name,
       list,
       env,
-    })
+    }, getPos(list))
   }
   const rest = list.value.slice(2)
   const docstring = rest[0]?.kind === 'string' ? rest[0].value : undefined
@@ -449,7 +455,7 @@ function evaluateVar(
 ): CljValue {
   const sym = list.value[1]
   if (!is.symbol(sym)) {
-    throw new EvaluationError('var expects a symbol', { list })
+    throw new EvaluationError('var expects a symbol', { list }, getPos(list))
   }
 
   const slashIdx = sym.name.indexOf('/')
@@ -461,10 +467,10 @@ function evaluateVar(
     const targetNs =
       nsEnv.ns?.aliases.get(alias) ?? ctx.resolveNs(alias) ?? null
     if (!targetNs) {
-      throw new EvaluationError(`No such namespace: ${alias}`, { sym })
+      throw new EvaluationError(`No such namespace: ${alias}`, { sym }, getPos(sym))
     }
     const v = targetNs.vars.get(localName)
-    if (!v) throw new EvaluationError(`Var ${sym.name} not found`, { sym })
+    if (!v) throw new EvaluationError(`Var ${sym.name} not found`, { sym }, getPos(sym))
     return v
   }
 
@@ -472,7 +478,8 @@ function evaluateVar(
   if (!v) {
     throw new EvaluationError(
       `Unable to resolve var: ${sym.name} in this context`,
-      { sym }
+      { sym },
+      getPos(sym)
     )
   }
   return v
@@ -488,12 +495,13 @@ function evaluateBinding(
     throw new EvaluationError('binding requires a vector of bindings', {
       list,
       env,
-    })
+    }, getPos(list))
   }
   if (bindings.value.length % 2 !== 0) {
     throw new EvaluationError(
       'binding vector must have an even number of forms',
-      { list, env }
+      { list, env },
+      getPos(bindings) ?? getPos(list)
     )
   }
   const body = list.value.slice(2)
@@ -504,20 +512,22 @@ function evaluateBinding(
     if (!is.symbol(sym)) {
       throw new EvaluationError('binding left-hand side must be a symbol', {
         sym,
-      })
+      }, getPos(sym) ?? getPos(list))
     }
     const newVal = ctx.evaluate(bindings.value[i + 1], env)
     const v = lookupVar(sym.name, env)
     if (!v) {
       throw new EvaluationError(
         `No var found for symbol '${sym.name}' in binding form`,
-        { sym }
+        { sym },
+        getPos(sym)
       )
     }
     if (!v.dynamic) {
       throw new EvaluationError(
         `Cannot use binding with non-dynamic var ${v.ns}/${v.name}. Mark it dynamic with (def ^:dynamic ${sym.name} ...)`,
-        { sym }
+        { sym },
+        getPos(sym)
       )
     }
     v.bindingStack ??= []
@@ -542,33 +552,38 @@ function evaluateSet(
   if (list.value.length !== 3) {
     throw new EvaluationError(
       `set! requires exactly 2 arguments, got ${list.value.length - 1}`,
-      { list, env }
+      { list, env },
+      getPos(list)
     )
   }
   const symForm = list.value[1]
   if (!is.symbol(symForm)) {
     throw new EvaluationError(
       `set! first argument must be a symbol, got ${symForm.kind}`,
-      { symForm, env }
+      { symForm, env },
+      getPos(symForm) ?? getPos(list)
     )
   }
   const v = lookupVar(symForm.name, env)
   if (!v) {
     throw new EvaluationError(
       `Unable to resolve var: ${symForm.name} in this context`,
-      { symForm, env }
+      { symForm, env },
+      getPos(symForm)
     )
   }
   if (!v.dynamic) {
     throw new EvaluationError(
       `Cannot set! non-dynamic var ${v.ns}/${v.name}. Mark it with ^:dynamic.`,
-      { symForm, env }
+      { symForm, env },
+      getPos(symForm)
     )
   }
   if (!v.bindingStack || v.bindingStack.length === 0) {
     throw new EvaluationError(
       `Cannot set! ${v.ns}/${v.name} — no active binding. Use set! only inside a (binding [...] ...) form.`,
-      { symForm, env }
+      { symForm, env },
+      getPos(symForm)
     )
   }
   const newVal = ctx.evaluate(list.value[2], env)
@@ -653,5 +668,5 @@ export function evaluateSpecialForm(
     symbol,
     list,
     env,
-  })
+  }, getPos(list))
 }

@@ -32,6 +32,7 @@ import {
   type CompileEnv,
   type CompileFn,
 } from '../types.ts'
+import { getPos } from '../positions.ts'
 import { compileFnBody, compileLet, compileLoop, compileRecur } from './binding.ts'
 import { compileCall } from './callable.ts'
 import { compileMap, compileSet, compileVector } from './collections.ts'
@@ -104,14 +105,14 @@ function compileSymbol(
         throw new EvaluationError(`No such namespace or alias: ${alias}`, {
           symbol: symbolName,
           env,
-        })
+        }, getPos(node))
       }
       const varObj = targetNs.vars.get(localName)
       if (varObj === undefined) {
         throw new EvaluationError(`Symbol ${symbolName} not found`, {
           symbol: symbolName,
           env,
-        })
+        }, getPos(node))
       }
       return derefValue(varObj)
     }

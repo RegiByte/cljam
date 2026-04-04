@@ -13,6 +13,7 @@
 
 import { is } from '../assertions'
 import { EvaluationError } from '../errors'
+import { getPos } from '../positions'
 import type {
   CljFunction,
   CljList,
@@ -41,12 +42,13 @@ export function validateBindingVector(
     throw new EvaluationError(`${formName} bindings must be a vector`, {
       bindings: vec,
       env,
-    })
+    }, getPos(vec))
   }
   if (vec.value.length % 2 !== 0) {
     throw new EvaluationError(
       `${formName} bindings must have an even number of forms`,
-      { bindings: vec, env }
+      { bindings: vec, env },
+      getPos(vec)
     )
   }
 }
@@ -85,7 +87,8 @@ export function parseTryStructure(list: CljList, env: Env = {} as Env): TryStruc
         if (form.value.length < 3) {
           throw new EvaluationError(
             'catch requires a discriminator and a binding symbol',
-            { form, env }
+            { form, env },
+            getPos(form)
           )
         }
         const discriminator = form.value[1]
@@ -94,7 +97,7 @@ export function parseTryStructure(list: CljList, env: Env = {} as Env): TryStruc
           throw new EvaluationError('catch binding must be a symbol', {
             form,
             env,
-          })
+          }, getPos(bindingSym) ?? getPos(form))
         }
         catchClauses.push({
           discriminator,
@@ -108,7 +111,8 @@ export function parseTryStructure(list: CljList, env: Env = {} as Env): TryStruc
         if (i !== forms.length - 1) {
           throw new EvaluationError(
             'finally clause must be the last in try expression',
-            { form, env }
+            { form, env },
+            getPos(form)
           )
         }
         finallyForms = form.value.slice(1)

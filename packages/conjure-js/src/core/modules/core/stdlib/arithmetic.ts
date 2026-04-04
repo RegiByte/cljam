@@ -466,7 +466,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       }
       if ((div as CljNumber).value === 0) {
-        throw new EvaluationError('quot: division by zero', { num, div })
+        throw EvaluationError.atArg('quot: division by zero', { num, div }, 1)
       }
       return v.number(
         Math.trunc((num as CljNumber).value / (div as CljNumber).value)
@@ -491,7 +491,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       }
       if ((div as CljNumber).value === 0) {
-        throw new EvaluationError('rem: division by zero', { num, div })
+        throw EvaluationError.atArg('rem: division by zero', { num, div }, 1)
       }
       return v.number((num as CljNumber).value % (div as CljNumber).value)
     })
@@ -532,9 +532,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       const items = (coll as CljList | CljVector).value
       if (items.length === 0) {
-        throw new EvaluationError('rand-nth called on empty collection', {
-          coll,
-        })
+        throw EvaluationError.atArg('rand-nth called on empty collection', { coll }, 0)
       }
       return items[Math.floor(Math.random() * items.length)]
     })

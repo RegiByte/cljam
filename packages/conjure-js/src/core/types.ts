@@ -233,6 +233,7 @@ export interface StackFrame {
   line: number | null     // 1-indexed line of call site, null when source is unavailable
   col: number | null      // 1-indexed col of call site, null when source is unavailable
   source: string | null   // ctx.currentFile at push time
+  pos: Pos | null         // raw byte-offset position in ctx.currentSource; enables session-level display fallback
 }
 
 export type TokenLParen = {

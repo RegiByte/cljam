@@ -101,12 +101,12 @@ export const vectorFunctions: Record<string, CljValue> = {
       }
       if (is.vector(coll)) {
         if (coll.value.length === 0)
-          throw new EvaluationError("Can't pop empty vector", { coll })
+          throw EvaluationError.atArg("Can't pop empty vector", { coll }, 0)
         return v.vector(coll.value.slice(0, -1))
       }
       if (is.list(coll)) {
         if (coll.value.length === 0)
-          throw new EvaluationError("Can't pop empty list", { coll })
+          throw EvaluationError.atArg("Can't pop empty list", { coll }, 0)
         return v.list(coll.value.slice(1))
       }
       throw EvaluationError.atArg(

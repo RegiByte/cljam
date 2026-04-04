@@ -217,14 +217,14 @@ function buildSessionFacade(
             args: e.args,
           })
         }
-        if (
-          (e instanceof EvaluationError || e instanceof ReaderError) &&
-          e.pos
-        ) {
-          e.message += formatErrorContext(source, e.pos, {
-            lineOffset: ctx.currentLineOffset,
-            colOffset: ctx.currentColOffset,
-          })
+        if (e instanceof EvaluationError || e instanceof ReaderError) {
+          const pos = e.pos ?? (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
+          if (pos) {
+            e.message += formatErrorContext(source, pos, {
+              lineOffset: ctx.currentLineOffset,
+              colOffset: ctx.currentColOffset,
+            })
+          }
         }
         throw e
       } finally {
@@ -288,14 +288,14 @@ function buildSessionFacade(
             args: e.args,
           })
         }
-        if (
-          (e instanceof EvaluationError || e instanceof ReaderError) &&
-          e.pos
-        ) {
-          e.message += formatErrorContext(source, e.pos, {
-            lineOffset: ctx.currentLineOffset,
-            colOffset: ctx.currentColOffset,
-          })
+        if (e instanceof EvaluationError || e instanceof ReaderError) {
+          const pos = e.pos ?? (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
+          if (pos) {
+            e.message += formatErrorContext(source, pos, {
+              lineOffset: ctx.currentLineOffset,
+              colOffset: ctx.currentColOffset,
+            })
+          }
         }
         throw e
       } finally {

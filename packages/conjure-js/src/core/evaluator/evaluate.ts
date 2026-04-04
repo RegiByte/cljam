@@ -31,69 +31,61 @@ export function evaluateWithContext(
   env: Env,
   ctx: EvaluationContext
 ): CljValue {
-  try {
-    const compiled = compile(expr)
-    if (compiled !== null) {
-      return compiled(env, ctx)
-    }
-    switch (expr.kind) {
-      // self-evaluating forms
-      case valueKeywords.number:
-      case valueKeywords.string:
-      case valueKeywords.keyword:
-      case valueKeywords.nil:
-      case valueKeywords.function:
-      case valueKeywords.multiMethod:
-      case valueKeywords.boolean:
-      case valueKeywords.regex:
-      case valueKeywords.delay:
-      case valueKeywords.lazySeq:
-      case valueKeywords.cons:
-      case valueKeywords.namespace:
-        return expr
-      case valueKeywords.symbol: {
-        const slashIdx = expr.name.indexOf('/')
-        if (slashIdx > 0 && slashIdx < expr.name.length - 1) {
-          const alias = expr.name.slice(0, slashIdx)
-          const sym = expr.name.slice(slashIdx + 1)
-          const nsEnv = getNamespaceEnv(env)
-          // Resolve alias: local :as alias first, then full namespace name
-          const targetNs =
-            nsEnv.ns?.aliases.get(alias) ?? ctx.resolveNs(alias) ?? null
-          if (!targetNs) {
-            throw new EvaluationError(`No such namespace or alias: ${alias}`, {
-              symbol: expr.name,
-              env,
-            })
-          }
-          const v = targetNs.vars.get(sym)
-          if (v === undefined) {
-            throw new EvaluationError(`Symbol ${expr.name} not found`, {
-              symbol: expr.name,
-              env,
-            })
-          }
-          return derefValue(v)
+  const compiled = compile(expr)
+  if (compiled !== null) {
+    return compiled(env, ctx)
+  }
+  switch (expr.kind) {
+    // self-evaluating forms
+    case valueKeywords.number:
+    case valueKeywords.string:
+    case valueKeywords.keyword:
+    case valueKeywords.nil:
+    case valueKeywords.function:
+    case valueKeywords.multiMethod:
+    case valueKeywords.boolean:
+    case valueKeywords.regex:
+    case valueKeywords.delay:
+    case valueKeywords.lazySeq:
+    case valueKeywords.cons:
+    case valueKeywords.namespace:
+      return expr
+    case valueKeywords.symbol: {
+      const slashIdx = expr.name.indexOf('/')
+      if (slashIdx > 0 && slashIdx < expr.name.length - 1) {
+        const alias = expr.name.slice(0, slashIdx)
+        const sym = expr.name.slice(slashIdx + 1)
+        const nsEnv = getNamespaceEnv(env)
+        // Resolve alias: local :as alias first, then full namespace name
+        const targetNs =
+          nsEnv.ns?.aliases.get(alias) ?? ctx.resolveNs(alias) ?? null
+        if (!targetNs) {
+          throw new EvaluationError(`No such namespace or alias: ${alias}`, {
+            symbol: expr.name,
+            env,
+          }, getPos(expr))
         }
-        return lookup(expr.name, env)
+        const v = targetNs.vars.get(sym)
+        if (v === undefined) {
+          throw new EvaluationError(`Symbol ${expr.name} not found`, {
+            symbol: expr.name,
+            env,
+          }, getPos(expr))
+        }
+        return derefValue(v)
       }
-      case valueKeywords.vector:
-        return evaluateVector(expr, env, ctx)
-      case valueKeywords.map:
-        return evaluateMap(expr, env, ctx)
-      case valueKeywords.set:
-        return evaluateSet(expr, env, ctx)
-      case valueKeywords.list:
-        return evaluateList(expr, env, ctx)
-      default:
-        throw new EvaluationError('Unexpected value', { expr, env })
+      return lookup(expr.name, env)
     }
-  } catch (e) {
-    if (e instanceof EvaluationError && !e.pos) {
-      const p = getPos(expr)
-      if (p) e.pos = p
-    }
-    throw e
+    case valueKeywords.vector:
+      return evaluateVector(expr, env, ctx)
+    case valueKeywords.map:
+      return evaluateMap(expr, env, ctx)
+    case valueKeywords.set:
+      return evaluateSet(expr, env, ctx)
+    case valueKeywords.list:
+      return evaluateList(expr, env, ctx)
+    default:
+      throw new EvaluationError('Unexpected value', { expr, env }, getPos(expr))
   }
 }
 

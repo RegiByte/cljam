@@ -1,6 +1,7 @@
 import { is } from '../assertions'
 import { EvaluationError } from '../errors'
 import { specialFormKeywords } from '../keywords.ts'
+import { getPos } from '../positions'
 import type { CljValue } from '../types'
 
 /**
@@ -48,7 +49,7 @@ function validateForm(form: CljValue, inTail: boolean): void {
 
   if (isRecurForm(form)) {
     if (!inTail) {
-      throw new EvaluationError('Can only recur from tail position', { form })
+      throw new EvaluationError('Can only recur from tail position', { form }, getPos(form))
     }
     return
   }

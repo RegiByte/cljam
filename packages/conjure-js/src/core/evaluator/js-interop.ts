@@ -1,6 +1,7 @@
 import { is } from '../assertions'
 import { EvaluationError } from '../errors'
 import { v } from '../factories'
+import { getPos } from '../positions'
 import type { CljList, CljValue, Env, EvaluationContext } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -98,7 +99,7 @@ export function cljToJs(
  * Strings, numbers, and booleans are auto-boxed (JS auto-promotes them for
  * property/method access). Nil and all other Clojure types are rejected.
  */
-function extractRawTarget(target: CljValue): unknown {
+function extractRawTarget(target: CljValue, targetForm: CljValue): unknown {
   switch (target.kind) {
     case 'js-value':
       return target.value
@@ -107,7 +108,7 @@ function extractRawTarget(target: CljValue): unknown {
     case 'boolean':
       return target.value
     default:
-      throw new EvaluationError(`cannot use . on ${target.kind}`, { target })
+      throw new EvaluationError(`cannot use . on ${target.kind}`, { target }, getPos(targetForm))
   }
 }
 
@@ -119,17 +120,19 @@ export function evaluateDot(
   if (list.value.length < 3) {
     throw new EvaluationError('. requires at least 2 arguments: (. obj prop)', {
       list,
-    })
+    }, getPos(list))
   }
 
-  const target = ctx.evaluate(list.value[1], env)
-  const rawTarget = extractRawTarget(target)
+  const targetForm = list.value[1]
+  const target = ctx.evaluate(targetForm, env)
+  const rawTarget = extractRawTarget(target, targetForm)
 
   if (rawTarget === null || rawTarget === undefined) {
     const label = rawTarget === null ? 'null' : 'undefined'
     throw new EvaluationError(
       `cannot use . on ${label} js value — check for nil/undefined before accessing properties`,
-      { target }
+      { target },
+      getPos(targetForm)
     )
   }
 
@@ -137,7 +140,8 @@ export function evaluateDot(
   if (!is.symbol(propForm)) {
     throw new EvaluationError(
       `. expects a symbol for property name, got: ${propForm.kind}`,
-      { propForm }
+      { propForm },
+      getPos(propForm) ?? getPos(list)
     )
   }
 
@@ -159,7 +163,8 @@ export function evaluateDot(
   if (typeof method !== 'function') {
     throw new EvaluationError(
       `method '${propName}' is not callable on ${String(rawObj)}`,
-      { propName, rawObj }
+      { propName, rawObj },
+      getPos(propForm)
     )
   }
 
@@ -184,14 +189,15 @@ export function evaluateNew(
   if (list.value.length < 2) {
     throw new EvaluationError('js/new requires a constructor argument', {
       list,
-    })
+    }, getPos(list))
   }
 
   const cls = ctx.evaluate(list.value[1], env)
   if (!is.jsValue(cls) || typeof cls.value !== 'function') {
     throw new EvaluationError(
       `js/new: expected js-value constructor, got ${cls.kind}`,
-      { cls }
+      { cls },
+      getPos(list.value[1]) ?? getPos(list)
     )
   }
 

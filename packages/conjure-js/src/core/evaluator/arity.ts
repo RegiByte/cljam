@@ -2,6 +2,7 @@ import { is } from '../assertions'
 import { extend } from '../env'
 import { EvaluationError } from '../errors'
 import { cljList, cljNil } from '../factories'
+import { getPos } from '../positions'
 import type {
   Arity,
   CljValue,
@@ -40,7 +41,7 @@ export function parseParamVector(
       throw new EvaluationError(`${REST_SYMBOL} can only appear once`, {
         args,
         env,
-      })
+      }, getPos(args))
     }
     if (ampIdx !== args.value.length - 2) {
       throw new EvaluationError(
@@ -48,7 +49,8 @@ export function parseParamVector(
         {
           args,
           env,
-        }
+        },
+        getPos(args)
       )
     }
     params = args.value.slice(0, ampIdx) as DestructurePattern[]
@@ -80,14 +82,16 @@ export function parseArities(forms: CljValue[], env: Env): Arity[] {
       if (!is.list(form) || form.value.length === 0) {
         throw new EvaluationError(
           'Multi-arity clause must be a list starting with a parameter vector',
-          { form, env }
+          { form, env },
+          getPos(form)
         )
       }
       const paramVec = form.value[0]
       if (!is.vector(paramVec)) {
         throw new EvaluationError(
           'First element of arity clause must be a parameter vector',
-          { paramVec, env }
+          { paramVec, env },
+          getPos(paramVec) ?? getPos(form)
         )
       }
       const { params, restParam } = parseParamVector(paramVec, env)
@@ -107,7 +111,8 @@ export function parseArities(forms: CljValue[], env: Env): Arity[] {
 
   throw new EvaluationError(
     'fn/defmacro expects a parameter vector or arity clauses',
-    { forms, env }
+    { forms, env },
+    getPos(forms[0])
   )
 }
 

@@ -1,6 +1,7 @@
 import { is } from '../assertions'
 import { EvaluationError } from '../errors'
 import { v } from '../factories'
+import { getPos } from '../positions'
 import { consToArray, realizeLazySeq } from '../transformations'
 import type { CljMap, CljValue, Env, EvaluationContext } from '../types'
 
@@ -183,7 +184,7 @@ function destructureMap(
     throw new EvaluationError(`Cannot destructure ${value.kind} as a map`, {
       value,
       pattern,
-    })
+    }, getPos(pattern))
   }
 
   const targetMap: CljMap = isNil ? v.map([]) : (value as CljMap)
@@ -197,7 +198,8 @@ function destructureMap(
       if (!is.vector(val)) {
         throw new EvaluationError(
           ':keys must be followed by a vector of symbols',
-          { pattern }
+          { pattern },
+          getPos(val) ?? getPos(pattern)
         )
       }
       for (const sym of val.value) {
@@ -205,7 +207,7 @@ function destructureMap(
           throw new EvaluationError(':keys vector must contain symbols', {
             pattern,
             sym,
-          })
+          }, getPos(sym) ?? getPos(val))
         }
         const slashIdx = sym.name.indexOf('/')
         const localName =
@@ -234,7 +236,8 @@ function destructureMap(
       if (!is.vector(val)) {
         throw new EvaluationError(
           ':strs must be followed by a vector of symbols',
-          { pattern }
+          { pattern },
+          getPos(val) ?? getPos(pattern)
         )
       }
       for (const sym of val.value) {
@@ -242,7 +245,7 @@ function destructureMap(
           throw new EvaluationError(':strs vector must contain symbols', {
             pattern,
             sym,
-          })
+          }, getPos(sym) ?? getPos(val))
         }
         const lookupKey = v.string(sym.name)
         const present = mapContainsKey(targetMap, lookupKey)
@@ -268,7 +271,8 @@ function destructureMap(
       if (!is.vector(val)) {
         throw new EvaluationError(
           ':syms must be followed by a vector of symbols',
-          { pattern }
+          { pattern },
+          getPos(val) ?? getPos(pattern)
         )
       }
       for (const sym of val.value) {
@@ -276,7 +280,7 @@ function destructureMap(
           throw new EvaluationError(':syms vector must contain symbols', {
             pattern,
             sym,
-          })
+          }, getPos(sym) ?? getPos(val))
         }
         const lookupKey = v.symbol(sym.name)
         const present = mapContainsKey(targetMap, lookupKey)
@@ -343,6 +347,7 @@ export function destructureBindings(
 
   throw new EvaluationError(
     `Invalid destructuring pattern: expected symbol, vector, or map, got ${pattern.kind}`,
-    { pattern }
+    { pattern },
+    getPos(pattern)
   )
 }

@@ -24,11 +24,11 @@ export function compileCall(
     const op = compiledOp(env, ctx)
     if (is.multiMethod(op)) {
       const args = compiledArgs.map((c) => c!(env, ctx))
-      return dispatchMultiMethod(op, args, ctx, env)
+      return dispatchMultiMethod(op, args, ctx, env, node)
     }
     if (!is.callable(op)) {
       const name = is.symbol(head) ? head.name : printString(head)
-      throw new EvaluationError(`${name} is not callable`, { list: node, env })
+      throw new EvaluationError(`${name} is not callable`, { list: node, env }, getPos(node))
     }
     const args = compiledArgs.map((carg) => carg!(env, ctx))
     const rawPos = getPos(node)
@@ -44,6 +44,7 @@ export function compileCall(
       line,
       col,
       source: ctx.currentFile ?? null,
+      pos: rawPos ?? null,
     }
     ctx.frameStack.push(frame)
     try {
