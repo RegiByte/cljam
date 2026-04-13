@@ -19,13 +19,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  cljBoolean,
-  cljKeyword,
-  cljNil,
-  cljNumber,
-  cljString,
-} from '../factories'
+import { v } from '../factories'
 import { freshSession as session } from '../evaluator/__tests__/evaluator-test-utils'
 import type { CljValue } from '../types'
 
@@ -64,17 +58,17 @@ describe('describe — protocol', () => {
     const result = sess.evaluate('(describe IShape)')
     expect(result.kind).toBe('map')
     const m = mapToObj(result)
-    expect(m[':kind']).toEqual(cljKeyword(':protocol'))
-    expect(m[':name']).toEqual(cljString('IShape'))
-    expect(m[':ns']).toEqual(cljString('user'))
-    expect(m[':doc']).toEqual(cljString('Abstraction over shapes.'))
+    expect(m[':kind']).toEqual(v.keyword(':protocol'))
+    expect(m[':name']).toEqual(v.string('IShape'))
+    expect(m[':ns']).toEqual(v.string('user'))
+    expect(m[':doc']).toEqual(v.string('Abstraction over shapes.'))
   })
 
   it('includes nil doc when no docstring provided', () => {
     const sess = s()
     sess.evaluate('(defprotocol IFoo (foo [x]))')
     const m = mapToObj(sess.evaluate('(describe IFoo)'))
-    expect(m[':doc']).toEqual(cljNil())
+    expect(m[':doc']).toEqual(v.nil())
   })
 
   it('methods have name, arglists, and doc', () => {
@@ -88,9 +82,9 @@ describe('describe — protocol', () => {
     if (methods.kind !== 'vector') return
     expect(methods.value).toHaveLength(1)
     const method = mapToObj(methods.value[0])
-    expect(method[':name']).toEqual(cljString('area'))
+    expect(method[':name']).toEqual(v.string('area'))
     expect(method[':arglists'].kind).toBe('vector')
-    expect(method[':doc']).toEqual(cljString('Compute the area.'))
+    expect(method[':doc']).toEqual(v.string('Compute the area.'))
   })
 
   it('multi-method protocol has multiple methods listed', () => {
@@ -117,8 +111,8 @@ describe('describe — protocol', () => {
     const m = mapToObj(sess.evaluate('(describe IFoo)'))
     expect(m[':extenders'].kind).toBe('vector')
     if (m[':extenders'].kind !== 'vector') return
-    expect(m[':extenders'].value).toContainEqual(cljKeyword(':string'))
-    expect(m[':extenders'].value).toContainEqual(cljKeyword(':number'))
+    expect(m[':extenders'].value).toContainEqual(v.keyword(':string'))
+    expect(m[':extenders'].value).toContainEqual(v.keyword(':number'))
   })
 
   it('extenders includes namespaced record keywords', () => {
@@ -129,7 +123,7 @@ describe('describe — protocol', () => {
     `)
     const m = mapToObj(sess.evaluate('(describe IFoo)'))
     if (m[':extenders'].kind !== 'vector') return
-    expect(m[':extenders'].value).toContainEqual(cljKeyword(':user/MyRec'))
+    expect(m[':extenders'].value).toContainEqual(v.keyword(':user/MyRec'))
   })
 })
 
@@ -146,10 +140,10 @@ describe('describe — record', () => {
         IShape (area [this] (* 3.14 radius radius)))
     `)
     const m = mapToObj(sess.evaluate('(describe (->Circle 5))'))
-    expect(m[':kind']).toEqual(cljKeyword(':record'))
-    expect(m[':type']).toEqual(cljKeyword(':user/Circle'))
-    expect(m[':ns']).toEqual(cljString('user'))
-    expect(m[':name']).toEqual(cljString('Circle'))
+    expect(m[':kind']).toEqual(v.keyword(':record'))
+    expect(m[':type']).toEqual(v.keyword(':user/Circle'))
+    expect(m[':ns']).toEqual(v.string('user'))
+    expect(m[':name']).toEqual(v.string('Circle'))
   })
 
   it('includes field values as a map', () => {
@@ -158,8 +152,8 @@ describe('describe — record', () => {
     const m = mapToObj(sess.evaluate('(describe (->Point 3 4))'))
     expect(m[':fields'].kind).toBe('map')
     const fields = mapToObj(m[':fields'])
-    expect(fields[':x']).toEqual(cljNumber(3))
-    expect(fields[':y']).toEqual(cljNumber(4))
+    expect(fields[':x']).toEqual(v.number(3))
+    expect(fields[':y']).toEqual(v.number(4))
   })
 
   it('protocols list contains keyword type tags', () => {
@@ -172,7 +166,7 @@ describe('describe — record', () => {
     const m = mapToObj(sess.evaluate('(describe (->Circle 5))'))
     expect(m[':protocols'].kind).toBe('vector')
     if (m[':protocols'].kind !== 'vector') return
-    expect(m[':protocols'].value).toContainEqual(cljKeyword(':user/IShape'))
+    expect(m[':protocols'].value).toContainEqual(v.keyword(':user/IShape'))
   })
 
   it('empty protocols list when record has no implementations', () => {
@@ -196,8 +190,8 @@ describe('describe — record', () => {
     const m = mapToObj(sess.evaluate('(describe (->Dual 1))'))
     if (m[':protocols'].kind !== 'vector') return
     expect(m[':protocols'].value).toHaveLength(2)
-    expect(m[':protocols'].value).toContainEqual(cljKeyword(':user/IFoo'))
-    expect(m[':protocols'].value).toContainEqual(cljKeyword(':user/IBar'))
+    expect(m[':protocols'].value).toContainEqual(v.keyword(':user/IFoo'))
+    expect(m[':protocols'].value).toContainEqual(v.keyword(':user/IBar'))
   })
 })
 
@@ -210,12 +204,12 @@ describe('describe — fn', () => {
     const sess = s()
     sess.evaluate('(defn greet "Greets someone." [name] (str "Hello " name))')
     const m = mapToObj(sess.evaluate('(describe greet)'))
-    expect(m[':kind']).toEqual(cljKeyword(':fn'))
-    expect(m[':name']).toEqual(cljString('greet'))
+    expect(m[':kind']).toEqual(v.keyword(':fn'))
+    expect(m[':name']).toEqual(v.string('greet'))
     expect(m[':arglists'].kind).toBe('vector')
     // Doc lives on the Var (CljVar.meta), not on the CljFunction value.
     // (describe #'greet) shows it; (describe greet) returns nil for :doc.
-    expect(m[':doc']).toEqual(cljNil())
+    expect(m[':doc']).toEqual(v.nil())
   })
 
   it('multi-arity function shows all arglists', () => {
@@ -231,8 +225,8 @@ describe('describe — fn', () => {
     const sess = s()
     sess.evaluate('(def anon (fn [x] x))')
     const m = mapToObj(sess.evaluate('(describe anon)'))
-    expect(m[':kind']).toEqual(cljKeyword(':fn'))
-    expect(m[':name']).toEqual(cljNil())
+    expect(m[':kind']).toEqual(v.keyword(':fn'))
+    expect(m[':name']).toEqual(v.nil())
   })
 
   it('variadic fn shows & in arglists', () => {
@@ -251,7 +245,7 @@ describe('describe — fn', () => {
     const sess = s()
     sess.evaluate('(defn no-doc [x] x)')
     const m = mapToObj(sess.evaluate('(describe no-doc)'))
-    expect(m[':doc']).toEqual(cljNil())
+    expect(m[':doc']).toEqual(v.nil())
   })
 })
 
@@ -263,15 +257,15 @@ describe('describe — native-fn', () => {
   it('returns native-fn metadata', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe println)'))
-    expect(m[':kind']).toEqual(cljKeyword(':native-fn'))
-    expect(m[':name']).toEqual(cljString('println'))
+    expect(m[':kind']).toEqual(v.keyword(':native-fn'))
+    expect(m[':name']).toEqual(v.string('println'))
     expect(m[':arglists'].kind).toBe('vector')
   })
 
   it('includes doc string for documented native fns', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe str)'))
-    expect(m[':kind']).toEqual(cljKeyword(':native-fn'))
+    expect(m[':kind']).toEqual(v.keyword(':native-fn'))
     expect(m[':doc'].kind).toBe('string')
   })
 
@@ -293,9 +287,9 @@ describe('describe — protocol-fn', () => {
     const sess = s()
     sess.evaluate('(defprotocol IShape (area [this] "Compute area."))')
     const m = mapToObj(sess.evaluate('(describe area)'))
-    expect(m[':kind']).toEqual(cljKeyword(':protocol-fn'))
-    expect(m[':name']).toEqual(cljString('area'))
-    expect(m[':protocol']).toEqual(cljString('user/IShape'))
+    expect(m[':kind']).toEqual(v.keyword(':protocol-fn'))
+    expect(m[':name']).toEqual(v.string('area'))
+    expect(m[':protocol']).toEqual(v.string('user/IShape'))
   })
 
   it('includes arglists from the parent protocol definition', () => {
@@ -321,10 +315,10 @@ describe('describe — multi-method', () => {
       (defmethod greet :square [x] "a square")
     `)
     const m = mapToObj(sess.evaluate('(describe greet)'))
-    expect(m[':kind']).toEqual(cljKeyword(':multi-method'))
-    expect(m[':name']).toEqual(cljString('greet'))
+    expect(m[':kind']).toEqual(v.keyword(':multi-method'))
+    expect(m[':name']).toEqual(v.string('greet'))
     expect(m[':dispatch-vals'].kind).toBe('vector')
-    expect(m[':default?']).toEqual(cljBoolean(false))
+    expect(m[':default?']).toEqual(v.boolean(false))
   })
 
   it('dispatch-vals contains registered values', () => {
@@ -336,8 +330,8 @@ describe('describe — multi-method', () => {
     `)
     const m = mapToObj(sess.evaluate('(describe classify)'))
     if (m[':dispatch-vals'].kind !== 'vector') return
-    expect(m[':dispatch-vals'].value).toContainEqual(cljKeyword(':dog'))
-    expect(m[':dispatch-vals'].value).toContainEqual(cljKeyword(':cat'))
+    expect(m[':dispatch-vals'].value).toContainEqual(v.keyword(':dog'))
+    expect(m[':dispatch-vals'].value).toContainEqual(v.keyword(':cat'))
   })
 
   it('default? is true when :default method is registered', () => {
@@ -347,7 +341,7 @@ describe('describe — multi-method', () => {
       (defmethod greet :default [x] "default greeting")
     `)
     const m = mapToObj(sess.evaluate('(describe greet)'))
-    expect(m[':default?']).toEqual(cljBoolean(true))
+    expect(m[':default?']).toEqual(v.boolean(true))
   })
 })
 
@@ -360,8 +354,8 @@ describe('describe — namespace', () => {
     const sess = s()
     sess.evaluate('(defn hello [x] x)')
     const m = mapToObj(sess.evaluate("(describe (find-ns 'user))"))
-    expect(m[':kind']).toEqual(cljKeyword(':namespace'))
-    expect(m[':name']).toEqual(cljString('user'))
+    expect(m[':kind']).toEqual(v.keyword(':namespace'))
+    expect(m[':name']).toEqual(v.string('user'))
     expect(m[':var-count'].kind).toBe('number')
     expect(m[':vars'].kind).toBe('map')
   })
@@ -372,7 +366,7 @@ describe('describe — namespace', () => {
     const result = sess.evaluate("(get (:vars (describe (find-ns 'user))) \"my-fn\")")
     expect(result.kind).toBe('map')
     const varDesc = mapToObj(result)
-    expect(varDesc[':kind']).toEqual(cljKeyword(':fn'))
+    expect(varDesc[':kind']).toEqual(v.keyword(':fn'))
   })
 
   it('protocol vars appear in namespace describe', () => {
@@ -380,7 +374,7 @@ describe('describe — namespace', () => {
     sess.evaluate('(defprotocol IFoo (foo [x]))')
     const result = sess.evaluate("(get (:vars (describe (find-ns 'user))) \"IFoo\")")
     const varDesc = mapToObj(result)
-    expect(varDesc[':kind']).toEqual(cljKeyword(':protocol'))
+    expect(varDesc[':kind']).toEqual(v.keyword(':protocol'))
   })
 
   it('protocol dispatch fn vars appear as :protocol-fn', () => {
@@ -388,7 +382,7 @@ describe('describe — namespace', () => {
     sess.evaluate('(defprotocol IFoo (foo [x]))')
     const result = sess.evaluate("(get (:vars (describe (find-ns 'user))) \"foo\")")
     const varDesc = mapToObj(result)
-    expect(varDesc[':kind']).toEqual(cljKeyword(':protocol-fn'))
+    expect(varDesc[':kind']).toEqual(v.keyword(':protocol-fn'))
   })
 
   it('limits vars with *describe-limit* (default 50)', () => {
@@ -397,8 +391,12 @@ describe('describe — namespace', () => {
       sess.evaluate(`(def var-${i} ${i})`)
     }
     const m = mapToObj(sess.evaluate("(describe (find-ns 'user))"))
-    expect((m[':var-count'] as { kind: 'number'; value: number }).value).toBe(60)
-    expect((m[':showing'] as { kind: 'number'; value: number }).value).toBe(50)
+    const varCount = m[':var-count']
+    const showing = m[':showing']
+    expect(varCount.kind).toBe('number')
+    expect(showing.kind).toBe('number')
+    if (varCount.kind === 'number') expect(varCount.value).toBe(60)
+    if (showing.kind === 'number') expect(showing.value).toBe(50)
     expect(m[':vars'].kind).toBe('map')
     if (m[':vars'].kind !== 'map') return
     expect(m[':vars'].entries).toHaveLength(50)
@@ -428,7 +426,9 @@ describe('describe — namespace', () => {
       sess.evaluate(`(def x${i} ${i})`)
     }
     const m = mapToObj(sess.evaluate("(describe (find-ns 'user) 5)"))
-    expect((m[':showing'] as { kind: 'number'; value: number }).value).toBe(5)
+    const showing = m[':showing']
+    expect(showing.kind).toBe('number')
+    if (showing.kind === 'number') expect(showing.value).toBe(5)
     if (m[':vars'].kind !== 'map') return
     expect(m[':vars'].entries).toHaveLength(5)
   })
@@ -440,7 +440,9 @@ describe('describe — namespace', () => {
     }
     // Pass explicit limit as second arg — works regardless of compiler/binding status
     const m = mapToObj(sess.evaluate("(describe (find-ns 'user) 7)"))
-    expect((m[':showing'] as { kind: 'number'; value: number }).value).toBe(7)
+    const showing = m[':showing']
+    expect(showing.kind).toBe('number')
+    if (showing.kind === 'number') expect(showing.value).toBe(7)
   })
 
   // NOTE: (binding [*describe-limit* N] (describe ns)) requires Phase 10 of the
@@ -458,10 +460,10 @@ describe('describe — var', () => {
     const sess = s()
     sess.evaluate('(defn greet [name] name)')
     const m = mapToObj(sess.evaluate('(describe (var greet))'))
-    expect(m[':kind']).toEqual(cljKeyword(':var'))
-    expect(m[':ns']).toEqual(cljString('user'))
-    expect(m[':name']).toEqual(cljString('greet'))
-    expect(m[':dynamic']).toEqual(cljBoolean(false))
+    expect(m[':kind']).toEqual(v.keyword(':var'))
+    expect(m[':ns']).toEqual(v.string('user'))
+    expect(m[':name']).toEqual(v.string('greet'))
+    expect(m[':dynamic']).toEqual(v.boolean(false))
   })
 
   it(':value contains a nested describe of the var value', () => {
@@ -470,7 +472,7 @@ describe('describe — var', () => {
     const m = mapToObj(sess.evaluate('(describe (var greet))'))
     expect(m[':value'].kind).toBe('map')
     const inner = mapToObj(m[':value'])
-    expect(inner[':kind']).toEqual(cljKeyword(':fn'))
+    expect(inner[':kind']).toEqual(v.keyword(':fn'))
   })
 
   it('doc is accessible via the var path (describe #\'name), not via (describe fn)', () => {
@@ -478,17 +480,17 @@ describe('describe — var', () => {
     sess.evaluate('(defn greet "Greets someone." [name] name)')
     // Doc lives on the Var, not on the function value
     const fnDesc = mapToObj(sess.evaluate('(describe greet)'))
-    expect(fnDesc[':doc']).toEqual(cljNil())
+    expect(fnDesc[':doc']).toEqual(v.nil())
     // But the var wraps the fn and carries meta — future: (describe #'greet) shows :doc
     const varDesc = mapToObj(sess.evaluate('(describe (var greet))'))
-    expect(varDesc[':kind']).toEqual(cljKeyword(':var'))
+    expect(varDesc[':kind']).toEqual(v.keyword(':var'))
   })
 
   it('dynamic? is true for dynamic vars', () => {
     const sess = s()
     sess.evaluate('(def ^:dynamic *my-config* 42)')
     const m = mapToObj(sess.evaluate('(describe (var *my-config*))'))
-    expect(m[':dynamic']).toEqual(cljBoolean(true))
+    expect(m[':dynamic']).toEqual(v.boolean(true))
   })
 })
 
@@ -500,102 +502,102 @@ describe('describe — primitives', () => {
   it('string: kind, value, count', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe "hello")'))
-    expect(m[':kind']).toEqual(cljKeyword(':string'))
-    expect(m[':value']).toEqual(cljString('hello'))
-    expect(m[':count']).toEqual(cljNumber(5))
+    expect(m[':kind']).toEqual(v.keyword(':string'))
+    expect(m[':value']).toEqual(v.string('hello'))
+    expect(m[':count']).toEqual(v.number(5))
   })
 
   it('number: kind and value', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe 42)'))
-    expect(m[':kind']).toEqual(cljKeyword(':number'))
-    expect(m[':value']).toEqual(cljNumber(42))
+    expect(m[':kind']).toEqual(v.keyword(':number'))
+    expect(m[':value']).toEqual(v.number(42))
   })
 
   it('boolean: kind and value', () => {
     const sess = s()
-    expect(mapToObj(sess.evaluate('(describe true)'))[':kind']).toEqual(cljKeyword(':boolean'))
-    expect(mapToObj(sess.evaluate('(describe false)'))[':value']).toEqual(cljBoolean(false))
+    expect(mapToObj(sess.evaluate('(describe true)'))[':kind']).toEqual(v.keyword(':boolean'))
+    expect(mapToObj(sess.evaluate('(describe false)'))[':value']).toEqual(v.boolean(false))
   })
 
   it('nil: kind only', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe nil)'))
-    expect(m[':kind']).toEqual(cljKeyword(':nil'))
+    expect(m[':kind']).toEqual(v.keyword(':nil'))
     expect(Object.keys(m)).toHaveLength(1)
   })
 
   it('simple keyword: kind, name, nil ns', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe :foo)'))
-    expect(m[':kind']).toEqual(cljKeyword(':keyword'))
-    expect(m[':name']).toEqual(cljString('foo'))
-    expect(m[':ns']).toEqual(cljNil())
+    expect(m[':kind']).toEqual(v.keyword(':keyword'))
+    expect(m[':name']).toEqual(v.string('foo'))
+    expect(m[':ns']).toEqual(v.nil())
   })
 
   it('namespaced keyword: kind, name, ns string', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe :user/bar)'))
-    expect(m[':name']).toEqual(cljString('bar'))
-    expect(m[':ns']).toEqual(cljString('user'))
+    expect(m[':name']).toEqual(v.string('bar'))
+    expect(m[':ns']).toEqual(v.string('user'))
   })
 
   it('symbol: kind, name, ns', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate("(describe 'hello)"))
-    expect(m[':kind']).toEqual(cljKeyword(':symbol'))
-    expect(m[':name']).toEqual(cljString('hello'))
-    expect(m[':ns']).toEqual(cljNil())
+    expect(m[':kind']).toEqual(v.keyword(':symbol'))
+    expect(m[':name']).toEqual(v.string('hello'))
+    expect(m[':ns']).toEqual(v.nil())
   })
 
   it('list: kind, count', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate("(describe '(1 2 3))"))
-    expect(m[':kind']).toEqual(cljKeyword(':list'))
-    expect(m[':count']).toEqual(cljNumber(3))
+    expect(m[':kind']).toEqual(v.keyword(':list'))
+    expect(m[':count']).toEqual(v.number(3))
   })
 
   it('vector: kind, count', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe [1 2 3 4])'))
-    expect(m[':kind']).toEqual(cljKeyword(':vector'))
-    expect(m[':count']).toEqual(cljNumber(4))
+    expect(m[':kind']).toEqual(v.keyword(':vector'))
+    expect(m[':count']).toEqual(v.number(4))
   })
 
   it('map: kind, count', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe {:a 1 :b 2})'))
-    expect(m[':kind']).toEqual(cljKeyword(':map'))
-    expect(m[':count']).toEqual(cljNumber(2))
+    expect(m[':kind']).toEqual(v.keyword(':map'))
+    expect(m[':count']).toEqual(v.number(2))
   })
 
   it('set: kind, count', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe #{1 2 3})'))
-    expect(m[':kind']).toEqual(cljKeyword(':set'))
-    expect(m[':count']).toEqual(cljNumber(3))
+    expect(m[':kind']).toEqual(v.keyword(':set'))
+    expect(m[':count']).toEqual(v.number(3))
   })
 
   it('atom: kind and deref-kind', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe (atom {:x 1}))'))
-    expect(m[':kind']).toEqual(cljKeyword(':atom'))
-    expect(m[':deref-kind']).toEqual(cljKeyword(':map'))
+    expect(m[':kind']).toEqual(v.keyword(':atom'))
+    expect(m[':deref-kind']).toEqual(v.keyword(':map'))
   })
 
   it('regex: kind, pattern, flags', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe #"\\d+")'))
-    expect(m[':kind']).toEqual(cljKeyword(':regex'))
-    expect(m[':pattern']).toEqual(cljString('\\d+'))
-    expect(m[':flags']).toEqual(cljString(''))
+    expect(m[':kind']).toEqual(v.keyword(':regex'))
+    expect(m[':pattern']).toEqual(v.string('\\d+'))
+    expect(m[':flags']).toEqual(v.string(''))
   })
 
   it('lazy-seq: kind, realized', () => {
     const sess = s()
     // (map inc [1 2 3]) returns a lazy-seq in cljam; (range 5) is eagerly realized as a list
     const m = mapToObj(sess.evaluate('(describe (map inc [1 2 3]))'))
-    expect(m[':kind']).toEqual(cljKeyword(':lazy-seq'))
+    expect(m[':kind']).toEqual(v.keyword(':lazy-seq'))
     expect(m[':realized'].kind).toBe('boolean')
   })
 })
@@ -613,7 +615,7 @@ describe('describe — composability', () => {
         (area [this] "Compute area."))
     `)
     const methodName = sess.evaluate('(get-in (describe IShape) [:methods 0 :name])')
-    expect(methodName).toEqual(cljString('area'))
+    expect(methodName).toEqual(v.string('area'))
   })
 
   it(':type in record describe matches (type x)', () => {
@@ -631,7 +633,7 @@ describe('describe — composability', () => {
       (defrecord Circle [r] IShape (area [this] r))
     `)
     const firstProto = sess.evaluate('(first (:protocols (describe (->Circle 1))))')
-    expect(firstProto).toEqual(cljKeyword(':user/IShape'))
+    expect(firstProto).toEqual(v.keyword(':user/IShape'))
   })
 
   it('result is a map — keys returns the describe keys', () => {

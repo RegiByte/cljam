@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cljNumber, cljNil } from '../factories'
+import { v } from '../factories'
 import { isSymbol } from '../assertions'
 import {
   createSession as createPristineSession,
@@ -137,34 +137,34 @@ describe('macro hygiene: and / or', () => {
     // Before the fix, __v inside the macro would shadow (or be shadowed by)
     // a user binding named __v. After the fix with v#, there is no collision.
     const s = session()
-    expect(s.evaluate('(let [__v 99] (and true __v))')).toEqual(cljNumber(99))
+    expect(s.evaluate('(let [__v 99] (and true __v))')).toEqual(v.number(99))
   })
 
   it('or is hygienic when user binding shares the old __v name', () => {
     const s = session()
-    expect(s.evaluate('(let [__v 99] (or false __v))')).toEqual(cljNumber(99))
+    expect(s.evaluate('(let [__v 99] (or false __v))')).toEqual(v.number(99))
   })
 
   it('and still short-circuits correctly', () => {
     const s = session()
-    expect(s.evaluate('(and 1 nil 3)')).toEqual(cljNil())
+    expect(s.evaluate('(and 1 nil 3)')).toEqual(v.nil())
   })
 
   it('or still short-circuits correctly', () => {
     const s = session()
-    expect(s.evaluate('(or nil false 42)')).toEqual(cljNumber(42))
+    expect(s.evaluate('(or nil false 42)')).toEqual(v.number(42))
   })
 
   it('nested and/or do not clash with each other', () => {
     const s = session()
-    expect(s.evaluate('(and 1 (or nil 2) 3)')).toEqual(cljNumber(3))
-    expect(s.evaluate('(or nil (and 1 2))')).toEqual(cljNumber(2))
+    expect(s.evaluate('(and 1 (or nil 2) 3)')).toEqual(v.number(3))
+    expect(s.evaluate('(or nil (and 1 2))')).toEqual(v.number(2))
   })
 
   it('defmacro using v# produces hygienic bindings', () => {
     // A user-defined macro using v# should not conflict with caller variables
     const s = session()
     s.evaluate('(defmacro my-or [a b] `(let [v# ~a] (if v# v# ~b)))')
-    expect(s.evaluate('(let [v 10] (my-or false v))')).toEqual(cljNumber(10))
+    expect(s.evaluate('(let [v 10] (my-or false v))')).toEqual(v.number(10))
   })
 })

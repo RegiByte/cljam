@@ -13,6 +13,116 @@ import {
   valueKeywords,
 } from './keywords.ts'
 
+// ---------------------------------------------------------------------------
+// ReaderCtx — threading state through the recursive descent reader.
+// ednMode:          when true, reject Clojure-specific reader macros.
+// dataReaders:      tag name → handler; used by readTaggedLiteral.
+// defaultDataReader: called when no named handler is found.
+// ---------------------------------------------------------------------------
+type ReaderCtx = {
+  scanner: TokenScanner
+  namespace: string
+  aliases: Map<string, string>
+  ednMode?: boolean
+  dataReaders?: Map<string, (form: CljValue) => CljValue>
+  defaultDataReader?: (tagName: string, form: CljValue) => CljValue
+}
+
+// ---------------------------------------------------------------------------
+// skipDiscards — consume leading #_ discard tokens (and the forms they mark).
+//
+// Stacking semantics: #_#_ f1 f2 discards BOTH f1 and f2 (not just f1).
+// Each #_ in a chain discards exactly one form. This mirrors Clojure's
+// sentinel approach: the inner #_ consumes its form, then the outer #_
+// independently consumes one more.
+//
+//   #_ f1 f2           → f1 discarded, [f2] returned
+//   #_#_ f1 f2 f3      → f1 and f2 discarded, [f3] returned
+//   #_#_#_ f1 f2 f3 f4 → f1, f2, f3 discarded, [f4] returned
+// ---------------------------------------------------------------------------
+function skipDiscards(ctx: ReaderCtx): void {
+  const scanner = ctx.scanner
+  while (scanner.peek()?.kind === tokenKeywords.Discard) {
+    scanner.advance() // consume this Discard token
+
+    // Recurse FIRST: inner #_ chains consume their own forms.
+    // The outer #_ then still consumes one additional form independently.
+    // This is what gives #_#_ f1 f2 the "discard both" behavior.
+    skipDiscards(ctx)
+
+    const next = scanner.peek()
+    if (!next) {
+      throw new ReaderError(
+        'Expected a form after #_, got end of input',
+        scanner.position()
+      )
+    }
+    if (isClosingToken(next)) {
+      throw new ReaderError(
+        `Expected a form after #_, got '${getTokenValue(next) || next.kind}'`,
+        next,
+        { start: next.start.offset, end: next.end.offset }
+      )
+    }
+    readForm(ctx) // consume the one form THIS #_ marks
+  }
+}
+
+// ---------------------------------------------------------------------------
+// readTaggedLiteral — handle #inst, #uuid, and user-defined reader tags.
+// Only active when ctx.dataReaders is set (i.e. in EDN mode via readFormsEdn).
+// ---------------------------------------------------------------------------
+function readTaggedLiteral(ctx: ReaderCtx): CljValue {
+  const scanner = ctx.scanner
+  const tagToken = scanner.peek()!
+  scanner.advance() // consume the ReaderTag token
+  const tagName = tagToken.kind === tokenKeywords.ReaderTag
+    ? (tagToken as Token & { kind: 'ReaderTag'; value: string }).value
+    : ''
+
+  skipDiscards(ctx)
+
+  if (scanner.isAtEnd()) {
+    throw new ReaderError(
+      `Expected a form after reader tag #${tagName}, got end of input`,
+      scanner.position()
+    )
+  }
+
+  const value = readForm(ctx)
+
+  if (ctx.dataReaders) {
+    const handler = ctx.dataReaders.get(tagName)
+    if (handler) {
+      try {
+        return handler(value)
+      } catch (e) {
+        if (e instanceof ReaderError) throw e
+        throw new ReaderError(
+          `Error in reader tag #${tagName}: ${(e as Error).message}`,
+          tagToken,
+          { start: tagToken.start.offset, end: tagToken.end.offset }
+        )
+      }
+    }
+    if (ctx.defaultDataReader) {
+      return ctx.defaultDataReader(tagName, value)
+    }
+    throw new ReaderError(
+      `No reader function for tag #${tagName}`,
+      tagToken,
+      { start: tagToken.start.offset, end: tagToken.end.offset }
+    )
+  }
+
+  // Reader tags require EDN mode (ctx.dataReaders must be set).
+  throw new ReaderError(
+    `Reader tags (#${tagName}) are only supported in EDN mode. Use clojure.edn/read-string for tagged literals.`,
+    tagToken,
+    { start: tagToken.start.offset, end: tagToken.end.offset }
+  )
+}
+
 function readAtom(ctx: ReaderCtx): CljValue {
   const scanner = ctx.scanner
   const token = scanner.peek()
@@ -39,6 +149,13 @@ function readAtom(ctx: ReaderCtx): CljValue {
       const kwName = token.value
       let val: CljValue
       if (kwName.startsWith('::')) {
+        if (ctx.ednMode) {
+          throw new ReaderError(
+            `Auto-qualified keywords (::) are not valid in EDN`,
+            token,
+            { start: token.start.offset, end: token.end.offset }
+          )
+        }
         const rest = kwName.slice(2)
         if (rest.includes('/')) {
           const slashIdx = rest.indexOf('/')
@@ -79,7 +196,7 @@ const readQuote = (ctx: ReaderCtx) => {
     )
   }
   scanner.advance() // consume the quote token
-  // quote returns a list with the quote symbol and the quoted value, which is the next form
+  skipDiscards(ctx)
   const value = readForm(ctx)
   if (!value) {
     throw new ReaderError(`Unexpected token: ${getTokenValue(token)}`, token)
@@ -97,6 +214,7 @@ const readQuasiquote = (ctx: ReaderCtx) => {
     )
   }
   scanner.advance() // consume the quasiquote token
+  skipDiscards(ctx)
   const value = readForm(ctx)
   if (!value) {
     throw new ReaderError(`Unexpected token: ${getTokenValue(token)}`, token)
@@ -114,6 +232,7 @@ const readUnquote = (ctx: ReaderCtx) => {
     )
   }
   scanner.advance() // consume the unquote token
+  skipDiscards(ctx)
   const value = readForm(ctx)
   if (!value) {
     throw new ReaderError(`Unexpected token: ${getTokenValue(token)}`, token)
@@ -132,7 +251,9 @@ const readMeta = (ctx: ReaderCtx): CljValue => {
   }
   scanner.advance() // consume Meta token
 
+  skipDiscards(ctx)
   const metaForm = readForm(ctx)
+  skipDiscards(ctx)
   const target = readForm(ctx)
 
   // Convert metaForm to a CljMap
@@ -177,6 +298,7 @@ const readVarQuote = (ctx: ReaderCtx) => {
     )
   }
   scanner.advance() // consume VarQuote token
+  skipDiscards(ctx)
   const value = readForm(ctx)
   return v.list([v.symbol('var'), value])
 }
@@ -191,6 +313,7 @@ const readDeref = (ctx: ReaderCtx) => {
     )
   }
   scanner.advance() // consume the Deref token
+  skipDiscards(ctx)
   const value = readForm(ctx)
   if (!value) {
     throw new ReaderError(`Unexpected token: ${getTokenValue(token)}`, token)
@@ -208,6 +331,7 @@ const readUnquoteSplicing = (ctx: ReaderCtx) => {
     )
   }
   scanner.advance() // consume the unquote splicing token
+  skipDiscards(ctx)
   const value = readForm(ctx)
   if (!value) {
     throw new ReaderError(`Unexpected token: ${getTokenValue(token)}`, token)
@@ -240,6 +364,7 @@ const collectionReader = (valueType: 'list' | 'vector', closeToken: string) => {
     let pairMatched = false
     let closingEnd: number | undefined
     while (!scanner.isAtEnd()) {
+      skipDiscards(ctx) // consume any #_ discard forms before the next element
       const token = scanner.peek()
       if (!token) {
         break
@@ -293,6 +418,7 @@ const readSet = (ctx: ReaderCtx) => {
   let pairMatched = false
   let closingEnd: number | undefined
   while (!scanner.isAtEnd()) {
+    skipDiscards(ctx) // consume any #_ discard forms before the next element
     const token = scanner.peek()
     if (!token) break
     if (isClosingToken(token) && token.kind !== tokenKeywords.RBrace) {
@@ -374,6 +500,7 @@ const readMap = (ctx: ReaderCtx) => {
   scanner.advance() // consume the opening brace
   const entries: [CljValue, CljValue][] = []
   while (!scanner.isAtEnd()) {
+    skipDiscards(ctx) // consume any #_ forms before reading the key
     const token = scanner.peek()
     if (!token) {
       break
@@ -392,6 +519,7 @@ const readMap = (ctx: ReaderCtx) => {
       break
     }
     const key = readForm(ctx)
+    skipDiscards(ctx) // consume any #_ forms before reading the value
     const nextToken = scanner.peek()
     if (!nextToken) {
       throw new ReaderError(
@@ -508,6 +636,7 @@ const readAnonFn = (ctx: ReaderCtx) => {
   let pairMatched = false
   let closingEnd: number | undefined
   while (!scanner.isAtEnd()) {
+    skipDiscards(ctx) // consume any #_ forms before the next body element
     const token = scanner.peek()
     if (!token) break
     if (isClosingToken(token) && token.kind !== tokenKeywords.RParen) {
@@ -608,6 +737,63 @@ function readForm(ctx: ReaderCtx): CljValue {
   if (!token) {
     throw new ReaderError('Unexpected end of input', scanner.position())
   }
+
+  // EDN mode: reject Clojure-specific reader macros
+  if (ctx.ednMode) {
+    switch (token.kind) {
+      case tokenKeywords.Quote:
+        throw new ReaderError(
+          `Quote (') is not valid in EDN`,
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.Quasiquote:
+        throw new ReaderError(
+          'Syntax-quote (`) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.Unquote:
+        throw new ReaderError(
+          'Unquote (~) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.UnquoteSplicing:
+        throw new ReaderError(
+          'Unquote-splicing (~@) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.AnonFnStart:
+        throw new ReaderError(
+          'Anonymous function (#(...)) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.Regex:
+        throw new ReaderError(
+          'Regex literal (#"...") is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.Deref:
+        throw new ReaderError(
+          'Deref (@) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.VarQuote:
+        throw new ReaderError(
+          "Var-quote (#') is not valid in EDN",
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.Meta:
+        throw new ReaderError(
+          'Metadata (^) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+      case tokenKeywords.NsMapPrefix:
+        throw new ReaderError(
+          'Namespaced map (#:ns{...}) is not valid in EDN',
+          token, { start: token.start.offset, end: token.end.offset }
+        )
+    }
+  }
+
   switch (token.kind) {
     case tokenKeywords.String:
     case tokenKeywords.Number:
@@ -642,6 +828,16 @@ function readForm(ctx: ReaderCtx): CljValue {
       return readRegex(ctx)
     case tokenKeywords.NsMapPrefix:
       return readNsMap(ctx)
+    case tokenKeywords.ReaderTag:
+      return readTaggedLiteral(ctx)
+    case tokenKeywords.Discard:
+      // Safety guard — skipDiscards should be called before readForm in all
+      // loop contexts, so a bare Discard token here is unexpected.
+      throw new ReaderError(
+        `Unexpected #_ discard in this context`,
+        token,
+        { start: token.start.offset, end: token.end.offset }
+      )
     default:
       throw new ReaderError(
         `Unexpected token: ${getTokenValue(token)} at line ${token.start.line} column ${token.start.col}`,
@@ -708,12 +904,6 @@ const readNsMap = (ctx: ReaderCtx): CljValue => {
   return v.map(qualifiedEntries)
 }
 
-type ReaderCtx = {
-  scanner: TokenScanner
-  namespace: string
-  aliases: Map<string, string>
-}
-
 // initializes the scanner and parses the forms, returning a tree of values
 export function readForms(
   input: Token[],
@@ -722,13 +912,48 @@ export function readForms(
 ): CljValue[] {
   const withoutComments = input.filter((t) => t.kind !== tokenKeywords.Comment)
   const scanner = makeTokenScanner(withoutComments)
-  const ctx = {
+  const ctx: ReaderCtx = {
     scanner,
     namespace: currentNs,
     aliases,
   }
   const values: CljValue[] = []
   while (!scanner.isAtEnd()) {
+    skipDiscards(ctx)
+    if (scanner.isAtEnd()) break
+    values.push(readForm(ctx))
+  }
+  return values
+}
+
+// ---------------------------------------------------------------------------
+// EDN read options — passed by edn-read-string* when calling readFormsEdn.
+// ---------------------------------------------------------------------------
+export type EdnReadOptions = {
+  dataReaders?: Map<string, (form: CljValue) => CljValue>
+  defaultDataReader?: (tagName: string, form: CljValue) => CljValue
+}
+
+// readFormsEdn — EDN-mode reader used by clojure.edn/read-string.
+// Rejects Clojure-specific syntax and handles reader tags via dataReaders.
+export function readFormsEdn(
+  input: Token[],
+  options?: EdnReadOptions
+): CljValue[] {
+  const withoutComments = input.filter((t) => t.kind !== tokenKeywords.Comment)
+  const scanner = makeTokenScanner(withoutComments)
+  const ctx: ReaderCtx = {
+    scanner,
+    namespace: 'user',
+    aliases: new Map(),
+    ednMode: true,
+    dataReaders: options?.dataReaders,
+    defaultDataReader: options?.defaultDataReader,
+  }
+  const values: CljValue[] = []
+  while (!scanner.isAtEnd()) {
+    skipDiscards(ctx)
+    if (scanner.isAtEnd()) break
     values.push(readForm(ctx))
   }
   return values

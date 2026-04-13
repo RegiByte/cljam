@@ -370,6 +370,13 @@ export type TokenNsMapPrefix = {
   kind: 'NsMapPrefix'
   value: string // raw prefix: ':car', '::car', or '::'
 }
+export type TokenDiscard = {
+  kind: 'Discard'
+}
+export type TokenReaderTag = {
+  kind: 'ReaderTag'
+  value: string // the tag identifier, e.g. "inst", "uuid", "myapp/Foo"
+}
 export type Token = (
   | TokenLParen
   | TokenRParen
@@ -394,6 +401,8 @@ export type Token = (
   | TokenMeta
   | TokenSetStart
   | TokenNsMapPrefix
+  | TokenDiscard
+  | TokenReaderTag
 ) & { start: Cursor; end: Cursor }
 
 /** Compiler */

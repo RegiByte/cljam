@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cljKeyword, cljNumber, cljString } from '../factories'
+import { v } from '../factories'
 import { createSession, createSessionFromSnapshot, snapshotSession } from '../session'
 import { EvaluationError } from '../errors'
 import { ReaderError } from '../errors'
@@ -35,7 +35,7 @@ describe('namespaces', () => {
     it('resolves alias/sym through namespace alias', () => {
       const s = sessionWithNs('my.utils', '(def helper 42)')
       s.evaluate("(require '[my.utils :as u])")
-      expect(s.evaluate('u/helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('u/helper')).toEqual(v.number(42))
     })
 
     it('throws for nonexistent symbol in aliased namespace', () => {
@@ -52,9 +52,9 @@ describe('namespaces', () => {
     it('aliases are live — sees defs added after require', () => {
       const s = sessionWithNs('my.utils', '(def helper 42)')
       s.evaluate("(require '[my.utils :as u])")
-      expect(s.evaluate('u/helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('u/helper')).toEqual(v.number(42))
       s.loadFile('(ns my.utils)\n(def added-later 99)')
-      expect(s.evaluate('u/added-later')).toEqual(cljNumber(99))
+      expect(s.evaluate('u/added-later')).toEqual(v.number(99))
     })
   })
 
@@ -62,7 +62,7 @@ describe('namespaces', () => {
     it('creates alias and allows qualified access', () => {
       const s = sessionWithNs('math.ops', '(def double (fn [x] (* x 2)))')
       s.evaluate("(require '[math.ops :as m])")
-      expect(s.evaluate('(m/double 5)')).toEqual(cljNumber(10))
+      expect(s.evaluate('(m/double 5)')).toEqual(v.number(10))
     })
 
     it('supports multiple requires in the same namespace', () => {
@@ -71,7 +71,7 @@ describe('namespaces', () => {
       s.loadFile('(ns ns.b)\n(def y 2)')
       s.evaluate("(require '[ns.a :as a])")
       s.evaluate("(require '[ns.b :as b])")
-      expect(s.evaluate('(+ a/x b/y)')).toEqual(cljNumber(3))
+      expect(s.evaluate('(+ a/x b/y)')).toEqual(v.number(3))
     })
 
     it('throws when requiring a non-existent namespace', () => {
@@ -88,7 +88,7 @@ describe('namespaces', () => {
       expect(s.getNs('clojure.string')).toBeNull()
       s.evaluate("(require '[clojure.string :as str])")
       expect(s.getNs('clojure.string')).not.toBeNull()
-      expect(s.evaluate('::str/sample')).toEqual(cljKeyword(':clojure.string/sample'))
+      expect(s.evaluate('::str/sample')).toEqual(v.keyword(':clojure.string/sample'))
     })
   })
 
@@ -96,13 +96,13 @@ describe('namespaces', () => {
     it('brings specific symbols into current namespace', () => {
       const s = sessionWithNs('my.utils', '(def helper 42)\n(def other 99)')
       s.evaluate("(require '[my.utils :refer [helper]])")
-      expect(s.evaluate('helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('helper')).toEqual(v.number(42))
     })
 
     it('does not bring unreferred symbols', () => {
       const s = sessionWithNs('my.utils', '(def helper 42)\n(def other 99)')
       s.evaluate("(require '[my.utils :refer [helper]])")
-      expect(s.evaluate('helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('helper')).toEqual(v.number(42))
       expect(() => s.evaluate('other')).toThrow('not found')
     })
 
@@ -121,7 +121,7 @@ describe('namespaces', () => {
         '(defn greet [name] (str "hello " name))'
       )
       s.evaluate("(require '[my.utils :refer [greet]])")
-      expect(s.evaluate('(greet "world")')).toEqual(cljString('hello world'))
+      expect(s.evaluate('(greet "world")')).toEqual(v.string('hello world'))
     })
   })
 
@@ -132,9 +132,9 @@ describe('namespaces', () => {
         '(def helper 42)\n(def other 99)'
       )
       s.evaluate("(require '[my.utils :as u :refer [helper]])")
-      expect(s.evaluate('helper')).toEqual(cljNumber(42))
-      expect(s.evaluate('u/other')).toEqual(cljNumber(99))
-      expect(s.evaluate('u/helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('helper')).toEqual(v.number(42))
+      expect(s.evaluate('u/other')).toEqual(v.number(99))
+      expect(s.evaluate('u/helper')).toEqual(v.number(42))
     })
   })
 
@@ -146,7 +146,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [my.utils :as u]))\n(def result u/helper)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('result')).toEqual(cljNumber(42))
+      expect(s.evaluate('result')).toEqual(v.number(42))
     })
 
     it('supports multiple require specs in ns form', () => {
@@ -157,7 +157,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [ns.a :as a] [ns.b :as b]))\n(def sum (+ a/x b/y))'
       )
       s.setNs('my.app')
-      expect(s.evaluate('sum')).toEqual(cljNumber(3))
+      expect(s.evaluate('sum')).toEqual(v.number(3))
     })
 
     it('ns form with :refer brings symbols in', () => {
@@ -167,7 +167,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [my.utils :refer [helper]]))\n(def result helper)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('result')).toEqual(cljNumber(42))
+      expect(s.evaluate('result')).toEqual(v.number(42))
     })
 
     it('ns form with both :as and :refer', () => {
@@ -177,8 +177,8 @@ describe('namespaces', () => {
         '(ns my.app (:require [my.utils :as u :refer [helper]]))\n(def r1 helper)\n(def r2 u/other)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('r1')).toEqual(cljNumber(42))
-      expect(s.evaluate('r2')).toEqual(cljNumber(99))
+      expect(s.evaluate('r1')).toEqual(v.number(42))
+      expect(s.evaluate('r2')).toEqual(v.number(99))
     })
   })
 
@@ -190,7 +190,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [math.core :as math]))\n(def result (math/double 21))'
       )
       s.setNs('my.app')
-      expect(s.evaluate('result')).toEqual(cljNumber(42))
+      expect(s.evaluate('result')).toEqual(v.number(42))
     })
 
     it('namespace defines functions that use required functions', () => {
@@ -200,7 +200,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [math.core :as math]))\n(defn quadruple [x] (math/double (math/double x)))'
       )
       s.setNs('my.app')
-      expect(s.evaluate('(quadruple 3)')).toEqual(cljNumber(12))
+      expect(s.evaluate('(quadruple 3)')).toEqual(v.number(12))
     })
 
     it('chained requires — A requires B which was loaded first', () => {
@@ -209,7 +209,7 @@ describe('namespaces', () => {
       s.loadFile('(ns middle (:require [base :as b]))\n(def y (+ b/x 5))')
       s.loadFile('(ns top (:require [middle :as m]))\n(def z m/y)')
       s.setNs('top')
-      expect(s.evaluate('z')).toEqual(cljNumber(15))
+      expect(s.evaluate('z')).toEqual(v.number(15))
     })
   })
 
@@ -286,25 +286,25 @@ describe('namespaces', () => {
     it('lazily loads a namespace when require encounters unknown ns', () => {
       const s = sessionWithReadFile()
       s.evaluate("(require '[my.utils :as u])")
-      expect(s.evaluate('u/helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('u/helper')).toEqual(v.number(42))
     })
 
     it('lazily loads and calls functions from resolved namespace', () => {
       const s = sessionWithReadFile()
       s.evaluate("(require '[my.math :as m])")
-      expect(s.evaluate('(m/double 5)')).toEqual(cljNumber(10))
+      expect(s.evaluate('(m/double 5)')).toEqual(v.number(10))
     })
 
     it('lazy resolution works with :refer', () => {
       const s = sessionWithReadFile()
       s.evaluate("(require '[my.utils :refer [helper]])")
-      expect(s.evaluate('helper')).toEqual(cljNumber(42))
+      expect(s.evaluate('helper')).toEqual(v.number(42))
     })
 
     it('lazy resolution chains — loading a file that requires another', () => {
       const s = sessionWithReadFile()
       s.evaluate("(require '[chain.middle :as m])")
-      expect(s.evaluate('m/y')).toEqual(cljNumber(15))
+      expect(s.evaluate('m/y')).toEqual(v.number(15))
     })
 
     it('ns form :require clause triggers lazy resolution', () => {
@@ -313,7 +313,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [my.utils :as u]))\n(def result u/helper)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('result')).toEqual(cljNumber(42))
+      expect(s.evaluate('result')).toEqual(v.number(42))
     })
 
     it('throws when file is not found even with readFile', () => {
@@ -338,7 +338,7 @@ describe('namespaces', () => {
       })
       s.loadFile('(ns my.utils)\n(def helper 99)')
       s.evaluate("(require '[my.utils :as u])")
-      expect(s.evaluate('u/helper')).toEqual(cljNumber(99))
+      expect(s.evaluate('u/helper')).toEqual(v.number(99))
       expect(readFileCalls).toBe(0)
     })
 
@@ -365,7 +365,7 @@ describe('namespaces', () => {
         '(ns my.app (:require [my.schema :as s]))\n(def kw ::s/entity)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('kw')).toEqual(cljKeyword(':my.schema/entity'))
+      expect(s.evaluate('kw')).toEqual(v.keyword(':my.schema/entity'))
     })
 
     it('expands multiple ::alias/foo keywords in the same file', () => {
@@ -378,8 +378,8 @@ describe('namespaces', () => {
           '(def kb ::b/tag)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('ka')).toEqual(cljKeyword(':ns.a/tag'))
-      expect(s.evaluate('kb')).toEqual(cljKeyword(':ns.b/tag'))
+      expect(s.evaluate('ka')).toEqual(v.keyword(':ns.a/tag'))
+      expect(s.evaluate('kb')).toEqual(v.keyword(':ns.b/tag'))
     })
 
     it('::alias/foo used as a multimethod dispatch value', () => {
@@ -393,10 +393,10 @@ describe('namespaces', () => {
       )
       s.setNs('my.app')
       expect(s.evaluate('(describe {:type :my.types/user})')).toEqual(
-        cljString('a user')
+        v.string('a user')
       )
       expect(s.evaluate('(describe {:type :other})')).toEqual(
-        cljString('unknown')
+        v.string('unknown')
       )
     })
 
@@ -405,7 +405,7 @@ describe('namespaces', () => {
       s.loadFile('(ns my.utils)\n(def x 1)')
       s.evaluate("(require '[my.utils :as u])")
       expect(s.evaluate('::u/something')).toEqual(
-        cljKeyword(':my.utils/something')
+        v.keyword(':my.utils/something')
       )
     })
 
@@ -422,7 +422,7 @@ describe('namespaces', () => {
           '(def active-kw ::d/active)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('active-kw')).toEqual(cljKeyword(':my.domain/active'))
+      expect(s.evaluate('active-kw')).toEqual(v.keyword(':my.domain/active'))
     })
   })
 
@@ -430,7 +430,7 @@ describe('namespaces', () => {
     it('creates a reader alias without requiring the namespace to be loaded', () => {
       const s = session()
       s.evaluate("(require '[company.domain.user :as-alias user])")
-      expect(s.evaluate('::user/id')).toEqual(cljKeyword(':company.domain.user/id'))
+      expect(s.evaluate('::user/id')).toEqual(v.keyword(':company.domain.user/id'))
     })
 
     it('ns form with :as-alias in :require clause expands ::alias/foo in file body', () => {
@@ -440,7 +440,7 @@ describe('namespaces', () => {
           '(def kw ::order/status)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('kw')).toEqual(cljKeyword(':my.domain.order/status'))
+      expect(s.evaluate('kw')).toEqual(v.keyword(':my.domain.order/status'))
     })
 
     it('the aliased namespace does not need to exist as a loadable file', () => {
@@ -449,15 +449,15 @@ describe('namespaces', () => {
       expect(() =>
         s.evaluate("(require '[my.imaginary.ns :as-alias img])")
       ).not.toThrow()
-      expect(s.evaluate('::img/tag')).toEqual(cljKeyword(':my.imaginary.ns/tag'))
+      expect(s.evaluate('::img/tag')).toEqual(v.keyword(':my.imaginary.ns/tag'))
     })
 
     it('multiple :as-alias specs in the same require call all resolve', () => {
       const s = session()
       s.evaluate("(require '[domain.user :as-alias user])")
       s.evaluate("(require '[domain.order :as-alias order])")
-      expect(s.evaluate('::user/id')).toEqual(cljKeyword(':domain.user/id'))
-      expect(s.evaluate('::order/id')).toEqual(cljKeyword(':domain.order/id'))
+      expect(s.evaluate('::user/id')).toEqual(v.keyword(':domain.user/id'))
+      expect(s.evaluate('::order/id')).toEqual(v.keyword(':domain.order/id'))
     })
 
     it('multiple :as-alias in a single ns form', () => {
@@ -470,8 +470,8 @@ describe('namespaces', () => {
           '(def sh ::shipping/label)'
       )
       s.setNs('my.app')
-      expect(s.evaluate('b')).toEqual(cljKeyword(':acme.billing/invoice'))
-      expect(s.evaluate('sh')).toEqual(cljKeyword(':acme.shipping/label'))
+      expect(s.evaluate('b')).toEqual(v.keyword(':acme.billing/invoice'))
+      expect(s.evaluate('sh')).toEqual(v.keyword(':acme.shipping/label'))
     })
 
     it('REPL: ::alias/foo works in subsequent evaluations after :as-alias require', () => {
@@ -479,7 +479,7 @@ describe('namespaces', () => {
       s.evaluate("(require '[event.sourcing :as-alias ev])")
       // Second evaluation — alias must be remembered across calls
       expect(s.evaluate('::ev/created')).toEqual(
-        cljKeyword(':event.sourcing/created')
+        v.keyword(':event.sourcing/created')
       )
     })
 
@@ -489,9 +489,9 @@ describe('namespaces', () => {
       s.evaluate("(require '[my.utils :as u])")
       s.evaluate("(require '[my.domain.util :as-alias du])")
       // :as alias → qualified symbol lookup
-      expect(s.evaluate('u/x')).toEqual(cljNumber(42))
+      expect(s.evaluate('u/x')).toEqual(v.number(42))
       // :as-alias → keyword expansion only
-      expect(s.evaluate('::du/tag')).toEqual(cljKeyword(':my.domain.util/tag'))
+      expect(s.evaluate('::du/tag')).toEqual(v.keyword(':my.domain.util/tag'))
     })
 
     it(':as-alias does not allow qualified symbol lookup (namespace not loaded)', () => {
@@ -524,7 +524,7 @@ describe('namespaces', () => {
       )
       s.setNs('my.app')
       expect(s.evaluate('(area {:type :domain.shapes/circle :r 2})')).toEqual(
-        cljNumber(6)
+        v.number(6)
       )
     })
   })
@@ -561,9 +561,9 @@ describe('session — frameStack recovery after stack overflow', () => {
     // and this smaller call would also fail. With the fix, the frameStack is
     // reset at the session boundary and the depth budget is fully restored.
     expect(() => s.evaluate('(deep 20000)')).toThrow()    // still throws (same limit)
-    expect(s.evaluate('(deep 100)')).toEqual(cljKeyword(':done'))
-    expect(s.evaluate('(deep 500)')).toEqual(cljKeyword(':done'))
-    expect(s.evaluate('(deep 100)')).toEqual(cljKeyword(':done'))  // second time, no degradation
+    expect(s.evaluate('(deep 100)')).toEqual(v.keyword(':done'))
+    expect(s.evaluate('(deep 500)')).toEqual(v.keyword(':done'))
+    expect(s.evaluate('(deep 100)')).toEqual(v.keyword(':done'))  // second time, no degradation
   })
 
   it('frameStack is empty after a normal evaluation', () => {
@@ -574,8 +574,8 @@ describe('session — frameStack recovery after stack overflow', () => {
       (ns test.depth)
       (defn deep [n] (if (zero? n) :done (deep (dec n))))
     `)
-    expect(s.evaluate('(deep 500)')).toEqual(cljKeyword(':done'))
-    expect(s.evaluate('(deep 500)')).toEqual(cljKeyword(':done'))
+    expect(s.evaluate('(deep 500)')).toEqual(v.keyword(':done'))
+    expect(s.evaluate('(deep 500)')).toEqual(v.keyword(':done'))
   })
 
   it('no accumulation across many consecutive successful evals', () => {
@@ -596,7 +596,7 @@ describe('session — frameStack recovery after stack overflow', () => {
       (defn deep [n] (if (zero? n) :done (deep (dec n))))
     `)
     for (let i = 0; i < 30; i++) {
-      expect(s.evaluate('(deep 500)')).toEqual(cljKeyword(':done'))
+      expect(s.evaluate('(deep 500)')).toEqual(v.keyword(':done'))
     }
   })
 })

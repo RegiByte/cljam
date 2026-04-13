@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolveModuleOrder } from '../module'
 import type { RuntimeModule } from '../module'
-import { cljNumber, cljString } from '../factories'
+import { v } from '../factories'
 import { createRuntime } from '../runtime'
 
 // ---------------------------------------------------------------------------
@@ -140,18 +140,18 @@ describe('runtime.installModules', () => {
         {
           name: 'clojure.core',
           vars: () =>
-            new Map([['test-var', { value: cljNumber(42) }]]),
+            new Map([['test-var', { value: v.number(42) }]]),
         },
       ],
     }
     runtime.installModules([mod])
     const ns = runtime.getNs('clojure.core')!
-    const v = ns.vars.get('test-var')
-    expect(v).toBeDefined()
-    expect(v!.value).toMatchObject(cljNumber(42))
-    expect(v!.kind).toBe('var')
-    expect(v!.ns).toBe('clojure.core')
-    expect(v!.name).toBe('test-var')
+    const varObj = ns.vars.get('test-var')
+    expect(varObj).toBeDefined()
+    expect(varObj!.value).toEqual(v.number(42))
+    expect(varObj!.kind).toBe('var')
+    expect(varObj!.ns).toBe('clojure.core')
+    expect(varObj!.name).toBe('test-var')
   })
 
   it('installs vars into a new namespace', () => {
@@ -161,7 +161,7 @@ describe('runtime.installModules', () => {
       declareNs: [
         {
           name: 'my.new.ns',
-          vars: () => new Map([['greet', { value: cljString('hello') }]]),
+          vars: () => new Map([['greet', { value: v.string('hello') }]]),
         },
       ],
     }
@@ -169,7 +169,7 @@ describe('runtime.installModules', () => {
     const ns = runtime.getNs('my.new.ns')
     expect(ns).not.toBeNull()
     expect(ns!.vars.get('greet')).toBeDefined()
-    expect(ns!.vars.get('greet')!.value).toMatchObject(cljString('hello'))
+    expect(ns!.vars.get('greet')!.value).toEqual(v.string('hello'))
   })
 
   it('installs dynamic var with dynamic flag set', () => {
@@ -180,13 +180,13 @@ describe('runtime.installModules', () => {
         {
           name: 'my.ns',
           vars: () =>
-            new Map([['*my-dynamic*', { value: cljNumber(0), dynamic: true }]]),
+            new Map([['*my-dynamic*', { value: v.number(0), dynamic: true }]]),
         },
       ],
     }
     runtime.installModules([mod])
-    const v = runtime.getNs('my.ns')!.vars.get('*my-dynamic*')!
-    expect(v.dynamic).toBe(true)
+    const varObj = runtime.getNs('my.ns')!.vars.get('*my-dynamic*')!
+    expect(varObj.dynamic).toBe(true)
   })
 
   it('installs multiple modules in dependency order', () => {
@@ -200,7 +200,7 @@ describe('runtime.installModules', () => {
           name: 'ns.a',
           vars: () => {
             installed.push('a')
-            return new Map([['x', { value: cljNumber(1) }]])
+            return new Map([['x', { value: v.number(1) }]])
           },
         },
       ],
@@ -213,7 +213,7 @@ describe('runtime.installModules', () => {
           name: 'ns.b',
           vars: () => {
             installed.push('b')
-            return new Map([['y', { value: cljNumber(2) }]])
+            return new Map([['y', { value: v.number(2) }]])
           },
         },
       ],
@@ -252,13 +252,13 @@ describe('runtime.installModules', () => {
     const a: RuntimeModule = {
       id: 'test/a',
       declareNs: [
-        { name: 'shared.ns', vars: () => new Map([['clash', { value: cljNumber(1) }]]) },
+        { name: 'shared.ns', vars: () => new Map([['clash', { value: v.number(1) }]]) },
       ],
     }
     const b: RuntimeModule = {
       id: 'test/b',
       declareNs: [
-        { name: 'shared.ns', vars: () => new Map([['clash', { value: cljNumber(2) }]]) },
+        { name: 'shared.ns', vars: () => new Map([['clash', { value: v.number(2) }]]) },
       ],
     }
     // Install a first
@@ -273,15 +273,15 @@ describe('runtime.installModules', () => {
     const runtime = createRuntime()
     const a: RuntimeModule = {
       id: 'test/a',
-      declareNs: [{ name: 'shared.ns', vars: () => new Map([['x', { value: cljNumber(1) }]]) }],
+      declareNs: [{ name: 'shared.ns', vars: () => new Map([['x', { value: v.number(1) }]]) }],
     }
     const b: RuntimeModule = {
       id: 'test/b',
-      declareNs: [{ name: 'shared.ns', vars: () => new Map([['y', { value: cljNumber(2) }]]) }],
+      declareNs: [{ name: 'shared.ns', vars: () => new Map([['y', { value: v.number(2) }]]) }],
     }
     expect(() => runtime.installModules([a, b])).not.toThrow()
     const ns = runtime.getNs('shared.ns')!
-    expect(ns.vars.get('x')!.value).toMatchObject(cljNumber(1))
-    expect(ns.vars.get('y')!.value).toMatchObject(cljNumber(2))
+    expect(ns.vars.get('x')!.value).toEqual(v.number(1))
+    expect(ns.vars.get('y')!.value).toEqual(v.number(2))
   })
 })

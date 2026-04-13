@@ -313,6 +313,19 @@ function parseDispatch(ctx: TokenizationContext): Token {
     const prefix = scanner.consumeWhile((c) => c !== '{' && c !== ' ' && c !== '\n' && c !== '\t' && c !== ',')
     return { kind: tokenKeywords.NsMapPrefix, value: prefix, start, end: scanner.position() }
   }
+  if (next === '_') {
+    // #_ — discard the following form (works in both Clojure and EDN)
+    scanner.advance() // consume '_'
+    return { kind: tokenKeywords.Discard, start, end: scanner.position() }
+  }
+  if (next !== null && /[a-zA-Z]/.test(next)) {
+    // #tag — reader tag literal, e.g. #inst, #uuid, #myapp/Foo
+    // Consume until whitespace, delimiter, comment char, or string delimiter.
+    const tagName = scanner.consumeWhile(
+      (c) => !isWhitespace(c) && !isDelimiter(c) && !isComment(c) && c !== '"'
+    )
+    return { kind: tokenKeywords.ReaderTag, value: tagName, start, end: scanner.position() }
+  }
   throw new TokenizerError(
     `Unknown dispatch character: #${next ?? 'EOF'}`,
     start

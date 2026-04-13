@@ -10,15 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  cljBoolean,
-  cljKeyword,
-  cljNil,
-  cljNumber,
-  cljString,
-  cljSymbol,
-  cljVector,
-} from '../factories'
+import { v } from '../factories'
 import { freshSession as session } from '../evaluator/__tests__/evaluator-test-utils'
 import { printString } from '../printer'
 
@@ -62,9 +54,9 @@ describe('defprotocol', () => {
   it('protocol? returns true for a protocol value', () => {
     const sess = s()
     sess.evaluate('(defprotocol IPrintable (print-str [this]))')
-    expect(sess.evaluate('(protocol? IPrintable)')).toEqual(cljBoolean(true))
-    expect(sess.evaluate('(protocol? "hello")')).toEqual(cljBoolean(false))
-    expect(sess.evaluate('(protocol? 42)')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(protocol? IPrintable)')).toEqual(v.boolean(true))
+    expect(sess.evaluate('(protocol? "hello")')).toEqual(v.boolean(false))
+    expect(sess.evaluate('(protocol? 42)')).toEqual(v.boolean(false))
   })
 
   it('protocol prints as #protocol[ns/Name]', () => {
@@ -89,9 +81,11 @@ describe('extend-protocol on built-in types', () => {
         :number (describe-val [n] (str "number:" n))
         :nil    (describe-val [_] "nil"))
     `)
-    expect(sess.evaluate('(describe-val "hello")')).toEqual(cljString('string:hello'))
-    expect(sess.evaluate('(describe-val 42)')).toEqual(cljString('number:42'))
-    expect(sess.evaluate('(describe-val nil)')).toEqual(cljString('nil'))
+    expect(sess.evaluate('(describe-val "hello")')).toEqual(
+      v.string('string:hello')
+    )
+    expect(sess.evaluate('(describe-val 42)')).toEqual(v.string('number:42'))
+    expect(sess.evaluate('(describe-val nil)')).toEqual(v.string('nil'))
   })
 
   it('throws No implementation when type not extended', () => {
@@ -113,9 +107,9 @@ describe('extend-protocol on built-in types', () => {
         :boolean (tag [b] (if b :yes :no))
         :keyword (tag [k] (str "kw:" (name k))))
     `)
-    expect(sess.evaluate('(tag true)')).toEqual(cljKeyword(':yes'))
-    expect(sess.evaluate('(tag false)')).toEqual(cljKeyword(':no'))
-    expect(sess.evaluate('(tag :hello)')).toEqual(cljString('kw:hello'))
+    expect(sess.evaluate('(tag true)')).toEqual(v.keyword(':yes'))
+    expect(sess.evaluate('(tag false)')).toEqual(v.keyword(':no'))
+    expect(sess.evaluate('(tag :hello)')).toEqual(v.string('kw:hello'))
   })
 
   it('later extend-protocol call overwrites earlier implementation', () => {
@@ -124,12 +118,12 @@ describe('extend-protocol on built-in types', () => {
       (defprotocol IGreet (greet [this]))
       (extend-protocol IGreet :string (greet [s] (str "Hello " s)))
     `)
-    expect(sess.evaluate('(greet "World")')).toEqual(cljString('Hello World'))
+    expect(sess.evaluate('(greet "World")')).toEqual(v.string('Hello World'))
     // Override
     sess.evaluate(`
       (extend-protocol IGreet :string (greet [s] (str "Hi " s)))
     `)
-    expect(sess.evaluate('(greet "World")')).toEqual(cljString('Hi World'))
+    expect(sess.evaluate('(greet "World")')).toEqual(v.string('Hi World'))
   })
 })
 
@@ -150,40 +144,42 @@ describe('defrecord', () => {
     sess.evaluate('(defrecord Point [x y])')
     const pt = sess.evaluate('(map->Point {:x 10 :y 20})')
     expect(pt.kind).toBe('record')
-    expect(sess.evaluate('(:x (map->Point {:x 10 :y 20}))')).toEqual(cljNumber(10))
+    expect(sess.evaluate('(:x (map->Point {:x 10 :y 20}))')).toEqual(
+      v.number(10)
+    )
   })
 
   it('record fields accessible via keywords', () => {
     const sess = s()
     sess.evaluate('(defrecord Point [x y])')
     sess.evaluate('(def p (->Point 3 4))')
-    expect(sess.evaluate('(:x p)')).toEqual(cljNumber(3))
-    expect(sess.evaluate('(:y p)')).toEqual(cljNumber(4))
+    expect(sess.evaluate('(:x p)')).toEqual(v.number(3))
+    expect(sess.evaluate('(:y p)')).toEqual(v.number(4))
   })
 
   it('get works on records', () => {
     const sess = s()
     sess.evaluate('(defrecord Box [width height])')
     sess.evaluate('(def b (->Box 100 200))')
-    expect(sess.evaluate('(get b :width)')).toEqual(cljNumber(100))
-    expect(sess.evaluate('(get b :missing 99)')).toEqual(cljNumber(99))
+    expect(sess.evaluate('(get b :width)')).toEqual(v.number(100))
+    expect(sess.evaluate('(get b :missing 99)')).toEqual(v.number(99))
   })
 
   it('record called as a function — (record :key)', () => {
     const sess = s()
     sess.evaluate('(defrecord Cat [name age])')
     sess.evaluate('(def c (->Cat "Mochi" 3))')
-    expect(sess.evaluate('(c :name)')).toEqual(cljString('Mochi'))
-    expect(sess.evaluate('(c :age)')).toEqual(cljNumber(3))
-    expect(sess.evaluate('(c :missing "default")')).toEqual(cljString('default'))
+    expect(sess.evaluate('(c :name)')).toEqual(v.string('Mochi'))
+    expect(sess.evaluate('(c :age)')).toEqual(v.number(3))
+    expect(sess.evaluate('(c :missing "default")')).toEqual(v.string('default'))
   })
 
   it('keyword called on a record — (:key record)', () => {
     const sess = s()
     sess.evaluate('(defrecord Dog [breed])')
     sess.evaluate('(def d (->Dog "Labrador"))')
-    expect(sess.evaluate('(:breed d)')).toEqual(cljString('Labrador'))
-    expect(sess.evaluate('(:color d "unknown")')).toEqual(cljString('unknown'))
+    expect(sess.evaluate('(:breed d)')).toEqual(v.string('Labrador'))
+    expect(sess.evaluate('(:color d "unknown")')).toEqual(v.string('unknown'))
   })
 
   it('record prints as #ns/TypeName{:field val ...}', () => {
@@ -196,21 +192,23 @@ describe('defrecord', () => {
   it('record? predicate', () => {
     const sess = s()
     sess.evaluate('(defrecord Pt [x y])')
-    expect(sess.evaluate('(record? (->Pt 1 2))')).toEqual(cljBoolean(true))
-    expect(sess.evaluate('(record? {:x 1})')).toEqual(cljBoolean(false))
-    expect(sess.evaluate('(record? nil)')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(record? (->Pt 1 2))')).toEqual(v.boolean(true))
+    expect(sess.evaluate('(record? {:x 1})')).toEqual(v.boolean(false))
+    expect(sess.evaluate('(record? nil)')).toEqual(v.boolean(false))
   })
 
   it('record-type returns qualified type name', () => {
     const sess = s()
     sess.evaluate('(defrecord Wheel [radius])')
-    expect(sess.evaluate('(record-type (->Wheel 5))')).toEqual(cljString('user/Wheel'))
+    expect(sess.evaluate('(record-type (->Wheel 5))')).toEqual(
+      v.string('user/Wheel')
+    )
   })
 
   it('count returns number of fields', () => {
     const sess = s()
     sess.evaluate('(defrecord Triple [a b c])')
-    expect(sess.evaluate('(count (->Triple 1 2 3))')).toEqual(cljNumber(3))
+    expect(sess.evaluate('(count (->Triple 1 2 3))')).toEqual(v.number(3))
   })
 
   it('keys and vals work on records', () => {
@@ -218,17 +216,19 @@ describe('defrecord', () => {
     sess.evaluate('(defrecord Pair [left right])')
     sess.evaluate('(def p (->Pair "A" "B"))')
     const ks = sess.evaluate('(keys p)')
-    expect(ks).toMatchObject(cljVector([cljKeyword(':left'), cljKeyword(':right')]))
+    expect(ks).toMatchObject(
+      v.vector([v.keyword(':left'), v.keyword(':right')])
+    )
     const vs = sess.evaluate('(vals p)')
-    expect(vs).toMatchObject(cljVector([cljString('A'), cljString('B')]))
+    expect(vs).toMatchObject(v.vector([v.string('A'), v.string('B')]))
   })
 
   it('contains? works on record fields', () => {
     const sess = s()
     sess.evaluate('(defrecord Node [value next])')
     sess.evaluate('(def n (->Node 42 nil))')
-    expect(sess.evaluate('(contains? n :value)')).toEqual(cljBoolean(true))
-    expect(sess.evaluate('(contains? n :missing)')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(contains? n :value)')).toEqual(v.boolean(true))
+    expect(sess.evaluate('(contains? n :missing)')).toEqual(v.boolean(false))
   })
 
   it('assoc on a record returns a plain map', () => {
@@ -237,7 +237,7 @@ describe('defrecord', () => {
     sess.evaluate('(def p (->Pt 1 2))')
     const updated = sess.evaluate('(assoc p :x 99)')
     expect(updated.kind).toBe('map')
-    expect(sess.evaluate('(:x (assoc p :x 99))')).toEqual(cljNumber(99))
+    expect(sess.evaluate('(:x (assoc p :x 99))')).toEqual(v.number(99))
   })
 
   it('dissoc on a record returns a plain map', () => {
@@ -246,7 +246,7 @@ describe('defrecord', () => {
     sess.evaluate('(def p (->Pt 1 2))')
     const result = sess.evaluate('(dissoc p :x)')
     expect(result.kind).toBe('map')
-    expect(sess.evaluate('(:y (dissoc p :x))')).toEqual(cljNumber(2))
+    expect(sess.evaluate('(:y (dissoc p :x))')).toEqual(v.number(2))
   })
 
   it('seq on a record produces entry pairs (like a map)', () => {
@@ -264,7 +264,7 @@ describe('defrecord', () => {
     sess.evaluate('(def p (->Pt 3 4))')
     const m = sess.evaluate('(into {} p)')
     expect(m.kind).toBe('map')
-    expect(sess.evaluate('(:x (into {} p))')).toEqual(cljNumber(3))
+    expect(sess.evaluate('(:x (into {} p))')).toEqual(v.number(3))
   })
 })
 
@@ -324,19 +324,21 @@ describe('geometry domain — defrecord with inline protocol', () => {
   it('Rectangle area is width * height', () => {
     const sess = s()
     sess.evaluate(GEOMETRY_SRC)
-    expect(sess.evaluate('(area (->Rectangle 4 5))')).toEqual(cljNumber(20))
+    expect(sess.evaluate('(area (->Rectangle 4 5))')).toEqual(v.number(20))
   })
 
   it('Rectangle perimeter is 2 * (w + h)', () => {
     const sess = s()
     sess.evaluate(GEOMETRY_SRC)
-    expect(sess.evaluate('(perimeter (->Rectangle 3 7))')).toEqual(cljNumber(20))
+    expect(sess.evaluate('(perimeter (->Rectangle 3 7))')).toEqual(v.number(20))
   })
 
   it('Triangle perimeter is sum of sides', () => {
     const sess = s()
     sess.evaluate(GEOMETRY_SRC)
-    expect(sess.evaluate('(perimeter (->Triangle 3 4 5))')).toEqual(cljNumber(12))
+    expect(sess.evaluate('(perimeter (->Triangle 3 4 5))')).toEqual(
+      v.number(12)
+    )
   })
 
   it('Triangle area of a 3-4-5 right triangle is 6 (Heron)', () => {
@@ -350,15 +352,21 @@ describe('geometry domain — defrecord with inline protocol', () => {
     const sess = s()
     sess.evaluate(GEOMETRY_SRC)
     // radius is bound directly inside area method — not (:radius this)
-    expect(sess.evaluate('(:radius (->Circle 7))')).toEqual(cljNumber(7))
+    expect(sess.evaluate('(:radius (->Circle 7))')).toEqual(v.number(7))
   })
 
   it('protocol dispatch works via satisfies?', () => {
     const sess = s()
     sess.evaluate(GEOMETRY_SRC)
-    expect(sess.evaluate('(satisfies? IShape (->Circle 5))')).toEqual(cljBoolean(true))
-    expect(sess.evaluate('(satisfies? IShape (->Rectangle 4 5))')).toEqual(cljBoolean(true))
-    expect(sess.evaluate('(satisfies? IShape "not a shape")')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(satisfies? IShape (->Circle 5))')).toEqual(
+      v.boolean(true)
+    )
+    expect(sess.evaluate('(satisfies? IShape (->Rectangle 4 5))')).toEqual(
+      v.boolean(true)
+    )
+    expect(sess.evaluate('(satisfies? IShape "not a shape")')).toEqual(
+      v.boolean(false)
+    )
   })
 
   it('all shapes can be processed through protocol dispatch in a loop', () => {
@@ -385,8 +393,8 @@ describe('satisfies?', () => {
       (defprotocol IFoo (foo [x]))
       (extend-protocol IFoo :string (foo [s] s))
     `)
-    expect(sess.evaluate('(satisfies? IFoo "hello")')).toEqual(cljBoolean(true))
-    expect(sess.evaluate('(satisfies? IFoo 42)')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(satisfies? IFoo "hello")')).toEqual(v.boolean(true))
+    expect(sess.evaluate('(satisfies? IFoo 42)')).toEqual(v.boolean(false))
   })
 
   it('satisfies? works via a var reference', () => {
@@ -395,7 +403,7 @@ describe('satisfies?', () => {
       (defprotocol IBar (bar [x]))
       (extend-protocol IBar :number (bar [n] n))
     `)
-    expect(sess.evaluate('(satisfies? IBar 5)')).toEqual(cljBoolean(true))
+    expect(sess.evaluate('(satisfies? IBar 5)')).toEqual(v.boolean(true))
   })
 
   it('satisfies? checks record types by qualified name', () => {
@@ -405,10 +413,14 @@ describe('satisfies?', () => {
       (defrecord MyThing [v]
         IFoo (foo [this] v))
     `)
-    expect(sess.evaluate('(satisfies? IFoo (->MyThing 1))')).toEqual(cljBoolean(true))
+    expect(sess.evaluate('(satisfies? IFoo (->MyThing 1))')).toEqual(
+      v.boolean(true)
+    )
     // Same protocol, different record type that is NOT extended
     sess.evaluate('(defrecord OtherThing [v])')
-    expect(sess.evaluate('(satisfies? IFoo (->OtherThing 1))')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(satisfies? IFoo (->OtherThing 1))')).toEqual(
+      v.boolean(false)
+    )
   })
 })
 
@@ -490,8 +502,8 @@ describe('extend-type', () => {
         IArea  (area [this] (* (:side this) (:side this)))
         ILabel (label [this] (str "Square(" (:side this) ")")))
     `)
-    expect(sess.evaluate('(area (->Square 4))')).toEqual(cljNumber(16))
-    expect(sess.evaluate('(label (->Square 4))')).toEqual(cljString('Square(4)'))
+    expect(sess.evaluate('(area (->Square 4))')).toEqual(v.number(16))
+    expect(sess.evaluate('(label (->Square 4))')).toEqual(v.string('Square(4)'))
   })
 
   it('extend-type on a built-in type', () => {
@@ -501,7 +513,7 @@ describe('extend-type', () => {
       (extend-type :number
         IWrap (wrap [n] {:value n}))
     `)
-    expect(sess.evaluate('(:value (wrap 42))')).toEqual(cljNumber(42))
+    expect(sess.evaluate('(:value (wrap 42))')).toEqual(v.number(42))
   })
 })
 
@@ -521,8 +533,8 @@ describe('multiple protocols on one record (inline)', () => {
         INamed (get-name [this] species-name))
     `)
     sess.evaluate('(def lion (->Animal "Lion" 190))')
-    expect(sess.evaluate('(size lion)')).toEqual(cljNumber(190))
-    expect(sess.evaluate('(get-name lion)')).toEqual(cljString('Lion'))
+    expect(sess.evaluate('(size lion)')).toEqual(v.number(190))
+    expect(sess.evaluate('(get-name lion)')).toEqual(v.string('Lion'))
   })
 })
 
@@ -534,7 +546,7 @@ describe('ns-name', () => {
   it('returns the namespace name as a symbol', () => {
     const sess = s()
     const result = sess.evaluate('(ns-name *ns*)')
-    expect(result).toEqual(cljSymbol('user'))
+    expect(result).toEqual(v.symbol('user'))
   })
 })
 
@@ -547,7 +559,7 @@ describe('find-ns', () => {
 
   it('returns nil for an unknown namespace', () => {
     const sess = s()
-    expect(sess.evaluate("(find-ns 'no.such.ns)")).toEqual(cljNil())
+    expect(sess.evaluate("(find-ns 'no.such.ns)")).toEqual(v.nil())
   })
 })
 
@@ -598,10 +610,10 @@ describe('serialization domain', () => {
     const sess = s()
     sess.evaluate("(require '[clojure.string])")
     sess.evaluate(SERIALIZATION_SRC)
-    expect(sess.evaluate('(serialize "hello")')).toEqual(cljString('"hello"'))
-    expect(sess.evaluate('(serialize 42)')).toEqual(cljString('42'))
-    expect(sess.evaluate('(serialize true)')).toEqual(cljString('true'))
-    expect(sess.evaluate('(serialize nil)')).toEqual(cljString('null'))
+    expect(sess.evaluate('(serialize "hello")')).toEqual(v.string('"hello"'))
+    expect(sess.evaluate('(serialize 42)')).toEqual(v.string('42'))
+    expect(sess.evaluate('(serialize true)')).toEqual(v.string('true'))
+    expect(sess.evaluate('(serialize nil)')).toEqual(v.string('null'))
   })
 
   it('serializes a JsonObject record', () => {
@@ -610,7 +622,7 @@ describe('serialization domain', () => {
     sess.evaluate(SERIALIZATION_SRC)
     sess.evaluate('(def obj (->JsonObject [["name" "Alice"] ["age" 30]]))')
     expect(sess.evaluate('(serialize obj)')).toEqual(
-      cljString('{"name":"Alice","age":30}')
+      v.string('{"name":"Alice","age":30}')
     )
   })
 
@@ -619,7 +631,7 @@ describe('serialization domain', () => {
     sess.evaluate("(require '[clojure.string])")
     sess.evaluate(SERIALIZATION_SRC)
     sess.evaluate('(def arr (->JsonArray [1 2 3]))')
-    expect(sess.evaluate('(serialize arr)')).toEqual(cljString('[1,2,3]'))
+    expect(sess.evaluate('(serialize arr)')).toEqual(v.string('[1,2,3]'))
   })
 
   it('composes — nested array of objects', () => {
@@ -633,7 +645,7 @@ describe('serialization domain', () => {
            (->JsonObject [["x" 2]])]))
     `)
     expect(sess.evaluate('(serialize nested)')).toEqual(
-      cljString('[{"x":1},{"x":2}]')
+      v.string('[{"x":1},{"x":2}]')
     )
   })
 })
@@ -646,26 +658,30 @@ describe('record equality', () => {
   it('two records with same type and same fields are equal', () => {
     const sess = s()
     sess.evaluate('(defrecord Pt [x y])')
-    expect(sess.evaluate('(= (->Pt 1 2) (->Pt 1 2))')).toEqual(cljBoolean(true))
+    expect(sess.evaluate('(= (->Pt 1 2) (->Pt 1 2))')).toEqual(v.boolean(true))
   })
 
   it('two records with different field values are not equal', () => {
     const sess = s()
     sess.evaluate('(defrecord Pt [x y])')
-    expect(sess.evaluate('(= (->Pt 1 2) (->Pt 1 3))')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(= (->Pt 1 2) (->Pt 1 3))')).toEqual(v.boolean(false))
   })
 
   it('two records of different types are not equal even with same fields', () => {
     const sess = s()
     sess.evaluate('(defrecord Pt [x y])')
     sess.evaluate('(defrecord Vec2 [x y])')
-    expect(sess.evaluate('(= (->Pt 1 2) (->Vec2 1 2))')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(= (->Pt 1 2) (->Vec2 1 2))')).toEqual(
+      v.boolean(false)
+    )
   })
 
   it('a record is not equal to a plain map with the same entries', () => {
     const sess = s()
     sess.evaluate('(defrecord Pt [x y])')
-    expect(sess.evaluate('(= (->Pt 1 2) {:x 1 :y 2})')).toEqual(cljBoolean(false))
+    expect(sess.evaluate('(= (->Pt 1 2) {:x 1 :y 2})')).toEqual(
+      v.boolean(false)
+    )
   })
 })
 
@@ -680,10 +696,10 @@ describe('re-eval safety', () => {
       (defprotocol IFoo (foo [x]))
       (extend-protocol IFoo :string (foo [s] (str "v1:" s)))
     `)
-    expect(sess.evaluate('(foo "hello")')).toEqual(cljString('v1:hello'))
+    expect(sess.evaluate('(foo "hello")')).toEqual(v.string('v1:hello'))
     // Re-eval defprotocol — should NOT wipe the impls
     sess.evaluate('(defprotocol IFoo (foo [x]))')
-    expect(sess.evaluate('(foo "hello")')).toEqual(cljString('v1:hello'))
+    expect(sess.evaluate('(foo "hello")')).toEqual(v.string('v1:hello'))
   })
 })
 
