@@ -435,4 +435,117 @@ bar"`,
       ])
     })
   })
+
+  describe('#_ discard token', () => {
+    it('tokenizes #_ as a single Discard token', () => {
+      const tokens = tokenize('#_ 42')
+      expect(tokens).toMatchObject([
+        { kind: 'Discard' },
+        { kind: 'Number', value: 42 },
+      ])
+    })
+
+    it('tokenizes #_ before a list', () => {
+      const tokens = tokenize('#_ (1 2 3)')
+      expect(tokens).toMatchObject([
+        { kind: 'Discard' },
+        { kind: 'LParen' },
+        { kind: 'Number', value: 1 },
+        { kind: 'Number', value: 2 },
+        { kind: 'Number', value: 3 },
+        { kind: 'RParen' },
+      ])
+    })
+
+    it('tokenizes stacked #_#_ as two consecutive Discard tokens', () => {
+      const tokens = tokenize('#_#_ 1 2')
+      expect(tokens).toMatchObject([
+        { kind: 'Discard' },
+        { kind: 'Discard' },
+        { kind: 'Number', value: 1 },
+        { kind: 'Number', value: 2 },
+      ])
+    })
+
+    it('tokenizes triple-stacked #_#_#_ as three Discard tokens', () => {
+      const tokens = tokenize('#_#_#_ 1 2 3')
+      expect(tokens).toMatchObject([
+        { kind: 'Discard' },
+        { kind: 'Discard' },
+        { kind: 'Discard' },
+        { kind: 'Number', value: 1 },
+        { kind: 'Number', value: 2 },
+        { kind: 'Number', value: 3 },
+      ])
+    })
+
+    it('#_ inside a vector — remaining tokens still present', () => {
+      const tokens = tokenize('[1 #_ 2 3]')
+      expect(tokens).toMatchObject([
+        { kind: 'LBracket' },
+        { kind: 'Number', value: 1 },
+        { kind: 'Discard' },
+        { kind: 'Number', value: 2 },
+        { kind: 'Number', value: 3 },
+        { kind: 'RBracket' },
+      ])
+    })
+
+    it('does not affect existing #( dispatch (regression guard)', () => {
+      const tokens = tokenize('#(+ % 1)')
+      expect(tokens[0]).toMatchObject({ kind: 'AnonFnStart' })
+    })
+
+    it('does not affect existing #{ dispatch (regression guard)', () => {
+      const tokens = tokenize('#{1 2}')
+      expect(tokens[0]).toMatchObject({ kind: 'SetStart' })
+    })
+  })
+
+  describe('reader tag tokens (#inst, #uuid, user-defined)', () => {
+    it('tokenizes #inst "..." as a ReaderTag token with value "inst"', () => {
+      const tokens = tokenize('#inst "2023-01-01"')
+      expect(tokens).toMatchObject([
+        { kind: 'ReaderTag', value: 'inst' },
+        { kind: 'String', value: '2023-01-01' },
+      ])
+    })
+
+    it('tokenizes #uuid "..." as a ReaderTag token with value "uuid"', () => {
+      const tokens = tokenize('#uuid "be4b5cd8-b9e5-4a0a-b29a-3b5d3f9d4f5b"')
+      expect(tokens).toMatchObject([
+        { kind: 'ReaderTag', value: 'uuid' },
+        { kind: 'String' },
+      ])
+    })
+
+    it('tokenizes a namespaced reader tag #myapp/Foo', () => {
+      const tokens = tokenize('#myapp/Foo {:x 1}')
+      expect(tokens).toMatchObject([
+        { kind: 'ReaderTag', value: 'myapp/Foo' },
+        { kind: 'LBrace' },
+        { kind: 'Keyword', value: ':x' },
+        { kind: 'Number', value: 1 },
+        { kind: 'RBrace' },
+      ])
+    })
+
+    it('tokenizes #tag followed by a vector', () => {
+      const tokens = tokenize('#tag [1 2 3]')
+      expect(tokens).toMatchObject([
+        { kind: 'ReaderTag', value: 'tag' },
+        { kind: 'LBracket' },
+        { kind: 'Number', value: 1 },
+        { kind: 'Number', value: 2 },
+        { kind: 'Number', value: 3 },
+        { kind: 'RBracket' },
+      ])
+    })
+
+    it('does not confuse #_tag with a reader tag — produces Discard, not ReaderTag', () => {
+      const tokens = tokenize('#_ tag')
+      expect(tokens[0]).toMatchObject({ kind: 'Discard' })
+      expect(tokens[0].kind).not.toBe('ReaderTag')
+    })
+  })
 })

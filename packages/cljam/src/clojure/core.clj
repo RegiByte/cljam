@@ -27,7 +27,7 @@
                     (reduce (fn [acc arity] (conj acc (first arity))) [] rest-decl))
         meta-map  (let [m (if doc {:doc doc :arglists arglists} {:arglists arglists})]
                     (if (:private (meta name)) (assoc m :private true) m))]
-    `(def ~(with-meta name meta-map) (fn ~@rest-decl))))
+    `(def ~(with-meta name meta-map) (fn ~name ~@rest-decl))))
 
 (defmacro defn-
   "Same as defn, but marks the var as private."
@@ -1601,3 +1601,257 @@
      (binding [*err* (fn [s#] (swap! buf# str s#))]
        ~@body)
      @buf#))
+
+(defn pprint-str
+  "Returns the pretty-printed string representation of x, optionally
+  limiting line width to max-width (default 80)."
+  ([x] (with-out-str (pprint x)))
+  ([x max-width] (with-out-str (pprint x max-width))))
+
+;; ---------------------------------------------------------------------------
+;; Protocols and Records
+;; ---------------------------------------------------------------------------
+
+(defn- resolve-type-tag
+  "Returns the type-tag string for a keyword type specifier.
+  Simple keywords map directly to kind strings: :string → \"string\".
+  Namespaced keywords map to record type tags: :user/Circle → \"user/Circle\".
+  nil literal is accepted for backward compatibility → \"nil\"."
+  [type-kw]
+  (cond
+    (nil? type-kw)     "nil"
+    (keyword? type-kw) (if (namespace type-kw)
+                         (str (namespace type-kw) "/" (name type-kw))
+                         (name type-kw))
+    :else (throw (ex-info (str "extend-protocol/extend-type: expected a keyword type tag or nil, got: " type-kw) {}))))
+
+(defn- parse-method-def
+  "Parses a single protocol method form (name [& params] doc?) into a
+  [name-str arglists doc-str?] triple for make-protocol!."
+  [form]
+  (let [method-name (first form)
+        args        (second form)
+        doc         (when (string? (nth form 2 nil)) (nth form 2 nil))]
+    [(str method-name) [(mapv str args)] doc]))
+
+(defmacro defprotocol
+  "Defines a named protocol. Creates a protocol var and one dispatch
+  function var per method in the current namespace.
+
+  (defprotocol IShape
+    \"doc\"
+    (area [this] \"Compute area.\")
+    (perimeter [this] \"Compute perimeter.\"))"
+  [name & specs]
+  (let [doc        (when (string? (first specs)) (first specs))
+        methods    (if doc (rest specs) specs)
+        method-defs (mapv parse-method-def methods)]
+    `(make-protocol! ~(str name) ~doc ~method-defs)))
+
+(defn- parse-impl-block
+  "Given a flat sequence of (method-name [args] body...) forms, returns a
+  code form (hash-map ...) that evaluates to method-name-string → fn."
+  [method-forms]
+  (let [pairs (mapcat (fn [form]
+                        (let [method-name (first form)
+                              params      (second form)
+                              body        (rest (rest form))]
+                          [(str method-name) `(fn ~params ~@body)]))
+                      method-forms)]
+    `(hash-map ~@pairs)))
+
+(defn- group-by-type
+  "Partitions a flat impl body into [[delimiter [method ...]] ...].
+  Used by extend-protocol (keyword type tags: :string, :user/Circle),
+  extend-type (protocol symbols: IShape, IValidator), and
+  defrecord (protocol symbols inline).
+  Keywords, symbols, and the nil literal are all recognised as block delimiters."
+  [specs]
+  (let [no-type :__no-type__]
+    (loop [remaining specs
+           current-type no-type
+           current-methods []
+           result []]
+      (if (empty? remaining)
+        (if (not= current-type no-type)
+          (conj result [current-type current-methods])
+          result)
+        (let [form (first remaining)]
+          (if (or (keyword? form) (symbol? form) (nil? form))
+            ;; New block (keyword type tag, protocol symbol, or nil)
+            (recur (rest remaining)
+                   form
+                   []
+                   (if (not= current-type no-type)
+                     (conj result [current-type current-methods])
+                     result))
+            ;; Method form — add to current block
+            (recur (rest remaining)
+                   current-type
+                   (conj current-methods form)
+                   result)))))))
+
+(defmacro extend-protocol
+  "Extends a protocol to one or more types.
+
+  (extend-protocol IShape
+    nil
+    (area [_] 0)
+    String
+    (area [s] (count s)))"
+  [proto-sym & specs]
+  (let [groups (group-by-type specs)]
+    `(do
+       ~@(map (fn [[type-sym method-forms]]
+                (let [type-tag  (resolve-type-tag type-sym)
+                      impl-map  (parse-impl-block method-forms)]
+                  `(extend-protocol! ~proto-sym ~type-tag ~impl-map)))
+              groups))))
+
+(defmacro extend-type
+  "Extends a type to implement one or more protocols.
+
+  (extend-type Circle
+    IShape
+    (area [this] ...)
+    ISerializable
+    (to-json [this] ...))"
+  [type-sym & specs]
+  (let [type-tag (resolve-type-tag type-sym)
+        groups   (group-by-type specs)]
+    `(do
+       ~@(map (fn [[proto-sym method-forms]]
+                (let [impl-map (parse-impl-block method-forms)]
+                  `(extend-protocol! ~proto-sym ~type-tag ~impl-map)))
+              groups))))
+
+(defn- bind-fields
+  "Wraps a method body in a let that binds each field name to (:field this).
+  (bind-fields '[radius] 'this '[(* radius radius)])
+   => (let [radius (:radius this)] (* radius radius))"
+  [fields this-sym body]
+  (let [bindings (vec (mapcat (fn [f] [f `(~(keyword (name f)) ~this-sym)]) fields))]
+    `(let ~bindings ~@body)))
+
+(defmacro defrecord
+  "Defines a record type: a named, typed persistent map.
+  Creates ->Name (positional) and map->Name (map-based) constructors.
+  Optionally implements protocols inline.
+
+  (defrecord Circle [radius]
+    IShape
+    (area [this] (* js/Math.PI radius radius)))"
+  [type-name fields & specs]
+  (let [ns-str           (str (ns-name *ns*))
+        type-str         (str type-name)
+        constructor      (symbol (str "->" type-name))
+        map-constructor  (symbol (str "map->" type-name))
+        field-keys       (mapv (fn [f] (keyword (name f))) fields)
+        field-map-pairs  (vec (mapcat (fn [f] [(keyword (name f)) f]) fields))
+        groups           (when (seq specs) (group-by-type specs))
+        type-tag         (str ns-str "/" type-str)
+        extend-calls     (map (fn [[proto-sym method-forms]]
+                                (let [impl-map
+                                      (let [pairs (mapcat (fn [form]
+                                                            (let [mname  (first form)
+                                                                  params (second form)
+                                                                  this   (first params)
+                                                                  rest-p (vec (rest params))
+                                                                  body   (rest (rest form))
+                                                                  bound  (bind-fields fields this body)]
+                                                              [(str mname)
+                                                               `(fn ~(vec (cons this rest-p)) ~bound)]))
+                                                          method-forms)]
+                                        `(hash-map ~@pairs))]
+                                  `(extend-protocol! ~proto-sym ~type-tag ~impl-map)))
+                              groups)]
+    `(do
+       (defn ~constructor ~fields
+         (make-record! ~type-str ~ns-str (hash-map ~@field-map-pairs)))
+       (defn ~map-constructor [m#]
+         (make-record! ~type-str ~ns-str (select-keys m# ~field-keys)))
+       ~@extend-calls)))
+
+; reify — deferred to Phase B
+
+;; ---------------------------------------------------------------------------
+;; describe — introspection for any value
+;; ---------------------------------------------------------------------------
+
+;; ─── Keyword Hierarchy ───────────────────────────────────────────────────────
+
+(defn make-hierarchy
+  "Returns a new, empty hierarchy."
+  []
+  {:parents {} :ancestors {} :descendants {}})
+
+(def ^:dynamic *hierarchy*
+  (make-hierarchy))
+
+(defn parents
+  "Returns the immediate parents of tag in the hierarchy (default: *hierarchy*),
+  or nil if tag has no parents."
+  ([tag]   (hierarchy-parents-global tag))
+  ([h tag] (get (:parents h) tag)))
+
+(defn ancestors
+  "Returns the set of all ancestors of tag in the hierarchy (default: *hierarchy*),
+  or nil if tag has no ancestors."
+  ([tag]   (hierarchy-ancestors-global tag))
+  ([h tag] (get (:ancestors h) tag)))
+
+(defn descendants
+  "Returns the set of all descendants of tag in the hierarchy (default: *hierarchy*),
+  or nil if tag has no descendants."
+  ([tag]   (hierarchy-descendants-global tag))
+  ([h tag] (get (:descendants h) tag)))
+
+(defn isa?
+  "Returns true if child is either identical to parent, or child derives from
+  parent in the given hierarchy (default: *hierarchy*)."
+  ([child parent]   (hierarchy-isa?-global child parent))
+  ([h child parent] (hierarchy-isa?* h child parent)))
+
+(defn derive
+  "Establishes a parent/child relationship between child and parent.
+
+  2-arity: mutates the global *hierarchy* via session-safe native.
+  3-arity: pure — returns a new hierarchy map without side effects."
+  ([child parent]
+   (hierarchy-derive-global! child parent))
+  ([h child parent]
+   (hierarchy-derive* h child parent)))
+
+(defn underive
+  "Removes the parent/child relationship between child and parent.
+
+  2-arity: mutates the global *hierarchy* via session-safe native.
+  3-arity: pure — returns a new hierarchy map without side effects."
+  ([child parent]
+   (hierarchy-underive-global! child parent))
+  ([h child parent]
+   (hierarchy-underive* h child parent)))
+
+;; Maximum number of vars shown in (describe namespace).
+;; Bind to nil for unlimited output: (binding [*describe-limit* nil] (describe ...))
+(def ^:dynamic *describe-limit* 50)
+
+(defn describe
+  "Returns a plain map describing any cljam value.
+
+  Works on protocols, records, functions, namespaces, multimethods,
+  vars, and all primitive types. Output is always a plain Clojure map —
+  composable with get, get-in, filter, and any other map operation.
+
+  For namespaces, the number of vars shown is capped by *describe-limit*
+  (default 50). Bind *describe-limit* to nil for unlimited output.
+
+  Examples:
+    (describe (->Circle 5))        ;; record
+    (describe IShape)              ;; protocol
+    (describe area)                ;; protocol dispatch fn
+    (describe println)             ;; native fn
+    (describe (find-ns 'user))     ;; namespace
+    (describe #'my-fn)             ;; var"
+  ([x] (describe* x *describe-limit*))
+  ([x limit] (describe* x limit)))

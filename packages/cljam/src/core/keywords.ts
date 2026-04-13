@@ -58,6 +58,9 @@ export const valueKeywords = {
   namespace: 'namespace',
   // Boxed JS values, Interop containers
   jsValue: 'js-value',
+  // Polymorphism
+  protocol: 'protocol',
+  record: 'record',
 } as const
 /** Tokens */
 export const tokenKeywords = {
@@ -83,6 +86,9 @@ export const tokenKeywords = {
   VarQuote: 'VarQuote',
   Meta: 'Meta',
   SetStart: 'SetStart',
+  NsMapPrefix: 'NsMapPrefix',
+  Discard: 'Discard',
+  ReaderTag: 'ReaderTag',
 } as const
 export const tokenSymbols = {
   Quote: 'quote',
