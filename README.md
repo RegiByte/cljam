@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/%40regibyte%2Fcljam)](https://www.npmjs.com/package/@regibyte/cljam)
 [![license](https://img.shields.io/npm/l/%40regibyte%2Fcljam)](LICENSE)
 
-A Clojure interpreter written in TypeScript. Runs on Bun as a standalone CLI, embeds in any JS/TS project as a library, and exposes a full nREPL server compatible with Calva, Cursive, and CIDER.
+A Clojure interpreter written in TypeScript. Runs as a standalone CLI on Node.js 18+ or Bun, embeds in any JS/TS project as a library, and exposes a full nREPL server compatible with Calva, Cursive, and CIDER.
 
 **[Try it in the browser →](https://regibyte.github.io/cljam/)**
 
@@ -93,6 +93,10 @@ Full TCP nREPL server with bencode transport. Supports `eval`, `load-file`, `com
 
 Writes `.nrepl-port` on startup for auto-connect.
 
+### Host I/O
+
+`slurp`, `spit`, and `load` are available in both the CLI and nREPL sessions.
+
 ### JS Interop
 
 Call any JavaScript value from Clojure using the `js/` namespace. Host values cross the boundary wrapped in `CljJsValue` — no implicit coercion.
@@ -106,14 +110,10 @@ Call any JavaScript value from Clojure using the `js/` namespace. Host values cr
 (def now (js/new js/Date))
 (. now toISOString)               ;; => "2026-04-11T..."
 
-;; Values from importMap (configured in SessionOptions)
-;; Given importMap: { path: require('node:path') }
+;; Values from hostBindings (configured in SessionOptions)
+;; Given hostBindings: { path: require('node:path') }
 (. js/path join "a" "b" "c")     ;; => "a/b/c"
 ```
-
-### Host I/O
-
-`slurp`, `spit`, and `load` are available in both the CLI and nREPL sessions.
 
 ***
 
@@ -143,8 +143,7 @@ npm install -g @regibyte/cljam
 bun install -g @regibyte/cljam
 ```
 
-The main host environment is Bun's runtime
-You may need to install [Bun](https://bun.sh) for certain features.
+Requires Node.js 18+ or [Bun](https://bun.sh).
 
 ***
 
@@ -157,8 +156,8 @@ cljam repl
 ```
 
 ```
-Cljam 0.0.1
-Type (exit) to exit the REPL.
+cljam REPL
+Type (exit) to exit.
 user=> (map #(* % %) [1 2 3 4 5])
 (1 4 9 16 25)
 user=> (defn greet [name] (str "Hello, " name "!"))
@@ -178,7 +177,7 @@ cljam run my-script.clj
 
 ```bash
 cljam nrepl-server
-# Cljam nREPL server 0.0.1 started on port 7888
+# cljam nREPL server started on port 7888
 ```
 
 Options:
@@ -260,18 +259,9 @@ Multiline input with bracket-depth tracking (continuation prompt `...=>`), ANSI 
 
 Full bencode op coverage: symbol info, docstring lookup, source location, cross-namespace navigation. The goal is feature parity with what Calva and CIDER expect from a production nREPL server.
 
-### Browser nREPL Bridge
-
-The Vite plugin (`vite-plugin-cljam`) will spawn a WebSocket nREPL endpoint alongside the dev server. A small runtime injected into the browser page connects to the WebSocket and acts as the nREPL evaluation target. Any compatible nREPL client — Calva, Cursive, CIDER — will be able to evaluate Clojure code that runs live in the browser, with full access to the DOM and the running application state.
-
-```typescript
-// vite.config.ts
-cljPlugin({ sourceRoots: ['src'], nreplPort: 7889 })
-```
-
 ### Compiler
 
-An incremental compiler covering all hot-path forms is already built in. The next phase is full `def`, `binding`, and tail-call self-recursion support. The long-term goal is a self-hosting compiler: the compiler written in cljam and compiled with itself.
+An incremental compiler covering all hot-path forms is already built in. The long-term goal is a self-hosting compiler: the compiler written in cljam and compiled with itself.
 
 ## License
 

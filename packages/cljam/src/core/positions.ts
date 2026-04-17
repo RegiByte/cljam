@@ -50,18 +50,55 @@ export function formatErrorContext(
  * Converts a StackFrame array to a Clojure vector of maps.
  * Each frame map has :fn (string or nil), :line, :col, :source.
  * Caller is responsible for ordering (innermost-first convention).
+ * Pass source to compute line/col lazily from pos when not precomputed.
  */
-export function framesToClj(frames: StackFrame[]): CljValue {
+export function framesToClj(frames: StackFrame[], source?: string): CljValue {
   return v.vector(
-    frames.map((frame) =>
-      v.map([
+    frames.map((frame) => {
+      let line = frame.line
+      let col = frame.col
+      if ((line === null || col === null) && frame.pos && source) {
+        const lc = getLineCol(source, frame.pos.start)
+        line = lc.line
+        col = lc.col + 1
+      }
+      return v.map([
         [v.keyword(':fn'), frame.fnName !== null ? v.string(frame.fnName) : v.nil()],
-        [v.keyword(':line'), frame.line !== null ? v.number(frame.line) : v.nil()],
-        [v.keyword(':col'), frame.col !== null ? v.number(frame.col) : v.nil()],
+        [v.keyword(':line'), line !== null ? v.number(line) : v.nil()],
+        [v.keyword(':col'), col !== null ? v.number(col) : v.nil()],
         [v.keyword(':source'), frame.source !== null ? v.string(frame.source) : v.nil()],
       ])
-    )
+    })
   )
+}
+
+/**
+ * Formats a call stack for display in error messages.
+ * Computes line/col lazily from frame.pos — no cost on the happy path.
+ */
+export function formatFrames(
+  frames: StackFrame[],
+  source: string,
+  opts?: { lineOffset?: number; colOffset?: number }
+): string {
+  if (frames.length === 0) return ''
+  const MAX_SHOW = 20
+  const shown = frames.slice(0, MAX_SHOW)
+  const rest = frames.length - shown.length
+  const lines: string[] = []
+  for (const frame of shown) {
+    const name = frame.fnName ?? '<anonymous>'
+    if (frame.pos && source) {
+      const { line, col } = getLineCol(source, frame.pos.start)
+      const absLine = line + (opts?.lineOffset ?? 0)
+      const absCol = line === 1 ? col + (opts?.colOffset ?? 0) : col
+      lines.push(`  at ${name} (line ${absLine}, col ${absCol + 1})`)
+    } else {
+      lines.push(`  at ${name}`)
+    }
+  }
+  if (rest > 0) lines.push(`  ... ${rest} more frames`)
+  return '\n' + lines.join('\n')
 }
 
 /**

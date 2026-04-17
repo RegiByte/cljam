@@ -1,7 +1,7 @@
 import { is } from '../assertions'
 import { EvaluationError } from '../errors'
 import { printString } from '../printer'
-import { getLineCol, getPos, maybeHydrateErrorPos } from '../positions'
+import { getPos, maybeHydrateErrorPos } from '../positions'
 import type {
   CljList,
   CljValue,
@@ -57,17 +57,10 @@ export function evaluateList(
     .slice(LIST_BODY_POS)
     .map((arg) => ctx.evaluate(arg, env))
   const rawPos = getPos(list)
-  let line: null | number = null
-  let col: null | number = null
-  if (rawPos && ctx.currentSource) {
-    const lc = getLineCol(ctx.currentSource, rawPos.start)
-    line = lc.line
-    col = lc.col + 1 // 1-indexed
-  }
   const frame: StackFrame = {
     fnName: is.symbol(head) ? head.name : null,
-    line,
-    col,
+    line: null,
+    col: null,
     source: ctx.currentFile ?? null,
     pos: rawPos ?? null,
   }

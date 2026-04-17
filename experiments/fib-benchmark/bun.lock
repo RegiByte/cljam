@@ -1,0 +1,19 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "fib-benchmark",
+      "dependencies": {
+        "squint-cljs": "*",
+      },
+    },
+  },
+  "packages": {
+    "chokidar": ["chokidar@4.0.3", "", { "dependencies": { "readdirp": "^4.0.1" } }, "sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA=="],
+
+    "readdirp": ["readdirp@4.1.2", "", {}, "sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg=="],
+
+    "squint-cljs": ["squint-cljs@0.10.186", "", { "dependencies": { "chokidar": "^4.0.3" }, "bin": { "squint": "node_cli.js" } }, "sha512-OJuGihs+m+xjoKEd3hmIeYhRBWb14qVHB4u/IpqFDMn+mmhDQaJ8M334lhwguKWu/vvq3TyEu5lRPKwsnLGOJA=="],
+  }
+}

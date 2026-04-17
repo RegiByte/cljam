@@ -73,10 +73,10 @@
   ;; Regex — all matches
   (str/replace "hello world" #"[aeiou]" "*")    ;; => "h*ll* w*rld"
 
-  ;; Regex + function — receives match vector, returns replacement string
+  ;; Regex + function — receives match string (or vector when groups present)
   (str/replace "hello world"
                #"\b\w"
-               (fn [[match]] (str/upper-case match)))
+               (fn [match] (str/upper-case match)))
   ;; => "Hello World"
 
   ;; replace-first — only the first occurrence
@@ -98,7 +98,7 @@
 
   (first "hello")                    ;; => "h"
   (rest  "hello")                    ;; => ("e" "l" "l" "o")
-  (last  "hello")                    ;; => "o"
+  (last (seq "hello"))               ;; => "o"  (last needs a seq, not a raw string)
 
   (count "hello")                    ;; => 5
 

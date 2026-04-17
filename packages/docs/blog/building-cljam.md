@@ -215,6 +215,37 @@ Today, cljam ships five packages that you can install from npm:
 | `@regibyte/cljam-date` | Date arithmetic and formatting |
 | `@regibyte/cljam-mcp` | MCP server: persistent Clojure REPL for LLM agents |
 
+---
+
+## Performance
+
+I want to be transparent about the performance characteristics of cljam, as a tree-walking interpreter it is inherently slower than raw js for most operations. I did a lot of work to make sure the performance is acceptable for the common use case where I/O dominates, but there are still situations where the interpreted version is significantly slower than raw JS would be.
+
+One concrete example is a naive `(fib 35)` implementation, e.g:
+```clojure
+(defn fib [n]
+    (if (<= n 1)
+      n
+      (+ (fib (- n 1)) (fib (- n 2)))))
+```
+
+Executing `(fib 35)` in cljam takes about 20 seconds. The same function compiled by [Squint](https://squint-cljs.github.io/squint/), which outputs native JS code, runs under 100ms, cljam is roughly 200x slower.
+
+If you take an algorithm like a naive `fib(35)`, the algorithm alone is going to make 29 million recursive calls, pure arithmetic+recursion, no I/O. For cljam, every one of those 29M function calls pays a small overhead: type dispatch, value boxing and argument handling. These costs add up to a big number over many iterations. It is the worst case scenario for this architecture.
+
+There are many workloads that I consider cljam ready for: processing data, scripting, schema validation, system configuration and composition... The picture is different here, and this is where I am focusing for now.
+
+To have a broad idea, based on small isolated benchmarks:
+- Filtering and transforming a collection of 1000 items with maps takes ~10ms
+- Building a 500-entry map takes ~4ms
+- Transforming a nested record of 100 users takes under 1ms
+
+These are the operations that I believe happen most often in real-world software. The question for the reader is, are you running naive (fib 35) in production? If so, I am curious to understand why.
+
+As the author of cljam, I made the conscious decision of focusing on embeddability and keeping the dynamic properties of clojure intact and available during runtime, when you compile straight to js source, you gain performance but lose the ability to introspect the environment, to manipulate code with macros and etc... these are capabilities I wanted to keep. You as a potential user of this library should be aware of this trade-off to decide what is best for you.
+
+The next big architectural milestone for cljam is a bytecode VM. The idea is well described in books like "Crafting Interpreters" by Robert Nystrom, and I am currently reading the book to understand the mechanics deeply before changing the core architecture. I expect this to be a major performance boost for cljam when it happens.
+
 
 ---
 
@@ -228,13 +259,15 @@ For the sake of transparency, I'd like to highlight that Claude Code has been an
 
 ### What's next?
 
-cljam is not done, it's just getting started. The next phase focuses on stability and stdlib feature parity. Bundle size is a priority: I've already done work to create specialized browser-only bundles of `clojure.core` and other namespaces, and I'll continue refining this so people only pay for what they use. That's what makes embedding cljam in existing projects viable without bloating your bundle.
+cljam is not done, it's just getting started. The next phase focuses on stability, performance and stdlib feature parity. Bundle size is a priority: I've already done work to create specialized browser-only bundles of `clojure.core` and other namespaces, and I'll continue refining this so people only pay for what they use. That's what makes embedding cljam in existing projects viable without bloating your bundle.
 
-There's also the question of persistent data structures. Clojure's immutable vectors, maps, and sets are powered by sophisticated persistent data structures (HAMT, finger trees, etc.). Implementing these would be an interesting challenge, but it would take cljam to the absolute next level. Maybe someday. 
+There's also the question of persistent data structures. Clojure's immutable vectors, maps, and sets are powered by sophisticated persistent data structures (HAMT, finger trees, etc.). Implementing these would be an interesting challenge, probably more than I can handle with my current knowledge, but it would take cljam to the absolute next level. Maybe someday. 
 
 That clojure stdlib is no joke, hundreds of incredibly powerful functions and macros, I'm still amazed by how much power can be harnessed with even a subset of it. 
 
 Rich Hickey and the Clojure community are truly amazing, and I am grateful for being lucky enough to learn from them.
+
+Also a huge thanks to everyone in the **#clojurians** slack channel for answering my questions and helping me understand more about PL theory and language design trade-offs, it's been a great learning experience.
 
 ---
 

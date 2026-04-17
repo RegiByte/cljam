@@ -8,7 +8,7 @@ import { v } from './factories'
 import type { CljamLibrary } from './library'
 import type { RuntimeModule } from './module'
 import { extractAliasMapFromTokens, extractNsNameFromTokens } from './ns-forms'
-import { formatErrorContext } from './positions'
+import { formatErrorContext, formatFrames } from './positions'
 import { printString } from './printer'
 import { readForms } from './reader'
 import type { Runtime, RuntimeSnapshot } from './runtime'
@@ -301,6 +301,12 @@ function buildSessionFacade(
               colOffset: ctx.currentColOffset,
             })
           }
+          if (e instanceof EvaluationError && e.frames && e.frames.length > 0) {
+            e.message += formatFrames(e.frames, source, {
+              lineOffset: ctx.currentLineOffset,
+              colOffset: ctx.currentColOffset,
+            })
+          }
         }
         throw e
       } finally {
@@ -377,6 +383,12 @@ function buildSessionFacade(
           const pos = e.pos ?? (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
           if (pos) {
             e.message += formatErrorContext(source, pos, {
+              lineOffset: ctx.currentLineOffset,
+              colOffset: ctx.currentColOffset,
+            })
+          }
+          if (e instanceof EvaluationError && e.frames && e.frames.length > 0) {
+            e.message += formatFrames(e.frames, source, {
               lineOffset: ctx.currentLineOffset,
               colOffset: ctx.currentColOffset,
             })

@@ -1,0 +1,7 @@
+{
+  "name": "fib-benchmark",
+  "type": "module",
+  "dependencies": {
+    "squint-cljs": "*"
+  }
+}

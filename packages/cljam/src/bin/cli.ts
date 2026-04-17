@@ -168,12 +168,17 @@ async function startInteractiveRepl(
   session: Session,
   io: CliIo
 ): Promise<number> {
+  const ac = new AbortController()
   const rl = createInterface({ input, output })
+  // rl.close() alone does NOT reject a pending rl.question() promise in Node's
+  // readline/promises. AbortController does — it's the only reliable way to
+  // cancel a pending question and let the TLA settle before process exit.
+  rl.on('SIGINT', () => ac.abort())
   try {
     while (true) {
       let line: string
       try {
-        line = await rl.question(`${session.currentNs}=> `)
+        line = await rl.question(`${session.currentNs}=> `, { signal: ac.signal })
       } catch {
         break
       }
@@ -283,5 +288,5 @@ const entryPath = fileURLToPath(import.meta.url)
 const invokedPath = process.argv[1] ? realpathSync(resolve(process.argv[1])) : ''
 if (invokedPath === entryPath) {
   const exitCode = await runCli(process.argv.slice(2))
-  process.exitCode = exitCode
+  process.exit(exitCode)
 }

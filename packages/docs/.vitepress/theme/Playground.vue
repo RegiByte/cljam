@@ -119,11 +119,12 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLEl
   return e
 }
 
-function formatDuration(durationMs: number): string {
-  if (durationMs < 1)   return `${durationMs.toFixed(3)} ms`
-  if (durationMs < 10)  return `${durationMs.toFixed(2)} ms`
-  if (durationMs < 100) return `${durationMs.toFixed(1)} ms`
-  return `${Math.round(durationMs)} ms`
+function formatDuration(ms: number): string {
+  if (ms < 1)    return `${Math.round(ms * 1000)} µs`
+  if (ms < 10)   return `${+ms.toFixed(2)} ms`
+  if (ms < 100)  return `${+ms.toFixed(1)} ms`
+  if (ms < 1000) return `${Math.round(ms)} ms`
+  return `${+(ms / 1000).toFixed(2)} s`
 }
 
 function appendEntries(entries: ReplEntry[], outputInner: HTMLElement, source: string): void {
@@ -191,6 +192,9 @@ onMounted(async () => {
 
   registerClojureLanguage(monaco)
   defineMonacoTheme(monaco)
+
+  // Prevent VitePress's global '/' search shortcut from firing while the editor is focused.
+  editorWrapRef.value.addEventListener('keydown', (e) => e.stopPropagation())
 
   editorInstance = monaco.editor.create(editorWrapRef.value, {
     value: SAMPLES[0].content,

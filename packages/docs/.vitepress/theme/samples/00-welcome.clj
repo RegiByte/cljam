@@ -378,7 +378,7 @@
 
   ;; macroexpand — see what a macro produces
   (macroexpand '(when true (println "hi")))
-  ;; => (if true (do (println "hi")))
+  ;; => (if true (do (println "hi")) nil)
 
   (macroexpand-all '(-> x str/trim str/upper-case))
   ;; shows the fully expanded threading chain

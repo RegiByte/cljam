@@ -37,6 +37,7 @@
 ;; throw
 ;;
 ;; You can throw any value — not just error objects.
+;; Catch with a predicate function that matches the thrown value.
 
 (comment
   (try
@@ -67,25 +68,27 @@
 ;;
 ;;   :default        — catches everything
 ;;   :error/runtime  — catches evaluator errors (type errors, etc.)
-;;   keyword         — checks (= thrown discriminator)
-;;   predicate fn    — checks (pred thrown-value)
+;;   predicate fn    — checks (pred thrown-value)  e.g. keyword? number? map?
+;;   keyword         — matches if thrown is a map with :type = that keyword
 
 (comment
+  ;; Throw a plain map with :type to use keyword discriminators.
+  ;; This is the idiomatic pattern for named error types in cljam.
   (defn find-user [id]
     (if (pos? id)
       {:id id :name "Alice"}
-      (throw :user/not-found)))
+      (throw {:type :user/not-found :id id})))
 
   (try
     (find-user -1)
-    (catch :user/not-found _
-      "User not found — check the id"))
+    (catch :user/not-found e
+      (str "User not found, id=" (:id e))))
 
   ;; Multiple catch clauses — matched in order
   (defn risky [x]
     (cond
-      (string? x) (throw :bad-type)
-      (neg?    x) (throw :negative)
+      (string? x) (throw {:type :bad-type  :given x})
+      (neg?    x) (throw {:type :negative  :given x})
       :else       (/ 100 x)))
 
   (try
@@ -97,7 +100,7 @@
   (try (risky "oops") (catch :bad-type _ "wrong type") (catch :negative _ "neg"))
   (try (risky 0)      (catch :default e (ex-message e)))
 
-  ;; :error/runtime — catches interpreter-level errors
+  ;; :error/runtime — catches interpreter-level errors (type mismatches, etc.)
   (try
     (+ 1 "not a number")
     (catch :error/runtime e
@@ -107,7 +110,8 @@
 
 ;; ex-info: Structured Errors
 ;;
-;; `ex-info` creates an error with a message AND a data map.
+;; `ex-info` creates an error with a :message, a :data map, and an optional cause.
+;; Catch with :default, then inspect with ex-message / ex-data / ex-cause.
 
 (comment
   (try
@@ -134,17 +138,18 @@
 )
 
 
-;; Keyword-typed Errors with ex-info
+;; Typed Errors: map-based approach
 ;;
-;; Attach a :type keyword to the ex-info map, then catch by that keyword.
+;; Throw a map with :type (and any extra keys you need).
+;; Keyword discriminators match on the :type field — no class hierarchy required.
 
 (defn parse-age [x]
   (cond
     (not (number? x))
-    (throw (ex-info "Not a number" {:value x :type :error/parse}))
+    (throw {:type :error/parse :msg "Not a number" :value x})
 
     (neg? x)
-    (throw (ex-info "Age cannot be negative" {:value x :type :error/validation}))
+    (throw {:type :error/validation :msg "Age cannot be negative" :value x})
 
     :else x))
 
@@ -152,14 +157,14 @@
   (try
     (parse-age "hello")
     (catch :error/parse e
-      (str "Parse error: " (ex-message e) " (got: " (:value (ex-data e)) ")"))
+      (str "Parse error: " (:msg e) " (got: " (:value e) ")"))
     (catch :error/validation e
-      (str "Validation error: " (ex-message e))))
+      (str "Validation error: " (:msg e))))
 
   (try
     (parse-age -5)
-    (catch :error/parse e      (str "parse: " (ex-message e)))
-    (catch :error/validation e (str "validation: " (ex-message e))))
+    (catch :error/parse e      (str "parse: " (:msg e)))
+    (catch :error/validation e (str "validation: " (:msg e))))
 
   (parse-age 30)               ;; => 30  (no error)
 )
@@ -178,11 +183,10 @@
   (safe-divide 10 2)   ;; => {:ok? true  :result 5}
   (safe-divide 10 0)   ;; => {:ok? false :error "..."}
 
-  ;; Validate before computing
+  ;; Validate before computing — throw a typed map
   (defn sqrt [n]
     (when (neg? n)
-      (throw (ex-info "Cannot take sqrt of negative number"
-                      {:value n :type :error/domain})))
+      (throw {:type :error/domain :msg "Cannot take sqrt of negative number" :value n}))
     (loop [x (* 0.5 (+ 1.0 n))]
       (let [next-x (* 0.5 (+ x (/ n x)))
             diff   (max (- next-x x) (- x next-x))]
@@ -190,23 +194,23 @@
           next-x
           (recur next-x)))))
 
-  (try (sqrt 9)  (catch :default e (ex-message e)))   ;; => 3.0
-  (try (sqrt -1) (catch :error/domain e (ex-message e)))
+  (try (sqrt 9)  (catch :default e (:msg e)))          ;; => 3.0
+  (try (sqrt -1) (catch :error/domain e (:msg e)))     ;; => "Cannot take sqrt..."
 
-  ;; Wrapping external errors with context
+  ;; Wrapping errors with context — using ex-info for the cause chain
   (defn load-user [id]
     (try
       (if (= id 42)
         {:id 42 :name "Alice"}
-        (throw (ex-info "User not found" {:id id :type :error/not-found})))
-      (catch :error/not-found e
+        (throw (ex-info "User not found" {:id id})))
+      (catch :default e
         (throw (ex-info (str "Failed to load profile for id=" id)
-                        {:id id :type :error/load-failed}
+                        {:id id}
                         e)))))
 
   (try
     (load-user 99)
-    (catch :error/load-failed e
+    (catch :default e
       {:msg    (ex-message e)
        :cause  (ex-message (ex-cause e))}))
 )

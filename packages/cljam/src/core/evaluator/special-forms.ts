@@ -73,7 +73,7 @@ function evaluateTry(
         [v.keyword(':message'), v.string(e.message)],
       ]
       if (e.frames && e.frames.length > 0) {
-        entries.push([v.keyword(':frames'), framesToClj(e.frames)])
+        entries.push([v.keyword(':frames'), framesToClj(e.frames, ctx.currentSource)])
       }
       thrownValue = v.map(entries)
     } else {

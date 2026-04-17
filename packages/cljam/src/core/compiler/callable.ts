@@ -2,7 +2,7 @@ import { is } from '../assertions.ts'
 import { EvaluationError } from '../errors.ts'
 import { dispatchMultiMethod } from '../evaluator/multimethod-dispatch.ts'
 import { resolveArity } from '../evaluator/arity.ts'
-import { getLineCol, getPos, maybeHydrateErrorPos } from '../positions.ts'
+import { getPos, maybeHydrateErrorPos } from '../positions.ts'
 import { printString } from '../printer.ts'
 import type { CljList, CljValue, CompiledExpr, CompileEnv, CompileFn, StackFrame } from '../types.ts'
 
@@ -35,17 +35,10 @@ export function compileCall(
     }
     const args = compiledArgs.map((carg) => carg!(env, ctx))
     const rawPos = getPos(node)
-    let line = null as null | number
-    let col = null as null | number
-    if (rawPos && ctx.currentSource) {
-      const lc = getLineCol(ctx.currentSource, rawPos.start)
-      line = lc.line
-      col = lc.col + 1  // 1-indexed
-    }
     const frame: StackFrame = {
       fnName: is.symbol(head) ? head.name : null,
-      line,
-      col,
+      line: null,
+      col: null,
       source: ctx.currentFile ?? null,
       pos: rawPos ?? null,
     }
