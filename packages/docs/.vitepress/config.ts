@@ -6,9 +6,7 @@ export default defineConfig({
   description: 'A Clojure interpreter for JavaScript environments',
   base: '/cljam/',
 
-  head: [
-    ['link', { rel: 'icon', href: '/cljam/favicon.ico' }],
-  ],
+  head: [['link', { rel: 'icon', href: '/cljam/favicon.ico' }]],
 
   themeConfig: {
     logo: '/logo.svg',
@@ -54,9 +52,7 @@ export default defineConfig({
       '/blog/': [
         {
           text: 'Blog',
-          items: [
-            { text: 'Building cljam', link: '/blog/building-cljam' },
-          ],
+          items: [{ text: 'Building cljam', link: '/blog/building-cljam' }],
         },
       ],
     },
@@ -66,8 +62,9 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024-present Regibyte',
+      message:
+        'Built with ❤️ for Clojure and its ideas, by <a href="https://github.com/RegiByte" target="_blank" rel="noopener">RegiByte</a>.',
+      copyright: 'MIT License · © 2026-present',
     },
 
     search: {
