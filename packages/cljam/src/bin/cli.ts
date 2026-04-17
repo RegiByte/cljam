@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
@@ -113,6 +113,73 @@ function printUsage(io: CliIo) {
   io.writeLine('  cljam repl')
   io.writeLine('  cljam run <file.clj>')
   io.writeLine('  cljam nrepl-server [--port <number>] [--host <string>] [--root-dir <path>]')
+  io.writeLine('  cljam gen-lib-source <sourceRoot> <outputFile>')
+}
+
+function collectCljFiles(dir: string): string[] {
+  const files: string[] = []
+  for (const entry of readdirSync(dir)) {
+    if (entry.startsWith('.')) continue
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) {
+      files.push(...collectCljFiles(full))
+    } else if (entry.endsWith('.clj')) {
+      files.push(full)
+    }
+  }
+  return files
+}
+
+function genLibrarySources(sourceRootArg: string, outputFileArg: string, io: CliIo): number {
+  const cwd = process.cwd()
+  const sourceRoot = resolve(cwd, sourceRootArg)
+  const outputFile = resolve(cwd, outputFileArg)
+
+  const entries: { nsName: string; source: string }[] = []
+  for (const filePath of collectCljFiles(sourceRoot)) {
+    const source = readFileSync(filePath, 'utf-8')
+    const match = source.match(/\(ns\s+([^\s)]+)/)
+    const nsName = match ? match[1] : null
+    if (!nsName) {
+      io.writeError(`Warning: no (ns ...) found in ${filePath}, skipping.`)
+      continue
+    }
+    entries.push({ nsName, source })
+  }
+
+  entries.sort((a, b) => a.nsName.localeCompare(b.nsName))
+
+  const escapeTemplate = (s: string) =>
+    s.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('${', '\\${')
+
+  const mapEntries = entries.map(({ nsName, source }) =>
+    `  '${nsName}': \`${escapeTemplate(source)}\`,`
+  )
+
+  const relRoot = sourceRootArg.replace(/\\/g, '/')
+  const output = [
+    '// Auto-generated from ' + relRoot + ' — do not edit directly.',
+    '// Re-generate with: npm run gen:sources',
+    '',
+    'export const sources: Record<string, string> = {',
+    ...mapEntries,
+    '}',
+    '',
+  ].join('\n')
+
+  mkdirSync(dirname(outputFile), { recursive: true })
+
+  let current: string | null = null
+  try { current = readFileSync(outputFile, 'utf-8') } catch { /* file doesn't exist yet */ }
+
+  if (current === output) {
+    io.writeLine(`${outputFile} is up to date (${entries.length} namespace(s)).`)
+  } else {
+    writeFileSync(outputFile, output, 'utf-8')
+    io.writeLine(`Generated ${outputFile} (${entries.length} namespace(s)).`)
+  }
+
+  return 0
 }
 
 export function runFile(fileArg: string, io: CliIo = makeCliIo()): number {
@@ -252,6 +319,15 @@ export async function runCli(
       return 1
     }
     return runFile(fileArg, io)
+  }
+
+  if (command === 'gen-lib-source') {
+    const [sourceRoot, outputFile] = rest
+    if (!sourceRoot || !outputFile) {
+      printUsage(io)
+      return 1
+    }
+    return genLibrarySources(sourceRoot, outputFile, io)
   }
 
   if (command === 'nrepl-server') {
