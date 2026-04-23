@@ -43,6 +43,7 @@ describe('bun cli', () => {
       '  cljam repl',
       '  cljam run <file.clj>',
       '  cljam nrepl-server [--port <number>] [--host <string>] [--root-dir <path>]',
+      '  cljam gen-lib-source <sourceRoot> <outputFile>',
     ])
   })
 

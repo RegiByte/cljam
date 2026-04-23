@@ -1408,7 +1408,12 @@ export const clojure_coreSource = `\
                             gseq     (gensym "seq__")
                             gfirst   (gensym "first__")
                             has-rest (some #{'&} b)]
-                       (loop* [ret (let* [ret (conj bvec gvec val)]
+                       (loop* [ret (let* [ret (conj bvec gvec
+                                                    (list 'if (list 'or (list 'nil? val) (list 'sequential? val))
+                                                          val
+                                                          (list 'throw (list 'ex-info
+                                                                             (list 'str "Cannot destructure " (list 'pr-str val) " as a sequential collection")
+                                                                             (hash-map)))))]
                                      (if has-rest
                                        (conj ret gseq (list 'seq gvec))
                                        ret))
@@ -1487,11 +1492,17 @@ export const clojure_coreSource = `\
                        ;; When & is followed by a map pattern, the rest args
                        ;; arrive as a flat seq (:k1 v1 :k2 v2 ...) and must
                        ;; be turned into a map before we can do key lookups.
+                       ;; Non-map, non-nil, non-sequential values throw a clear
+                       ;; error rather than leaking (apply hash-map ...) internals.
                        (loop* [ret     (-> bvec
                                            (conj gmap)
                                            (conj (list 'if (list 'map? v) v
                                                        (list 'if (list 'nil? v) (hash-map)
-                                                             (list 'apply 'hash-map v))))
+                                                             (list 'if (list 'sequential? v)
+                                                                   (list 'apply 'hash-map v)
+                                                                   (list 'throw (list 'ex-info
+                                                                                      (list 'str "Cannot destructure " (list 'pr-str v) " as a map")
+                                                                                      (hash-map)))))))
                                            ((fn [r]
                                               (if (:as b)
                                                 (conj r (:as b) gmap)

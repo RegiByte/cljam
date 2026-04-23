@@ -357,11 +357,15 @@ export const predicateFunctions: Record<string, CljValue> = {
 
   'sequential?': v
     .nativeFn('sequential?', function sequentialPredImpl(x: CljValue) {
-      return v.boolean(x !== undefined && (is.list(x) || is.vector(x)))
+      return v.boolean(
+        x !== undefined &&
+          (is.list(x) || is.vector(x) || is.lazySeq(x) || is.cons(x))
+      )
     })
-    .doc('Returns true if coll is a sequential collection (list or vector).', [
-      ['coll'],
-    ]),
+    .doc(
+      'Returns true if coll is a sequential collection (list, vector, lazy-seq, or cons).',
+      [['coll']]
+    ),
 
   'associative?': v
     .nativeFn('associative?', function associativePredImpl(x: CljValue) {

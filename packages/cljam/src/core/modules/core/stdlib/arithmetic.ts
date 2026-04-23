@@ -211,7 +211,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       return v.boolean(true)
     })
     .doc(
-      'Compares adjacent arguments left to right, returns true if all values are in ascending order, false otherwise.',
+      'Compares adjacent arguments left to right, returns true if all values are in descending order, false otherwise.',
       [['&', 'nums']]
     ),
 
@@ -253,7 +253,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       return v.boolean(true)
     })
     .doc(
-      'Compares adjacent arguments left to right, returns true if all values are in descending order, false otherwise.',
+      'Compares adjacent arguments left to right, returns true if all values are in ascending order, false otherwise.',
       [['&', 'nums']]
     ),
 

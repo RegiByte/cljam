@@ -360,7 +360,7 @@ function evaluateLoopStar(
           throw new EvaluationError(
             `recur expects ${names.length} arguments but got ${e.args.length}`,
             { list, env },
-            getPos(list)
+            e.pos ?? getPos(list)
           )
         }
         currentValues = e.args
@@ -464,7 +464,7 @@ function evaluateRecur(
   ctx: EvaluationContext
 ): CljValue {
   const args = list.value.slice(1).map((v) => ctx.evaluate(v, env))
-  throw new RecurSignal(args)
+  throw new RecurSignal(args, getPos(list))
 }
 
 function evaluateVar(
