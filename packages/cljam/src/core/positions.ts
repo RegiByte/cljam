@@ -37,9 +37,12 @@ export function formatErrorContext(
   pos: Pos,
   opts?: { lineOffset?: number; colOffset?: number }
 ): string {
-  const { line, col, lineText } = getLineCol(source, pos.start)
-  const absLine = line + (opts?.lineOffset ?? 0)
-  const absCol = line === 1 ? col + (opts?.colOffset ?? 0) : col
+  const effectiveSource = pos.source ?? source
+  const effectiveLineOffset = pos.lineOffset ?? opts?.lineOffset ?? 0
+  const effectiveColOffset = pos.colOffset ?? opts?.colOffset ?? 0
+  const { line, col, lineText } = getLineCol(effectiveSource, pos.start)
+  const absLine = line + effectiveLineOffset
+  const absCol = line === 1 ? col + effectiveColOffset : col
   const span = Math.max(1, pos.end - pos.start)
   // Caret uses raw col so it aligns with the displayed lineText snippet.
   const caret = ' '.repeat(col) + '^'.repeat(span)
@@ -57,10 +60,15 @@ export function framesToClj(frames: StackFrame[], source?: string): CljValue {
     frames.map((frame) => {
       let line = frame.line
       let col = frame.col
-      if ((line === null || col === null) && frame.pos && source) {
-        const lc = getLineCol(source, frame.pos.start)
-        line = lc.line
-        col = lc.col + 1
+      if ((line === null || col === null) && frame.pos) {
+        const frameSource = frame.pos.source ?? source
+        if (frameSource) {
+          const lc = getLineCol(frameSource, frame.pos.start)
+          const lineOffset = frame.pos.lineOffset ?? 0
+          const colOffset = frame.pos.colOffset ?? 0
+          line = lc.line + lineOffset
+          col = lc.line === 1 ? lc.col + 1 + colOffset : lc.col + 1
+        }
       }
       return v.map([
         [v.keyword(':fn'), frame.fnName !== null ? v.string(frame.fnName) : v.nil()],
@@ -88,10 +96,13 @@ export function formatFrames(
   const lines: string[] = []
   for (const frame of shown) {
     const name = frame.fnName ?? '<anonymous>'
-    if (frame.pos && source) {
-      const { line, col } = getLineCol(source, frame.pos.start)
-      const absLine = line + (opts?.lineOffset ?? 0)
-      const absCol = line === 1 ? col + (opts?.colOffset ?? 0) : col
+    const frameSource = frame.pos?.source ?? source
+    if (frame.pos && frameSource) {
+      const { line, col } = getLineCol(frameSource, frame.pos.start)
+      const lineOffset = frame.pos.lineOffset ?? opts?.lineOffset ?? 0
+      const colOffset = frame.pos.colOffset ?? opts?.colOffset ?? 0
+      const absLine = line + lineOffset
+      const absCol = line === 1 ? col + colOffset : col
       lines.push(`  at ${name} (line ${absLine}, col ${absCol + 1})`)
     } else {
       lines.push(`  at ${name}`)

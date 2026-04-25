@@ -14,6 +14,7 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'API Reference', link: '/reference/clojure.core' },
       { text: 'Packages', link: '/packages/cljam-schema' },
       { text: 'Playground', link: '/playground' },
       { text: 'Blog', link: '/blog/building-cljam' },
@@ -24,6 +25,20 @@ export default defineConfig({
     ],
 
     sidebar: {
+      '/reference/': [
+        {
+          text: 'API Reference',
+          items: [
+            { text: 'clojure.core', link: '/reference/clojure.core' },
+            { text: 'clojure.string', link: '/reference/clojure.string' },
+            { text: 'clojure.math', link: '/reference/clojure.math' },
+            { text: 'clojure.edn', link: '/reference/clojure.edn' },
+            { text: 'clojure.set', link: '/reference/clojure.set' },
+            { text: 'clojure.walk', link: '/reference/clojure.walk' },
+            { text: 'clojure.test', link: '/reference/clojure.test' },
+          ],
+        },
+      ],
       '/guide/': [
         {
           text: 'Guide',

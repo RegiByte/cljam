@@ -550,5 +550,41 @@ describe('per-argument error positions (argIndex)', () => {
       expect(err!.message).toContain('`)`')
       expect(err!.message).not.toContain('RParen')
     })
+
+    it('cross-source: caret points at definition site, not call site', () => {
+      // Option B — Pos carries its source string. When an error originates in a
+      // defn body evaluated in a previous session.evaluate() call, the caret
+      // must show the definition source line, not the call-site source.
+      const s = freshSession()
+      s.evaluate('(defn oops [] (/ 1 redcue))')
+      // 'redcue' spans offsets 19-24 in the defn source string.
+      let err: Error | undefined
+      try {
+        s.evaluate('(oops)')
+      } catch (e) {
+        err = e as Error
+      }
+      expect(err).toBeDefined()
+      // The caret lineText should come from the defn source, not from '(oops)'.
+      expect(err!.message).toContain('(defn oops [] (/ 1 redcue))')
+      // 6 carets for the 6-char token 'redcue'.
+      expect(err!.message).toMatch(/\^{6}/)
+      // The call-site string must NOT be the primary caret target.
+      expect(err!.message).not.toMatch(/\(oops\)\n +\^/)
+    })
+
+    it('cross-source: multiple separate evals each keep their own source for carets', () => {
+      // Verify that evaluating two functions and calling both still routes
+      // errors to the correct definition source.
+      const s = freshSession()
+      s.evaluate('(defn fn-a [] (missing-a))')
+      s.evaluate('(defn fn-b [] (missing-b))')
+      let errA: Error | undefined
+      let errB: Error | undefined
+      try { s.evaluate('(fn-a)') } catch (e) { errA = e as Error }
+      try { s.evaluate('(fn-b)') } catch (e) { errB = e as Error }
+      expect(errA!.message).toContain('(defn fn-a [] (missing-a))')
+      expect(errB!.message).toContain('(defn fn-b [] (missing-b))')
+    })
   })
 })

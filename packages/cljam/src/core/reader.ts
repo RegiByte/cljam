@@ -23,6 +23,9 @@ type ReaderCtx = {
   scanner: TokenScanner
   namespace: string
   aliases: Map<string, string>
+  source?: string
+  lineOffset?: number
+  colOffset?: number
   ednMode?: boolean
   dataReaders?: Map<string, (form: CljValue) => CljValue>
   defaultDataReader?: (tagName: string, form: CljValue) => CljValue
@@ -131,23 +134,23 @@ function readAtom(ctx: ReaderCtx): CljValue {
   }
   switch (token.kind) {
     case tokenKeywords.Symbol:
-      return readSymbol(scanner)
+      return readSymbol(ctx)
     case tokenKeywords.String: {
       scanner.advance()
       const val: CljValue = v.string(token.value)
-      setPos(val, { start: token.start.offset, end: token.end.offset })
+      setPos(val, { start: token.start.offset, end: token.end.offset, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
       return val
     }
     case tokenKeywords.Number: {
       scanner.advance()
       const val: CljValue = v.number(token.value)
-      setPos(val, { start: token.start.offset, end: token.end.offset })
+      setPos(val, { start: token.start.offset, end: token.end.offset, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
       return val
     }
     case tokenKeywords.Character: {
       scanner.advance()
       const val: CljValue = v.char(token.value)
-      setPos(val, { start: token.start.offset, end: token.end.offset })
+      setPos(val, { start: token.start.offset, end: token.end.offset, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
       return val
     }
     case tokenKeywords.Keyword: {
@@ -182,7 +185,7 @@ function readAtom(ctx: ReaderCtx): CljValue {
       } else {
         val = v.keyword(kwName)
       }
-      setPos(val, { start: token.start.offset, end: token.end.offset })
+      setPos(val, { start: token.start.offset, end: token.end.offset, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
       return val
     }
   }
@@ -404,7 +407,7 @@ const collectionReader = (valueType: 'list' | 'vector', closeToken: string) => {
     }
     const result: CljValue = { kind: valueType, value: values }
     if (closingEnd !== undefined) {
-      setPos(result, { start: startToken.start.offset, end: closingEnd })
+      setPos(result, { start: startToken.start.offset, end: closingEnd, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
     }
     return result
   }
@@ -464,12 +467,13 @@ const readSet = (ctx: ReaderCtx) => {
 
   const result = v.set(deduped)
   if (closingEnd !== undefined) {
-    setPos(result, { start: startToken.start.offset, end: closingEnd })
+    setPos(result, { start: startToken.start.offset, end: closingEnd, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
   }
   return result
 }
 
-const readSymbol = (scanner: TokenScanner) => {
+const readSymbol = (ctx: ReaderCtx) => {
+  const scanner = ctx.scanner
   const token = scanner.peek()
   if (!token) {
     throw new ReaderError('Unexpected end of input', scanner.position())
@@ -493,7 +497,7 @@ const readSymbol = (scanner: TokenScanner) => {
     default:
       val = v.symbol(token.value)
   }
-  setPos(val, { start: token.start.offset, end: token.end.offset })
+  setPos(val, { start: token.start.offset, end: token.end.offset, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
   return val
 }
 
@@ -558,7 +562,7 @@ const readMap = (ctx: ReaderCtx) => {
   }
   const result: CljValue = { kind: valueKeywords.map, entries }
   if (closingEnd !== undefined) {
-    setPos(result, { start: startToken.start.offset, end: closingEnd })
+    setPos(result, { start: startToken.start.offset, end: closingEnd, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
   }
   return result
 }
@@ -709,7 +713,7 @@ const readAnonFn = (ctx: ReaderCtx) => {
     substitutedBody,
   ])
   if (closingEnd !== undefined) {
-    setPos(result, { start: startToken.start.offset, end: closingEnd })
+    setPos(result, { start: startToken.start.offset, end: closingEnd, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
   }
   return result
 }
@@ -746,7 +750,7 @@ const readRegex = (ctx: ReaderCtx): CljValue => {
   scanner.advance()
   const { pattern, flags } = extractInlineFlags(token.value)
   const val = v.regex(pattern, flags)
-  setPos(val, { start: token.start.offset, end: token.end.offset })
+  setPos(val, { start: token.start.offset, end: token.end.offset, source: ctx.source, lineOffset: ctx.lineOffset, colOffset: ctx.colOffset })
   return val
 }
 
@@ -928,7 +932,10 @@ const readNsMap = (ctx: ReaderCtx): CljValue => {
 export function readForms(
   input: Token[],
   currentNs: string = 'user',
-  aliases: Map<string, string> = new Map()
+  aliases: Map<string, string> = new Map(),
+  source?: string,
+  lineOffset?: number,
+  colOffset?: number
 ): CljValue[] {
   const withoutComments = input.filter((t) => t.kind !== tokenKeywords.Comment)
   const scanner = makeTokenScanner(withoutComments)
@@ -936,6 +943,9 @@ export function readForms(
     scanner,
     namespace: currentNs,
     aliases,
+    source,
+    lineOffset,
+    colOffset,
   }
   const values: CljValue[] = []
   while (!scanner.isAtEnd()) {
@@ -958,7 +968,10 @@ export type EdnReadOptions = {
 // Rejects Clojure-specific syntax and handles reader tags via dataReaders.
 export function readFormsEdn(
   input: Token[],
-  options?: EdnReadOptions
+  options?: EdnReadOptions,
+  source?: string,
+  lineOffset?: number,
+  colOffset?: number
 ): CljValue[] {
   const withoutComments = input.filter((t) => t.kind !== tokenKeywords.Comment)
   const scanner = makeTokenScanner(withoutComments)
@@ -966,6 +979,9 @@ export function readFormsEdn(
     scanner,
     namespace: 'user',
     aliases: new Map(),
+    source,
+    lineOffset,
+    colOffset,
     ednMode: true,
     dataReaders: options?.dataReaders,
     defaultDataReader: options?.defaultDataReader,

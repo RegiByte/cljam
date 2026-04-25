@@ -10,7 +10,20 @@
       "nReplPortFile": [".nrepl-port"],
       "afterPrimaryReplConnectedCode": "(println \"Connected to cljam nREPL\")",
       "customJackInCommandLine": "cljam nrepl-server",
+    },
+    {
+      "name": "cljam nodejs interop",
+      "projectType": "custom",
+      "cljsType": "none",
+      "nReplPortFile": [".nrepl-port"],
+      "afterPrimaryReplConnectedCode": "(println \"Connected to cljam nREPL\")",
+      "customJackInCommandLine": "npm run start",
     }
   ],
+  "calva.outputDestinations": {
+    "evalResults": "repl-window",
+    "evalOutput": "repl-window",
+    "otherOutput": "repl-window"
+  },
   "calva.showCalvaSaysOnConnect": false
 }

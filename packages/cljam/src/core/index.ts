@@ -112,7 +112,7 @@ import type { CljValue as _CljValue } from './types'
 
 export function readString(source: string): _CljValue {
   const tokens = _tokenize(source)
-  const forms = _readForms(tokens)
+  const forms = _readForms(tokens, undefined, undefined, source)
   if (forms.length === 0) throw new Error('readString: empty input')
   return forms[0]
 }

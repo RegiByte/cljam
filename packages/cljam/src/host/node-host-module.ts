@@ -28,7 +28,7 @@ export function makeNodeHostModule(session: Session): RuntimeModule {
               'slurp',
               {
                 value: cljNativeFunction('slurp', (pathVal: CljValue) => {
-                  const filePath = resolve(valueToString(pathVal))
+                  const filePath = resolve(session.currentDir, valueToString(pathVal))
                   if (!existsSync(filePath)) {
                     throw new Error(`slurp: file not found: ${filePath}`)
                   }
@@ -42,7 +42,7 @@ export function makeNodeHostModule(session: Session): RuntimeModule {
                 value: cljNativeFunction(
                   'spit',
                   (pathVal: CljValue, content: CljValue) => {
-                    const filePath = resolve(valueToString(pathVal))
+                    const filePath = resolve(session.currentDir, valueToString(pathVal))
                     writeFileSync(filePath, valueToString(content), 'utf8')
                     return cljNil()
                   }
@@ -53,7 +53,7 @@ export function makeNodeHostModule(session: Session): RuntimeModule {
               'load',
               {
                 value: cljNativeFunction('load', (pathVal: CljValue) => {
-                  const filePath = resolve(valueToString(pathVal))
+                  const filePath = resolve(session.currentDir, valueToString(pathVal))
                   if (!existsSync(filePath)) {
                     throw new Error(`load: file not found: ${filePath}`)
                   }
@@ -63,6 +63,27 @@ export function makeNodeHostModule(session: Session): RuntimeModule {
                   const loadedNs = session.loadFile(source)
                   session.setNs(loadedNs)
                   return cljNil()
+                }),
+              },
+            ],
+            [
+              'pwd',
+              {
+                value: cljNativeFunction('pwd', () => {
+                  return cljString(session.currentDir)
+                }),
+              },
+            ],
+            [
+              'cd',
+              {
+                value: cljNativeFunction('cd', (pathVal: CljValue) => {
+                  if (pathVal === undefined) {
+                    throw new Error('cd expects a path argument')
+                  }
+                  const next = resolve(session.currentDir, valueToString(pathVal))
+                  session.setCurrentDir(next)
+                  return cljString(next)
                 }),
               },
             ],

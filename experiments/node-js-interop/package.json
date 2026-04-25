@@ -8,6 +8,10 @@
   },
   "dependencies": {
     "@regibyte/cljam": "file:../../packages/cljam",
-    "@regibyte/cljam-date": "file:../../packages/cljam-date"
+    "@regibyte/cljam-date": "file:../../packages/cljam-date",
+    "@regibyte/cljam-integrant": "file:../../packages/cljam-integrant"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
   }
 }

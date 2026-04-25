@@ -1,0 +1,11 @@
+{
+  "name": "cljam-mcp-workspace",
+  "private": true,
+  "type": "module",
+  "description": "Temporary workspace for exercising @regibyte/cljam-mcp sessions.",
+  "cljam": {
+    "sourceRoots": ["src/clojure"],
+    "libraries": [],
+    "main": "workspace.demo"
+  }
+}

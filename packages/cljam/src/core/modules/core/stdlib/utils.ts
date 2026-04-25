@@ -402,7 +402,7 @@ export const utilFunctions: Record<string, CljValue> = {
         )
       }
       const tokens = tokenize(s.value)
-      const forms = readForms(tokens)
+      const forms = readForms(tokens, undefined, undefined, s.value)
       if (forms.length === 0) return v.nil()
       return forms[0]
     })

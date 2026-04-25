@@ -314,7 +314,7 @@ function buildRuntime(
       const tokens = tokenize(source)
       const targetNs = extractNsNameFromTokens(tokens) ?? nsName ?? 'user'
       const aliasMap = extractAliasMapFromTokens(tokens)
-      const forms = readForms(tokens, targetNs, aliasMap)
+      const forms = readForms(tokens, targetNs, aliasMap, source)
       const env = this.ensureNamespace(targetNs)
       ctx.currentSource = source
       ctx.currentFile = filePath

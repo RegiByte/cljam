@@ -170,7 +170,7 @@ export const ednFunctions = {
       const forms = readFormsEdn(tokens, {
         dataReaders: readers,
         defaultDataReader: defaultFn,
-      })
+      }, sourceArg.value)
 
       if (forms.length === 0) {
         throw new EvaluationError('edn-read-string*: empty input', {})

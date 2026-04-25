@@ -1,0 +1,7 @@
+{
+ :this-is :dev
+ :this-is-not :prod
+ :db-url "sqlite://dev.db"
+ :jwt-secret "secret"
+ :port 3000
+}

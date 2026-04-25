@@ -11,13 +11,15 @@ Add to your project's `.claude.json`:
   "mcpServers": {
     "cljam": {
       "command": "npx",
-      "args": ["@regibyte/cljam-mcp"]
+      "args": ["@regibyte/cljam-mcp", "--root-dir", "/path/to/workspace"]
     }
   }
 }
 ```
 
-Claude Code restarts the server automatically on crash.
+Claude Code restarts the server automatically on crash. `--root-dir` is optional,
+but recommended: it becomes the default workspace for every new built-in session.
+You can also set `CLJAM_MCP_ROOT_DIR=/path/to/workspace`.
 
 ## Mode 1: Built-in sessions
 
@@ -25,20 +27,42 @@ The LLM creates and manages Clojure sessions directly:
 
 ```
 new_session {}
-→ { session_id: "abc123", preset: "sandbox" }
+→ { session_id: "abc123", preset: "agent", root_dir: "/path/to/workspace" }
 
 eval { session_id: "abc123", code: "(defn greet [n] (str \"hello \" n))" }
 eval { session_id: "abc123", code: "(greet \"world\")" }
 → { result: "\"hello world\"" }
 ```
 
-Load project files with `root_dir`:
+Built-in sessions use a single MCP agent configuration with captured output,
+Node.js host bindings, and dynamic imports enabled. Load project files with
+`root_dir`, or configure the server with `--root-dir` and omit it per session:
 
 ```
 new_session { root_dir: "/path/to/project" }
 load_file { session_id: "...", path: "src/my/lib.clj" }
 eval { session_id: "...", code: "(my.lib/main)" }
 ```
+
+When a workspace has `cljam.sourceRoots`, namespace requires resolve from those
+roots. `cljam.main` (optional) names an entrypoint namespace that is auto-required
+into every new session — the session enters that namespace so the agent can call
+its functions unqualified:
+
+```json
+{
+  "cljam": {
+    "sourceRoots": ["src/clojure"],
+    "libraries": ["@regibyte/cljam-schema"],
+    "main": "my.app"
+  }
+}
+```
+
+Use `"main": "my.app:start"` to also call a bootstrap function with no args after
+the require. Override from the CLI with `--main <ns[:fn]>` or `CLJAM_MCP_MAIN`.
+If the bootstrap fails the session still comes up; the error is reported as
+`main_load_error` in the `new_session` response.
 
 ## Mode 2: nREPL bridge (pair programming)
 
@@ -103,7 +127,7 @@ Handbook topics include `jvm-gaps`, `types`, `records`, `protocols`, `schema-api
 
 | Tool | Description |
 |---|---|
-| `new_session` | Create a session (`sandbox` or `node` preset, optional `root_dir`) |
+| `new_session` | Create an agent workspace session (optional `root_dir` override) |
 | `eval` | Evaluate Clojure — returns `result`, `ns`, `stdout`, `error` |
 | `load_file` | Load a `.clj` file into the session |
 | `list_sessions` | List active sessions |
