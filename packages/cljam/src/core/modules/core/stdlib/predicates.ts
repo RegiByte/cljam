@@ -3,52 +3,79 @@
 // coll?, some, every?
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
-import type { CljNumber, CljValue, Env, EvaluationContext } from '../../../types'
+import type {
+  CljNumber,
+  CljValue,
+  Env,
+  EvaluationContext,
+} from '../../../types'
+
+const DocGroup = 'Predicates'
 
 export const predicateFunctions: Record<string, CljValue> = {
   'nil?': v
     .nativeFn('nil?', function nilPredImpl(arg: CljValue) {
       return v.boolean(arg.kind === 'nil')
     })
-    .doc('Returns true if the value is nil, false otherwise.', [['arg']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is nil, false otherwise.',
+        arglists: [['arg']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'true?': v
     .nativeFn('true?', function truePredImpl(arg: CljValue) {
-      // returns true if the value is a boolean and true
       if (arg.kind !== 'boolean') {
         return v.boolean(false)
       }
       return v.boolean(arg.value === true)
     })
-    .doc('Returns true if the value is a boolean and true, false otherwise.', [
-      ['arg'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a boolean and true, false otherwise.',
+        arglists: [['arg']],
+        docGroup: DocGroup,
+      }),
     ]),
   'false?': v
     .nativeFn('false?', function falsePredImpl(arg: CljValue) {
-      // returns true if the value is a boolean and false
       if (arg.kind !== 'boolean') {
         return v.boolean(false)
       }
       return v.boolean(arg.value === false)
     })
-    .doc('Returns true if the value is a boolean and false, false otherwise.', [
-      ['arg'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a boolean and false, false otherwise.',
+        arglists: [['arg']],
+        docGroup: DocGroup,
+      }),
     ]),
   'truthy?': v
     .nativeFn('truthy?', function truthyPredImpl(arg: CljValue) {
       return v.boolean(is.truthy(arg))
     })
-    .doc('Returns true if the value is not nil or false, false otherwise.', [
-      ['arg'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is not nil or false, false otherwise.',
+        arglists: [['arg']],
+        docGroup: DocGroup,
+      }),
     ]),
   'falsy?': v
     .nativeFn('falsy?', function falsyPredImpl(arg: CljValue) {
       return v.boolean(is.falsy(arg))
     })
-    .doc('Returns true if the value is nil or false, false otherwise.', [
-      ['arg'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is nil or false, false otherwise.',
+        arglists: [['arg']],
+        docGroup: DocGroup,
+      }),
     ]),
   'not=': v
     .nativeFn('not=', function notEqualImpl(...vals: CljValue[]) {
@@ -64,16 +91,24 @@ export const predicateFunctions: Record<string, CljValue> = {
       }
       return v.boolean(false)
     })
-    .doc(
-      'Returns true if any two adjacent arguments are not equal, false otherwise.',
-      [['&', 'vals']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if any two adjacent arguments are not equal, false otherwise.',
+        arglists: [['&', 'vals']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'char?': v
     .nativeFn('char?', function charPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.char(x))
     })
-    .doc('Returns true if the value is a character, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a character, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   char: v
     .nativeFn('char', function charImpl(n: CljValue) {
       if (n === undefined || n.kind !== 'number') {
@@ -91,8 +126,13 @@ export const predicateFunctions: Record<string, CljValue> = {
       }
       return v.char(String.fromCodePoint(cp))
     })
-    .doc('Returns the character at the given Unicode code point.', [['n']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the character at the given Unicode code point.',
+        arglists: [['n']],
+        docGroup: DocGroup,
+      }),
+    ]),
   int: v
     .nativeFn('int', function intImpl(x: CljValue) {
       if (x === undefined) {
@@ -109,52 +149,90 @@ export const predicateFunctions: Record<string, CljValue> = {
         { x }
       )
     })
-    .doc('Coerces x to int. For characters, returns the Unicode code point.', [
-      ['x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Coerces x to int. For characters, returns the Unicode code point.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'number?': v
     .nativeFn('number?', function numberPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && x.kind === 'number')
     })
-    .doc('Returns true if the value is a number, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a number, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'string?': v
     .nativeFn('string?', function stringPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.string(x))
     })
-    .doc('Returns true if the value is a string, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a string, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'boolean?': v
     .nativeFn('boolean?', function booleanPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && x.kind === 'boolean')
     })
-    .doc('Returns true if the value is a boolean, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a boolean, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'vector?': v
     .nativeFn('vector?', function vectorPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.vector(x))
     })
-    .doc('Returns true if the value is a vector, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a vector, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'list?': v
     .nativeFn('list?', function listPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.list(x))
     })
-    .doc('Returns true if the value is a list, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a list, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'map?': v
     .nativeFn('map?', function mapPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.map(x))
     })
-    .doc('Returns true if the value is a map, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a map, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'keyword?': v
     .nativeFn('keyword?', function keywordPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.keyword(x))
     })
-    .doc('Returns true if the value is a keyword, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a keyword, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'qualified-keyword?': v
     .nativeFn(
       'qualified-keyword?',
@@ -164,22 +242,35 @@ export const predicateFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc('Returns true if the value is a qualified keyword, false otherwise.', [
-      ['x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a qualified keyword, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'symbol?': v
     .nativeFn('symbol?', function symbolPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.symbol(x))
     })
-    .doc('Returns true if the value is a symbol, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a symbol, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'namespace?': v
     .nativeFn('namespace?', function namespaceQImpl(x: CljValue) {
       return v.boolean(x !== undefined && x.kind === 'namespace')
     })
-    .doc('Returns true if x is a namespace.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a namespace.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'qualified-symbol?': v
     .nativeFn(
       'qualified-symbol?',
@@ -189,16 +280,24 @@ export const predicateFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc('Returns true if the value is a qualified symbol, false otherwise.', [
-      ['x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a qualified symbol, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'ident?': v
     .nativeFn('ident?', function identPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && (is.keyword(x) || is.symbol(x)))
     })
-    .doc('Returns true if x is a symbol or keyword.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a symbol or keyword.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'simple-ident?': v
     .nativeFn('simple-ident?', function simpleIdentPredImpl(x: CljValue) {
       return v.boolean(
@@ -207,61 +306,73 @@ export const predicateFunctions: Record<string, CljValue> = {
             (is.symbol(x) && !x.name.includes('/')))
       )
     })
-    .doc(
-      'Returns true if x is a symbol or keyword with no namespace component.',
-      [['x']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a symbol or keyword with no namespace component.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'qualified-ident?': v
-    .nativeFn(
-      'qualified-ident?',
-      function qualifiedIdentPredImpl(x: CljValue) {
-        return v.boolean(
-          x !== undefined &&
-            ((is.keyword(x) && x.name.includes('/')) ||
-              (is.symbol(x) && x.name.includes('/')))
-        )
-      }
-    )
-    .doc(
-      'Returns true if x is a symbol or keyword with a namespace component.',
-      [['x']]
-    ),
-
+    .nativeFn('qualified-ident?', function qualifiedIdentPredImpl(x: CljValue) {
+      return v.boolean(
+        x !== undefined &&
+          ((is.keyword(x) && x.name.includes('/')) ||
+            (is.symbol(x) && x.name.includes('/')))
+      )
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a symbol or keyword with a namespace component.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'simple-keyword?': v
     .nativeFn('simple-keyword?', function simpleKeywordPredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined && is.keyword(x) && !x.name.includes('/')
       )
     })
-    .doc(
-      'Returns true if x is a keyword with no namespace component.',
-      [['x']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a keyword with no namespace component.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'simple-symbol?': v
     .nativeFn('simple-symbol?', function simpleSymbolPredImpl(x: CljValue) {
-      return v.boolean(
-        x !== undefined && is.symbol(x) && !x.name.includes('/')
-      )
+      return v.boolean(x !== undefined && is.symbol(x) && !x.name.includes('/'))
     })
-    .doc(
-      'Returns true if x is a symbol with no namespace component.',
-      [['x']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a symbol with no namespace component.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'fn?': v
     .nativeFn('fn?', function fnPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.aFunction(x))
     })
-    .doc('Returns true if the value is a function, false otherwise.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a function, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'coll?': v
     .nativeFn('coll?', function collPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.collection(x))
     })
-    .doc('Returns true if the value is a collection, false otherwise.', [
-      ['x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is a collection, false otherwise.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
     ]),
   some: v
     .nativeFnCtx(
@@ -298,11 +409,13 @@ export const predicateFunctions: Record<string, CljValue> = {
         return v.nil()
       }
     )
-    .doc(
-      'Returns the first truthy result of applying pred to each item in coll, or nil if no item satisfies pred.',
-      [['pred', 'coll']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the first truthy result of applying pred to each item in coll, or nil if no item satisfies pred.',
+        arglists: [['pred', 'coll']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'every?': v
     .nativeFnCtx(
       'every?',
@@ -334,10 +447,13 @@ export const predicateFunctions: Record<string, CljValue> = {
         return v.boolean(true)
       }
     )
-    .doc('Returns true if all items in coll satisfy pred, false otherwise.', [
-      ['pred', 'coll'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if all items in coll satisfy pred, false otherwise.',
+        arglists: [['pred', 'coll']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'identical?': v
     .nativeFn(
       'identical?',
@@ -345,16 +461,24 @@ export const predicateFunctions: Record<string, CljValue> = {
         return v.boolean(x === y)
       }
     )
-    .doc('Tests if 2 arguments are the same object (reference equality).', [
-      ['x', 'y'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Tests if 2 arguments are the same object (reference equality).',
+        arglists: [['x', 'y']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'seqable?': v
     .nativeFn('seqable?', function seqablePredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.seqable(x))
     })
-    .doc('Return true if the seq function is supported for x.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Return true if the seq function is supported for x.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'sequential?': v
     .nativeFn('sequential?', function sequentialPredImpl(x: CljValue) {
       return v.boolean(
@@ -362,19 +486,24 @@ export const predicateFunctions: Record<string, CljValue> = {
           (is.list(x) || is.vector(x) || is.lazySeq(x) || is.cons(x))
       )
     })
-    .doc(
-      'Returns true if coll is a sequential collection (list, vector, lazy-seq, or cons).',
-      [['coll']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if coll is a sequential collection (list, vector, lazy-seq, or cons).',
+        arglists: [['coll']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'associative?': v
     .nativeFn('associative?', function associativePredImpl(x: CljValue) {
       return v.boolean(x !== undefined && (is.map(x) || is.vector(x)))
     })
-    .doc('Returns true if coll implements Associative (map or vector).', [
-      ['coll'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if coll implements Associative (map or vector).',
+        arglists: [['coll']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'counted?': v
     .nativeFn('counted?', function countedPredImpl(x: CljValue) {
       return v.boolean(
@@ -386,8 +515,13 @@ export const predicateFunctions: Record<string, CljValue> = {
             is.string(x))
       )
     })
-    .doc('Returns true if coll implements count in constant time.', [['coll']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if coll implements count in constant time.',
+        arglists: [['coll']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'int?': v
     .nativeFn('int?', function intPredImpl(x: CljValue) {
       return v.boolean(
@@ -396,8 +530,13 @@ export const predicateFunctions: Record<string, CljValue> = {
           Number.isInteger((x as import('../../../types').CljNumber).value)
       )
     })
-    .doc('Return true if x is a fixed precision integer.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Return true if x is a fixed precision integer.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'pos-int?': v
     .nativeFn('pos-int?', function posIntPredImpl(x: CljValue) {
       return v.boolean(
@@ -407,8 +546,13 @@ export const predicateFunctions: Record<string, CljValue> = {
           (x as CljNumber).value > 0
       )
     })
-    .doc('Return true if x is a positive fixed precision integer.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Return true if x is a positive fixed precision integer.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'neg-int?': v
     .nativeFn('neg-int?', function negIntPredImpl(x: CljValue) {
       return v.boolean(
@@ -418,8 +562,13 @@ export const predicateFunctions: Record<string, CljValue> = {
           (x as CljNumber).value < 0
       )
     })
-    .doc('Return true if x is a negative fixed precision integer.', [['x']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Return true if x is a negative fixed precision integer.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'nat-int?': v
     .nativeFn('nat-int?', function natIntPredImpl(x: CljValue) {
       return v.boolean(
@@ -429,27 +578,37 @@ export const predicateFunctions: Record<string, CljValue> = {
           (x as CljNumber).value >= 0
       )
     })
-    .doc(
-      'Return true if x is a non-negative fixed precision integer.',
-      [['x']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Return true if x is a non-negative fixed precision integer.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'double?': v
     .nativeFn('double?', function doublePredImpl(x: CljValue) {
       return v.boolean(x !== undefined && x.kind === 'number')
     })
-    .doc('Return true if x is a Double (all numbers in JS are doubles).', [
-      ['x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Return true if x is a Double (all numbers in JS are doubles).',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   'NaN?': v
     .nativeFn('NaN?', function nanPredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined && x.kind === 'number' && isNaN((x as CljNumber).value)
       )
     })
-    .doc('Returns true if num is NaN, else false.', [['num']]),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if num is NaN, else false.',
+        arglists: [['num']],
+        docGroup: DocGroup,
+      }),
+    ]),
   'infinite?': v
     .nativeFn('infinite?', function infinitePredImpl(x: CljValue) {
       return v.boolean(
@@ -459,10 +618,13 @@ export const predicateFunctions: Record<string, CljValue> = {
           !isNaN((x as CljNumber).value)
       )
     })
-    .doc('Returns true if num is positive or negative infinity, else false.', [
-      ['num'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if num is positive or negative infinity, else false.',
+        arglists: [['num']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   compare: v
     .nativeFn(
       'compare',
@@ -494,10 +656,13 @@ export const predicateFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc('Comparator. Returns a negative number, zero, or a positive number.', [
-      ['x', 'y'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Comparator. Returns a negative number, zero, or a positive number.',
+        arglists: [['x', 'y']],
+        docGroup: DocGroup,
+      }),
     ]),
-
   hash: v
     .nativeFn('hash', function hashImpl(x: CljValue) {
       // Simple hash — consistent within a session, not cryptographic
@@ -508,5 +673,11 @@ export const predicateFunctions: Record<string, CljValue> = {
       }
       return v.number(h)
     })
-    .doc('Returns the hash code of its argument.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the hash code of its argument.',
+        arglists: [['x']],
+        docGroup: DocGroup,
+      }),
+    ]),
 }

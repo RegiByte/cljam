@@ -1,5 +1,5 @@
 import { derefValue } from '../../../env'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import {
   buildPrintContext,
   prettyPrintString,
@@ -47,51 +47,111 @@ function emitToErr(ctx: EvaluationContext, callEnv: Env, text: string): void {
 }
 
 export const printFunctions: Record<string, CljValue> = {
-  println: v.nativeFnCtx('println', (ctx, callEnv, ...args: CljValue[]) => {
-    withPrintContext(buildPrintContext(ctx), () => {
-      emitToOut(ctx, callEnv, args.map(valueToString).join(' ') + '\n')
-    })
-    return v.nil()
-  }),
-  print: v.nativeFnCtx('print', (ctx, callEnv, ...args: CljValue[]) => {
-    withPrintContext(buildPrintContext(ctx), () => {
-      emitToOut(ctx, callEnv, args.map(valueToString).join(' '))
-    })
-    return v.nil()
-  }),
-  newline: v.nativeFnCtx('newline', (ctx, callEnv) => {
-    emitToOut(ctx, callEnv, '\n')
-    return v.nil()
-  }),
-  pr: v.nativeFnCtx('pr', (ctx, callEnv, ...args: CljValue[]) => {
-    withPrintContext(buildPrintContext(ctx), () => {
-      emitToOut(ctx, callEnv, args.map((v) => printString(v)).join(' '))
-    })
-    return v.nil()
-  }),
-  prn: v.nativeFnCtx('prn', (ctx, callEnv, ...args: CljValue[]) => {
-    withPrintContext(buildPrintContext(ctx), () => {
-      emitToOut(ctx, callEnv, args.map((v) => printString(v)).join(' ') + '\n')
-    })
-    return v.nil()
-  }),
-  pprint: v.nativeFnCtx(
-    'pprint',
-    (ctx, callEnv, form: CljValue, widthArg?: CljValue) => {
-      if (form === undefined) return v.nil()
-      const maxWidth = widthArg?.kind === 'number' ? widthArg.value : 80
+  println: v
+    .nativeFnCtx('println', (ctx, callEnv, ...args: CljValue[]) => {
       withPrintContext(buildPrintContext(ctx), () => {
-        emitToOut(ctx, callEnv, prettyPrintString(form, maxWidth) + '\n')
+        emitToOut(ctx, callEnv, args.map(valueToString).join(' ') + '\n')
       })
       return v.nil()
-    }
-  ),
-  warn: v.nativeFnCtx('warn', (ctx, callEnv, ...args: CljValue[]) => {
-    withPrintContext(buildPrintContext(ctx), () => {
-      emitToErr(ctx, callEnv, args.map(valueToString).join(' ') + '\n')
     })
-    return v.nil()
-  }),
+    .withMeta([
+      ...docMeta({
+        doc: 'Prints the arguments to the current output channel, followed by a newline.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.io,
+      }),
+    ]),
+  print: v
+    .nativeFnCtx('print', (ctx, callEnv, ...args: CljValue[]) => {
+      withPrintContext(buildPrintContext(ctx), () => {
+        emitToOut(ctx, callEnv, args.map(valueToString).join(' '))
+      })
+      return v.nil()
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Prints the arguments to the current output channel.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.io,
+      }),
+    ]),
+  newline: v
+    .nativeFnCtx('newline', (ctx, callEnv) => {
+      emitToOut(ctx, callEnv, '\n')
+      return v.nil()
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Prints a newline to the current output channel. Returns nil.',
+        arglists: [],
+        docGroup: DocGroups.io,
+      }),
+    ]),
+  pr: v
+    .nativeFnCtx('pr', (ctx, callEnv, ...args: CljValue[]) => {
+      withPrintContext(buildPrintContext(ctx), () => {
+        emitToOut(ctx, callEnv, args.map((v) => printString(v)).join(' '))
+      })
+      return v.nil()
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Prints the arguments to the output stream that *out* is bound to. Returns nil.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.io,
+      }),
+    ]),
+  prn: v
+    .nativeFnCtx('prn', (ctx, callEnv, ...args: CljValue[]) => {
+      withPrintContext(buildPrintContext(ctx), () => {
+        emitToOut(
+          ctx,
+          callEnv,
+          args.map((v) => printString(v)).join(' ') + '\n'
+        )
+      })
+      return v.nil()
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Same as pr, but prints a newline after the arguments.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.io,
+      }),
+    ]),
+  pprint: v
+    .nativeFnCtx(
+      'pprint',
+      (ctx, callEnv, form: CljValue, widthArg?: CljValue) => {
+        if (form === undefined) return v.nil()
+        const maxWidth = widthArg?.kind === 'number' ? widthArg.value : 80
+        withPrintContext(buildPrintContext(ctx), () => {
+          emitToOut(ctx, callEnv, prettyPrintString(form, maxWidth) + '\n')
+        })
+        return v.nil()
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Pretty-prints the arguments to the current output channel.',
+        arglists: [['form', 'max-width'], ['form']],
+        docGroup: DocGroups.io,
+      }),
+    ]),
+  warn: v
+    .nativeFnCtx('warn', (ctx, callEnv, ...args: CljValue[]) => {
+      withPrintContext(buildPrintContext(ctx), () => {
+        emitToErr(ctx, callEnv, args.map(valueToString).join(' ') + '\n')
+      })
+      return v.nil()
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Prints the arguments to the current error channel, followed by a newline.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.io,
+      }),
+    ]),
 }
 
 export const printVars: Record<string, CljValue> = {

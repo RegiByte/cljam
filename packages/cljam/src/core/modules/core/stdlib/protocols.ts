@@ -3,10 +3,12 @@
 import { is } from '../../../assertions'
 import { getNamespaceEnv, internVar } from '../../../env'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { docMeta, DocGroups, v } from '../../../factories'
 import { printString } from '../../../printer'
 import type {
+  Arity,
   CljFunction,
+  CljMacro,
   CljMap,
   CljNativeFunction,
   CljProtocol,
@@ -33,9 +35,7 @@ export function typeTagOf(value: CljValue): string {
  * This is the reusable cross-namespace scanner: O(vars) but only needed
  * for `protocols` and `extenders` which are introspection paths, not hot paths.
  */
-export function* allProtocols(
-  ctx: EvaluationContext
-): Generator<CljProtocol> {
+export function* allProtocols(ctx: EvaluationContext): Generator<CljProtocol> {
   for (const ns of ctx.allNamespaces()) {
     for (const varDecl of ns.vars.values()) {
       if (is.protocol(varDecl.value)) yield varDecl.value
@@ -67,23 +67,79 @@ export const TYPE_NAME_REGISTRY: Record<string, string> = {
   JsValue: 'js-value',
 }
 
+// Keywords for describe*
+const keywords = {
+  kind: v.autoKeyword('kind'),
+  name: v.autoKeyword('name'),
+  fn: v.autoKeyword('fn'),
+  nativeFn: v.autoKeyword('native-fn'),
+  arglists: v.autoKeyword('arglists'),
+  doc: v.autoKeyword('doc'),
+  protocol: v.autoKeyword('protocol'),
+  protocols: v.autoKeyword('protocols'),
+  fields: v.autoKeyword('fields'),
+  protocolFn: v.autoKeyword('protocol-fn'),
+  methods: v.autoKeyword('methods'),
+  dispatchVals: v.autoKeyword('dispatch-vals'),
+  default: v.autoKeyword('default?'),
+  multiMethod: v.autoKeyword('multi-method'),
+  macro: v.autoKeyword('macro'),
+  ns: v.autoKeyword('ns'),
+  extenders: v.autoKeyword('extenders'),
+  record: v.autoKeyword('record'),
+  type: v.autoKeyword('type'),
+  namespace: v.autoKeyword('namespace'),
+  varCount: v.autoKeyword('var-count'),
+  var: v.autoKeyword('var'),
+  vars: v.autoKeyword('vars'),
+  showing: v.autoKeyword('showing'),
+  dynamic: v.autoKeyword('dynamic'),
+  value: v.autoKeyword('value'),
+  string: v.autoKeyword('string'),
+  count: v.autoKeyword('count'),
+  number: v.autoKeyword('number'),
+  boolean: v.autoKeyword('boolean'),
+  nil: v.autoKeyword('nil'),
+  keyword: v.autoKeyword('keyword'),
+  symbol: v.autoKeyword('symbol'),
+  list: v.autoKeyword('list'),
+  vector: v.autoKeyword('vector'),
+  map: v.autoKeyword('map'),
+  set: v.autoKeyword('set'),
+  atom: v.autoKeyword('atom'),
+  lazySeq: v.autoKeyword('lazy-seq'),
+  cons: v.autoKeyword('cons'),
+  regex: v.autoKeyword('regex'),
+  delay: v.autoKeyword('delay'),
+  reduced: v.autoKeyword('reduced'),
+  derefKind: v.autoKeyword('deref-kind'),
+  realized: v.autoKeyword('realized'),
+  pattern: v.autoKeyword('pattern'),
+  flags: v.autoKeyword('flags'),
+}
+
 // ---------------------------------------------------------------------------
 // describe* helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Extracts arglists from a user-defined function's arities.
+ * Reconstructs arglists from parsed Arity objects.
  * Each arity becomes a string[] like ["x", "y"] or ["x", "&", "rest"].
  * Destructured params are rendered via printString: [[a b] c] → ["[a b]", "c"].
+ * Shared by functions and macros — both store arities in the same shape.
  */
-function arglistsFromFunction(fn: CljFunction): string[][] {
-  return fn.arities.map((arity) => {
+function arglistsFromArities(arities: Arity[]): string[][] {
+  return arities.map((arity) => {
     const params = arity.params.map((p) => printString(p as CljValue))
     if (arity.restParam) {
       return [...params, '&', printString(arity.restParam as CljValue)]
     }
     return params
   })
+}
+
+function arglistsFromFunction(fn: CljFunction): string[][] {
+  return arglistsFromArities(fn.arities)
 }
 
 /**
@@ -101,7 +157,9 @@ function arglistsFromNativeMeta(fn: CljNativeFunction): string[][] {
   if (!is.vector(alistsVal)) return []
   return alistsVal.value
     .filter(is.vector)
-    .map((alist) => alist.value.map((s) => (is.symbol(s) ? s.name : printString(s))))
+    .map((alist) =>
+      alist.value.map((s) => (is.symbol(s) ? s.name : printString(s)))
+    )
 }
 
 /**
@@ -142,55 +200,70 @@ function shallowDescribeVarValue(value: CljValue): CljMap {
     case 'function': {
       const arglists = arglistsFromFunction(value)
       return v.map([
-        [v.kw(':kind'), v.kw(':fn')],
+        [keywords.kind, keywords.fn],
         ...(value.name
-          ? ([[v.kw(':name'), v.string(value.name)]] as [CljValue, CljValue][])
+          ? ([[keywords.name, v.string(value.name)]] as [CljValue, CljValue][])
           : []),
-        [v.kw(':arglists'), v.vector(arglists.map((al) => v.vector(al.map(v.string))))],
-        [v.kw(':doc'), getMetaDoc(value.meta)],
+        [
+          keywords.arglists,
+          v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+        ],
+        [keywords.doc, getMetaDoc(value.meta)],
       ])
     }
     case 'native-function': {
       if (isProtocolFn(value)) {
         return v.map([
-          [v.kw(':kind'), v.kw(':protocol-fn')],
-          [v.kw(':name'), v.string(value.name)],
-          [v.kw(':protocol'), getMetaEntry(value.meta, ':protocol')],
+          [keywords.kind, keywords.protocolFn],
+          [keywords.name, v.string(value.name)],
+          [keywords.protocol, getMetaEntry(value.meta, ':protocol')],
         ])
       }
       const arglists = arglistsFromNativeMeta(value)
       return v.map([
-        [v.kw(':kind'), v.kw(':native-fn')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':arglists'), v.vector(arglists.map((al) => v.vector(al.map(v.string))))],
-        [v.kw(':doc'), getMetaDoc(value.meta)],
+        [keywords.kind, keywords.nativeFn],
+        [keywords.name, v.string(value.name)],
+        [
+          keywords.arglists,
+          v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+        ],
+        [keywords.doc, getMetaDoc(value.meta)],
       ])
     }
     case 'protocol': {
       return v.map([
-        [v.kw(':kind'), v.kw(':protocol')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':methods'), v.vector(value.fns.map((fn) => v.string(fn.name)))],
+        [keywords.kind, keywords.protocol],
+        [keywords.name, v.string(value.name)],
+        [keywords.methods, v.vector(value.fns.map((fn) => v.string(fn.name)))],
       ])
     }
     case 'multi-method': {
       return v.map([
-        [v.kw(':kind'), v.kw(':multi-method')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':dispatch-vals'), v.vector(value.methods.map((m) => m.dispatchVal))],
-        [v.kw(':default?'), v.boolean(value.defaultMethod !== undefined)],
+        [keywords.kind, keywords.multiMethod],
+        [keywords.name, v.string(value.name)],
+        [
+          keywords.dispatchVals,
+          v.vector(value.methods.map((m) => m.dispatchVal)),
+        ],
+        [keywords.default, v.boolean(value.defaultMethod !== undefined)],
       ])
     }
     case 'macro': {
+      const arglists = arglistsFromArities((value as CljMacro).arities)
       return v.map([
-        [v.kw(':kind'), v.kw(':macro')],
+        [keywords.kind, keywords.macro],
         ...(value.name
-          ? ([[v.kw(':name'), v.string(value.name)]] as [CljValue, CljValue][])
+          ? ([[keywords.name, v.string(value.name)]] as [CljValue, CljValue][])
           : []),
+        [
+          keywords.arglists,
+          v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+        ],
+        [keywords.doc, getMetaDoc((value as CljMacro).meta)],
       ])
     }
     default: {
-      return v.map([[v.kw(':kind'), v.kw(`:${value.kind}`)]])
+      return v.map([[keywords.kind, v.kw(`:${value.kind}`)]])
     }
   }
 }
@@ -209,28 +282,37 @@ function describeValue(
       const extenders = [...value.impls.keys()].map((k) => v.keyword(`:${k}`))
       const methods = value.fns.map((fn) =>
         v.map([
-          [v.kw(':name'), v.string(fn.name)],
-          [v.kw(':arglists'), v.vector(fn.arglists.map((al) => v.vector(al.map(v.string))))],
-          [v.kw(':doc'), fn.doc !== undefined ? v.string(fn.doc) : v.nil()],
+          [keywords.name, v.string(fn.name)],
+          [
+            keywords.arglists,
+            v.vector(fn.arglists.map((al) => v.vector(al.map(v.string)))),
+          ],
+          [keywords.doc, fn.doc !== undefined ? v.string(fn.doc) : v.nil()],
         ])
       )
       return v.map([
-        [v.kw(':kind'), v.kw(':protocol')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':ns'), v.string(value.ns)],
-        [v.kw(':doc'), value.doc !== undefined ? v.string(value.doc) : v.nil()],
-        [v.kw(':methods'), v.vector(methods)],
-        [v.kw(':extenders'), v.vector(extenders)],
+        [keywords.kind, keywords.protocol],
+        [keywords.name, v.string(value.name)],
+        [keywords.ns, v.string(value.ns)],
+        [keywords.doc, value.doc !== undefined ? v.string(value.doc) : v.nil()],
+        [keywords.methods, v.vector(methods)],
+        [keywords.extenders, v.vector(extenders)],
       ])
     }
 
     case 'function': {
       const arglists = arglistsFromFunction(value)
       return v.map([
-        [v.kw(':kind'), v.kw(':fn')],
-        [v.kw(':name'), value.name !== undefined ? v.string(value.name) : v.nil()],
-        [v.kw(':arglists'), v.vector(arglists.map((al) => v.vector(al.map(v.string))))],
-        [v.kw(':doc'), getMetaDoc(value.meta)],
+        [keywords.kind, keywords.fn],
+        [
+          keywords.name,
+          value.name !== undefined ? v.string(value.name) : v.nil(),
+        ],
+        [
+          keywords.arglists,
+          v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+        ],
+        [keywords.doc, getMetaDoc(value.meta)],
       ])
     }
 
@@ -249,27 +331,36 @@ function describeValue(
           }
         }
         return v.map([
-          [v.kw(':kind'), v.kw(':protocol-fn')],
-          [v.kw(':name'), v.string(value.name)],
-          [v.kw(':protocol'), protocolStr],
-          [v.kw(':arglists'), v.vector(arglists.map((al) => v.vector(al.map(v.string))))],
+          [keywords.kind, keywords.protocolFn],
+          [keywords.name, v.string(value.name)],
+          [keywords.protocol, protocolStr],
+          [
+            keywords.arglists,
+            v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+          ],
         ])
       }
       const arglists = arglistsFromNativeMeta(value)
       return v.map([
-        [v.kw(':kind'), v.kw(':native-fn')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':arglists'), v.vector(arglists.map((al) => v.vector(al.map(v.string))))],
-        [v.kw(':doc'), getMetaDoc(value.meta)],
+        [keywords.kind, keywords.nativeFn],
+        [keywords.name, v.string(value.name)],
+        [
+          keywords.arglists,
+          v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+        ],
+        [keywords.doc, getMetaDoc(value.meta)],
       ])
     }
 
     case 'multi-method': {
       return v.map([
-        [v.kw(':kind'), v.kw(':multi-method')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':dispatch-vals'), v.vector(value.methods.map((m) => m.dispatchVal))],
-        [v.kw(':default?'), v.boolean(value.defaultMethod !== undefined)],
+        [keywords.kind, keywords.multiMethod],
+        [keywords.name, v.string(value.name)],
+        [
+          keywords.dispatchVals,
+          v.vector(value.methods.map((m) => m.dispatchVal)),
+        ],
+        [keywords.default, v.boolean(value.defaultMethod !== undefined)],
       ])
     }
 
@@ -282,12 +373,12 @@ function describeValue(
         }
       }
       return v.map([
-        [v.kw(':kind'), v.kw(':record')],
-        [v.kw(':type'), v.keyword(`:${value.ns}/${value.recordType}`)],
-        [v.kw(':ns'), v.string(value.ns)],
-        [v.kw(':name'), v.string(value.recordType)],
-        [v.kw(':fields'), v.map(value.fields)],
-        [v.kw(':protocols'), v.vector(protocols)],
+        [keywords.kind, keywords.record],
+        [keywords.type, v.keyword(`:${value.ns}/${value.recordType}`)],
+        [keywords.ns, v.string(value.ns)],
+        [keywords.name, v.string(value.recordType)],
+        [keywords.fields, v.map(value.fields)],
+        [keywords.protocols, v.vector(protocols)],
       ])
     }
 
@@ -295,61 +386,72 @@ function describeValue(
       const allVarsEntries = [...value.vars.entries()]
       const totalCount = allVarsEntries.length
       const truncated = limit !== null && totalCount > limit
-      const limited = truncated ? allVarsEntries.slice(0, limit!) : allVarsEntries
-      const varEntries: [CljValue, CljValue][] = limited.map(([name, varDecl]) => [
-        v.string(name),
-        shallowDescribeVarValue(varDecl.value),
-      ])
+      const limited = truncated
+        ? allVarsEntries.slice(0, limit!)
+        : allVarsEntries
+      const varEntries: [CljValue, CljValue][] = limited.map(
+        ([name, varDecl]) => [
+          v.string(name),
+          shallowDescribeVarValue(varDecl.value),
+        ]
+      )
       return v.map([
-        [v.kw(':kind'), v.kw(':namespace')],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':var-count'), v.number(totalCount)],
+        [keywords.kind, keywords.namespace],
+        [keywords.name, v.string(value.name)],
+        [keywords.doc, value.doc !== undefined ? v.string(value.doc) : v.nil()],
+        [keywords.varCount, v.number(totalCount)],
         ...(truncated
-          ? ([[v.kw(':showing'), v.number(limit!)]] as [CljValue, CljValue][])
+          ? ([[keywords.showing, v.number(limit!)]] as [CljValue, CljValue][])
           : []),
-        [v.kw(':vars'), v.map(varEntries)],
+        [keywords.vars, v.map(varEntries)],
       ])
     }
 
     case 'var': {
       return v.map([
-        [v.kw(':kind'), v.kw(':var')],
-        [v.kw(':ns'), v.string(value.ns)],
-        [v.kw(':name'), v.string(value.name)],
-        [v.kw(':dynamic'), v.boolean(value.dynamic ?? false)],
-        [v.kw(':value'), describeValue(ctx, value.value, null)],
+        [keywords.kind, keywords.var],
+        [keywords.ns, v.string(value.ns)],
+        [keywords.name, v.string(value.name)],
+        [keywords.dynamic, v.boolean(value.dynamic ?? false)],
+        [keywords.value, describeValue(ctx, value.value, null)],
       ])
     }
 
     case 'string':
       return v.map([
-        [v.kw(':kind'), v.kw(':string')],
-        [v.kw(':value'), value],
-        [v.kw(':count'), v.number(value.value.length)],
+        [keywords.kind, keywords.string],
+        [keywords.value, value],
+        [keywords.count, v.number(value.value.length)],
       ])
 
     case 'number':
       return v.map([
-        [v.kw(':kind'), v.kw(':number')],
-        [v.kw(':value'), value],
+        [keywords.kind, keywords.number],
+        [keywords.value, value],
       ])
 
     case 'boolean':
       return v.map([
-        [v.kw(':kind'), v.kw(':boolean')],
-        [v.kw(':value'), value],
+        [keywords.kind, keywords.boolean],
+        [keywords.value, value],
       ])
 
     case 'nil':
-      return v.map([[v.kw(':kind'), v.kw(':nil')]])
+      return v.map([[keywords.kind, keywords.nil]])
 
     case 'keyword': {
       const raw = value.name.slice(1)
       const slashIdx = raw.indexOf('/')
       return v.map([
-        [v.kw(':kind'), v.kw(':keyword')],
-        [v.kw(':name'), v.string(slashIdx >= 0 ? raw.slice(slashIdx + 1) : raw)],
-        [v.kw(':ns'), slashIdx >= 0 ? v.string(raw.slice(0, slashIdx)) : v.nil()],
+        [keywords.kind, keywords.keyword],
+        [
+          keywords.name,
+          v.string(slashIdx >= 0 ? raw.slice(slashIdx + 1) : raw),
+        ],
+        [
+          keywords.ns,
+          slashIdx >= 0 ? v.string(raw.slice(0, slashIdx)) : v.nil(),
+        ],
       ])
     }
 
@@ -357,74 +459,90 @@ function describeValue(
       const raw = value.name
       const slashIdx = raw.indexOf('/')
       return v.map([
-        [v.kw(':kind'), v.kw(':symbol')],
-        [v.kw(':name'), v.string(slashIdx >= 0 ? raw.slice(slashIdx + 1) : raw)],
-        [v.kw(':ns'), slashIdx >= 0 ? v.string(raw.slice(0, slashIdx)) : v.nil()],
+        [keywords.kind, keywords.symbol],
+        [
+          keywords.name,
+          v.string(slashIdx >= 0 ? raw.slice(slashIdx + 1) : raw),
+        ],
+        [
+          keywords.ns,
+          slashIdx >= 0 ? v.string(raw.slice(0, slashIdx)) : v.nil(),
+        ],
       ])
     }
 
     case 'list':
       return v.map([
-        [v.kw(':kind'), v.kw(':list')],
-        [v.kw(':count'), v.number(value.value.length)],
+        [keywords.kind, keywords.list],
+        [keywords.count, v.number(value.value.length)],
       ])
 
     case 'vector':
       return v.map([
-        [v.kw(':kind'), v.kw(':vector')],
-        [v.kw(':count'), v.number(value.value.length)],
+        [keywords.kind, keywords.vector],
+        [keywords.count, v.number(value.value.length)],
       ])
 
     case 'map':
       return v.map([
-        [v.kw(':kind'), v.kw(':map')],
-        [v.kw(':count'), v.number(value.entries.length)],
+        [keywords.kind, keywords.map],
+        [keywords.count, v.number(value.entries.length)],
       ])
 
     case 'set':
       return v.map([
-        [v.kw(':kind'), v.kw(':set')],
-        [v.kw(':count'), v.number(value.values.length)],
+        [keywords.kind, keywords.set],
+        [keywords.count, v.number(value.values.length)],
       ])
 
     case 'atom':
       return v.map([
-        [v.kw(':kind'), v.kw(':atom')],
-        [v.kw(':deref-kind'), v.kw(`:${value.value.kind}`)],
+        [keywords.kind, keywords.atom],
+        [keywords.derefKind, v.kw(`:${value.value.kind}`)],
+        [keywords.value, describeValue(ctx, value.value, null)],
       ])
 
     case 'lazy-seq':
       return v.map([
-        [v.kw(':kind'), v.kw(':lazy-seq')],
-        [v.kw(':realized'), v.boolean(value.realized)],
+        [keywords.kind, keywords.lazySeq],
+        [keywords.realized, v.boolean(value.realized)],
       ])
 
     case 'cons':
-      return v.map([[v.kw(':kind'), v.kw(':cons')]])
+      return v.map([[keywords.kind, keywords.cons]])
 
     case 'regex':
       return v.map([
-        [v.kw(':kind'), v.kw(':regex')],
-        [v.kw(':pattern'), v.string(value.pattern)],
-        [v.kw(':flags'), v.string(value.flags)],
+        [keywords.kind, keywords.regex],
+        [keywords.pattern, v.string(value.pattern)],
+        [keywords.flags, v.string(value.flags)],
       ])
 
     case 'delay':
       return v.map([
-        [v.kw(':kind'), v.kw(':delay')],
-        [v.kw(':realized'), v.boolean(value.realized)],
+        [keywords.kind, keywords.delay],
+        [keywords.realized, v.boolean(value.realized)],
       ])
 
-    case 'macro':
+    case 'macro': {
+      const arglists = arglistsFromArities((value as CljMacro).arities)
       return v.map([
-        [v.kw(':kind'), v.kw(':macro')],
+        [keywords.kind, keywords.macro],
         ...(value.name
-          ? ([[v.kw(':name'), v.string(value.name)]] as [CljValue, CljValue][])
+          ? ([[keywords.name, v.string(value.name)]] as [CljValue, CljValue][])
           : []),
+        [
+          keywords.arglists,
+          v.vector(arglists.map((al) => v.vector(al.map(v.string)))),
+        ],
+        [keywords.doc, getMetaDoc((value as CljMacro).meta)],
       ])
+    }
 
     default: {
-      return v.map([[v.kw(':kind'), v.kw(`:${(value as { kind: string }).kind}`)]])
+      return v.map([
+        [keywords.kind, v.kw(`:${(value as { kind: string }).kind}`)],
+      ])
     }
   }
 }
@@ -465,8 +583,7 @@ export const protocolFunctions: Record<string, CljValue> = {
         }
 
         const protocolName = nameVal.value
-        const doc =
-          is.string(docVal) ? docVal.value : undefined
+        const doc = is.string(docVal) ? docVal.value : undefined
 
         // Parse method definitions from [[name arglists doc?] ...]
         const fns: CljProtocol['fns'] = []
@@ -479,7 +596,11 @@ export const protocolFunctions: Record<string, CljValue> = {
           if (is.vector(mArglists)) {
             for (const alist of mArglists.value) {
               if (is.vector(alist)) {
-                arglists.push(alist.value.map((s) => (is.string(s) ? s.value : printString(s))))
+                arglists.push(
+                  alist.value.map((s) =>
+                    is.string(s) ? s.value : printString(s)
+                  )
+                )
               }
             }
           }
@@ -562,10 +683,13 @@ export const protocolFunctions: Record<string, CljValue> = {
         return v.nil()
       }
     )
-    .doc(
-      'Creates a protocol with the given name, docstring, and method definitions. Interns the protocol and its dispatch functions in the current namespace.',
-      [['name', 'doc', 'method-defs']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates a protocol with the given name, docstring, and method definitions. Interns the protocol and its dispatch functions in the current namespace.',
+        arglists: [['name', 'doc', 'method-defs']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // extend-protocol! proto-var type-tag impl-map
@@ -628,10 +752,13 @@ export const protocolFunctions: Record<string, CljValue> = {
         return v.nil()
       }
     )
-    .doc(
-      'Registers method implementations for type-tag on a protocol. Mutates the protocol in place.',
-      [['proto-var', 'type-tag', 'impl-map']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Registers method implementations for type-tag on a protocol. Mutates the protocol in place.',
+        arglists: [['proto-var', 'type-tag', 'impl-map']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // satisfies? proto value
@@ -653,16 +780,22 @@ export const protocolFunctions: Record<string, CljValue> = {
           )
         }
         if (valueVal === undefined) {
-          throw new EvaluationError(`satisfies?: second argument is required`, {})
+          throw new EvaluationError(
+            `satisfies?: second argument is required`,
+            {}
+          )
         }
         const tag = typeTagOf(valueVal)
         return v.boolean(protocol.impls.has(tag))
       }
     )
-    .doc(
-      'Returns true if value implements the protocol.',
-      [['protocol', 'value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if value implements the protocol.',
+        arglists: [['protocol', 'value']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // protocols type-kw-or-value
@@ -671,7 +804,7 @@ export const protocolFunctions: Record<string, CljValue> = {
   // (backward compat: extracts the type tag via typeTagOf).
   // Scans all loaded namespaces — uses ctx.allNamespaces().
   // -------------------------------------------------------------------------
-  'protocols': v
+  protocols: v
     .nativeFnCtx(
       'protocols',
       function protocolsImpl(
@@ -684,9 +817,7 @@ export const protocolFunctions: Record<string, CljValue> = {
         }
         // Keyword type tag: strip leading colon from the internal name field
         // ':string' → 'string', ':user/Circle' → 'user/Circle'
-        const tag = is.keyword(arg)
-          ? arg.name.slice(1)
-          : typeTagOf(arg)
+        const tag = is.keyword(arg) ? arg.name.slice(1) : typeTagOf(arg)
         const matching: CljValue[] = []
         for (const proto of allProtocols(ctx)) {
           if (proto.impls.has(tag)) matching.push(proto)
@@ -694,37 +825,42 @@ export const protocolFunctions: Record<string, CljValue> = {
         return v.vector(matching)
       }
     )
-    .doc(
-      'Returns a vector of all protocols that a type implements. Accepts a keyword type tag (:string, :user/Circle) or any value.',
-      [['type-kw-or-value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a vector of all protocols that a type implements. Accepts a keyword type tag (:string, :user/Circle) or any value.',
+        arglists: [['type-kw-or-value']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // extenders proto
   // Returns a vector of type-tag strings that have extended the protocol.
   // -------------------------------------------------------------------------
-  'extenders': v
-    .nativeFn(
-      'extenders',
-      function extendersImpl(protoVal: CljValue) {
-        let protocol: CljProtocol
-        if (is.var(protoVal) && is.protocol(protoVal.value)) {
-          protocol = protoVal.value
-        } else if (is.protocol(protoVal)) {
-          protocol = protoVal
-        } else {
-          throw new EvaluationError(
-            `extenders: argument must be a protocol, got ${protoVal.kind}`,
-            { protoVal }
-          )
-        }
-        return v.vector([...protocol.impls.keys()].map((key) => v.keyword(`:${key}`)))
+  extenders: v
+    .nativeFn('extenders', function extendersImpl(protoVal: CljValue) {
+      let protocol: CljProtocol
+      if (is.var(protoVal) && is.protocol(protoVal.value)) {
+        protocol = protoVal.value
+      } else if (is.protocol(protoVal)) {
+        protocol = protoVal
+      } else {
+        throw new EvaluationError(
+          `extenders: argument must be a protocol, got ${protoVal.kind}`,
+          { protoVal }
+        )
       }
-    )
-    .doc(
-      'Returns a vector of type-tag strings that have extended the protocol.',
-      [['protocol']]
-    ),
+      return v.vector(
+        [...protocol.impls.keys()].map((key) => v.keyword(`:${key}`))
+      )
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a vector of type-tag strings that have extended the protocol.',
+        arglists: [['protocol']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // make-record! record-type ns-name field-map
@@ -764,10 +900,13 @@ export const protocolFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Creates a record value. Called by generated constructors (->Name, map->Name).',
-      [['record-type', 'ns-name', 'field-map']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates a record value. Called by generated constructors (->Name, map->Name).',
+        arglists: [['record-type', 'ns-name', 'field-map']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // protocol? value — predicate
@@ -776,7 +915,13 @@ export const protocolFunctions: Record<string, CljValue> = {
     .nativeFn('protocol?', function isProtocolImpl(x: CljValue) {
       return v.boolean(is.protocol(x))
     })
-    .doc('Returns true if x is a protocol.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a protocol.',
+        arglists: [['x']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // record? value — predicate
@@ -785,7 +930,13 @@ export const protocolFunctions: Record<string, CljValue> = {
     .nativeFn('record?', function isRecordImpl(x: CljValue) {
       return v.boolean(is.record(x))
     })
-    .doc('Returns true if x is a record.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a record.',
+        arglists: [['x']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // record-type value — returns the qualified type name of a record
@@ -800,7 +951,13 @@ export const protocolFunctions: Record<string, CljValue> = {
       }
       return v.string(`${x.ns}/${x.recordType}`)
     })
-    .doc('Returns the qualified type name (ns/Name) of a record.', [['record']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the qualified type name (ns/Name) of a record.',
+        arglists: [['record']],
+        docGroup: DocGroups.protocols,
+      }),
+    ]),
 
   // -------------------------------------------------------------------------
   // describe* value [limit]
@@ -825,10 +982,16 @@ export const protocolFunctions: Record<string, CljValue> = {
         return describeValue(ctx, valueVal, limit)
       }
     )
-    .doc(
-      'Returns a plain map describing any cljam value. Called by describe — prefer using describe directly.',
-      [['value'], ['value', 'limit']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a plain map describing any cljam value. Called by describe — prefer using describe directly.',
+        arglists: [['value'], ['value', 'limit']],
+        docGroup: DocGroups.introspection,
+        extra: {
+          'no-doc': true,
+        },
+      }),
+    ]),
 }
 // Note: ns-name, find-ns, and all-ns are registered by bootstrap.ts (wireNsCore),
 // which runs on every runtime restore. They must not be redefined here.

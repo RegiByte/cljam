@@ -4,7 +4,7 @@
  * To revert: delete this file and remove the import from core-module.ts.
  */
 
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { CljThrownSignal, EvaluationError } from '../../../errors'
 import { is } from '../../../assertions'
 import { printString } from '../../../printer'
@@ -38,10 +38,13 @@ export const asyncFunctions: Record<string, CljValue> = {
         return v.pending(promise)
       }
     )
-    .doc(
-      'Applies f to the resolved value of a pending, or to val directly if not pending.',
-      [['val', 'f']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Applies f to the resolved value of a pending, or to val directly if not pending.',
+        arglists: [['val', 'f']],
+        docGroup: DocGroups.async,
+      }),
+    ]),
 
   // (catch* val f) — handle rejection; named catch* to avoid collision with catch special form
   'catch*': v
@@ -89,17 +92,26 @@ export const asyncFunctions: Record<string, CljValue> = {
         return v.pending(promise)
       }
     )
-    .doc(
-      'Handles rejection of a pending value by calling f with the thrown value or an error map.',
-      [['val', 'f']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Handles rejection of a pending value by calling f with the thrown value or an error map.',
+        arglists: [['val', 'f']],
+        docGroup: DocGroups.async,
+      }),
+    ]),
 
   // (pending? x) → boolean
   'pending?': v
     .nativeFn('pending?', (val: CljValue) => {
       return v.boolean(val.kind === 'pending')
     })
-    .doc('Returns true if val is a pending (async) value.', [['val']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if val is a pending (async) value.',
+        arglists: [['val']],
+        docGroup: DocGroups.async,
+      }),
+    ]),
 
   // (promise-of val) → CljPending that resolves immediately with val
   // Primarily for testing / development before host JS interop is built.
@@ -107,10 +119,13 @@ export const asyncFunctions: Record<string, CljValue> = {
     .nativeFn('promise-of', (val: CljValue) => {
       return v.pending(Promise.resolve(val))
     })
-    .doc(
-      'Wraps val in an immediately-resolving pending value. Useful for testing async composition.',
-      [['val']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Wraps val in an immediately-resolving pending value. Useful for testing async composition.',
+        arglists: [['val']],
+        docGroup: DocGroups.async,
+      }),
+    ]),
 
   // (all pendings) → CljPending of a vector of all resolved values.
   // Accepts any seqable (vector, list, lazy-seq, cons, nil); non-pending items resolve immediately.
@@ -125,8 +140,11 @@ export const asyncFunctions: Record<string, CljValue> = {
         Promise.all(promises).then((results) => v.vector(results))
       )
     })
-    .doc(
-      'Returns a pending that resolves with a vector of all results when every input resolves.',
-      [['pendings']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a pending that resolves with a vector of all results when every input resolves.',
+        arglists: [['pendings']],
+        docGroup: DocGroups.async,
+      }),
+    ]),
 }

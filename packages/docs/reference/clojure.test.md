@@ -1,40 +1,21 @@
+---
+outline: 2
+---
+
 # clojure.test
 
 > _Namespace:_ `clojure.test`
 
-### `*report-counters*`
+Testing facilities. Provides macros for defining and running tests, as well as assertions and reporting. 
+   can be overridden for custom integration.
 
-**nil**
----
-
-### `*test-out*`
-
-**nil**
----
-
-### `*testing-contexts*`
-
-**vector**
----
-
-### `*testing-vars*`
-
-**vector**
----
-
-### `are`
-
-**macro**
----
+## Functions
 
 ### `compose-fixtures`
-
-**fn**
 
 ```clojure
 (compose-fixtures f1 f2)
 ```
-
 
 Returns a single fixture that wraps f2 inside f1.
   Setup order: f1 setup first, then f2 setup.
@@ -45,37 +26,17 @@ Returns a single fixture that wraps f2 inside f1.
 
 ### `default-fixture`
 
-**fn**
-
 ```clojure
 (default-fixture f)
 ```
 
 ---
 
-### `deftest`
-
-**macro**
----
-
-### `fixture-registry`
-
-**atom**
----
-
-### `is`
-
-**macro**
----
-
 ### `join-fixtures`
-
-**fn**
 
 ```clojure
 (join-fixtures fixtures)
 ```
-
 
 Compose a sequence of fixture functions into a single fixture.
   Empty sequence returns default-fixture (calls f directly).
@@ -83,23 +44,7 @@ Compose a sequence of fixture functions into a single fixture.
 
 ---
 
-### `report`
-
-**multimethod**
----
-
-### `run-test`
-
-**macro**
-
-Runs a single deftest. Returns a summary map.
-  Useful for targeted test runs at the REPL without running the whole suite.
-
----
-
 ### `run-tests`
-
-**fn**
 
 ```clojure
 (run-tests)
@@ -110,56 +55,19 @@ Runs a single deftest. Returns a summary map.
 
 ### `successful?`
 
-**fn**
-
 ```clojure
 (successful? summary)
 ```
-
 
 Returns true if the test summary has zero failures and zero errors.
 
 ---
 
-### `test-registry`
-
-**atom**
----
-
-### `testing`
-
-**macro**
----
-
-### `thrown-with-msg?`
-
-**macro**
-
-Returns the caught exception if body throws exc-type AND the exception
-  message matches the regex re. Returns false if no throw, nil if message
-  does not match. Wrong-type exceptions propagate unchanged.
-  Message is extracted via (:message e) for runtime error maps, (str e) otherwise.
-
----
-
-### `thrown?`
-
-**macro**
-
-Returns the caught exception if body throws an exception matching exc-type,
-  false if no exception is thrown. Wrong-type exceptions propagate unchanged.
-  Use :default to match any thrown value.
-
----
-
 ### `use-fixtures`
-
-**fn**
 
 ```clojure
 (use-fixtures type & fixture-fns)
 ```
-
 
 Register fixture functions for the current namespace.
   type must be :each (runs around each individual test) or
@@ -170,10 +78,123 @@ Register fixture functions for the current namespace.
 
 ### `with-testing-context*`
 
-**fn**
-
 ```clojure
 (with-testing-context* string thunk)
 ```
+
+---
+
+## Macros
+
+### `are`
+
+```clojure
+(are argv expr & args)
+```
+
+---
+
+### `deftest`
+
+```clojure
+(deftest name & body)
+```
+
+---
+
+### `is`
+
+```clojure
+(is form)
+(is form msg)
+```
+
+---
+
+### `run-test`
+
+```clojure
+(run-test test-symbol)
+```
+
+Runs a single deftest. Returns a summary map.
+  Useful for targeted test runs at the REPL without running the whole suite.
+
+---
+
+### `testing`
+
+```clojure
+(testing string & body)
+```
+
+---
+
+### `thrown-with-msg?`
+
+```clojure
+(thrown-with-msg? exc-type re & body)
+```
+
+Returns the caught exception if body throws exc-type AND the exception
+  message matches the regex re. Returns false if no throw, nil if message
+  does not match. Wrong-type exceptions propagate unchanged.
+  Message is extracted via (:message e) for runtime error maps, (str e) otherwise.
+
+---
+
+### `thrown?`
+
+```clojure
+(thrown? exc-type & body)
+```
+
+Returns the caught exception if body throws an exception matching exc-type,
+  false if no exception is thrown. Wrong-type exceptions propagate unchanged.
+  Use :default to match any thrown value.
+
+---
+
+## Multimethods
+
+### `report`
+
+---
+
+## Special Vars
+
+### `*report-counters*`
+
+**dynamic var** · default: `nil`
+
+---
+
+### `*test-out*`
+
+**dynamic var** · default: `nil`
+
+---
+
+### `*testing-contexts*`
+
+**dynamic var** · default: `[]`
+
+---
+
+### `*testing-vars*`
+
+**dynamic var** · default: `[]`
+
+---
+
+### `fixture-registry`
+
+**atom** · initial: `{}`
+
+---
+
+### `test-registry`
+
+**atom** · initial: `{}`
 
 ---

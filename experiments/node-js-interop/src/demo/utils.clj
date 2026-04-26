@@ -8,6 +8,7 @@
             [clojure.math :as math]
             [clojure.walk :as walk]
             [clojure.edn :as edn]
+            [clojure.math :as math]
             [js :as js]))
 
 
@@ -67,6 +68,15 @@
   (def config-str (slurp "system.config.edn"))
 
   
+  (meta #'+)
+
+  (meta #'filter)
+
+  (math/log 10)
+
+  (pprint (describe (find-ns 'clojure.math)))
+
+  (meta #'math/math-floor*)
 
   ;
   )

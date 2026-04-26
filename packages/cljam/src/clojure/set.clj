@@ -1,4 +1,5 @@
-(ns clojure.set)
+(ns clojure.set
+  "Set operations. Provides functions for creating, manipulating, and querying sets.")
 
 (defn union
   "Return a set that is the union of the input sets."
@@ -121,12 +122,16 @@
              #{}
              xrel))))
 
-(defn subset?
+(defn
+  ^{:doc-group "Predicates"}
+  subset?
   "Is set1 a subset of set2?"
   [s1 s2]
   (every? #(contains? s2 %) s1))
 
-(defn superset?
+(defn
+  ^{:doc-group "Predicates"}
+  superset?
   "Is set1 a superset of set2?"
   [s1 s2]
   (every? #(contains? s1 %) s2))

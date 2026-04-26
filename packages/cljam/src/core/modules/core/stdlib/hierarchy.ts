@@ -1,8 +1,15 @@
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
-import type { CljMap, CljSet, CljValue, CljVar, EvaluationContext, Env } from '../../../types'
+import type {
+  CljMap,
+  CljSet,
+  CljValue,
+  CljVar,
+  EvaluationContext,
+  Env,
+} from '../../../types'
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -103,7 +110,9 @@ function rebuildFromParents(parentsMap: CljMap): CljMap {
     }
   }
   const descendantsMap = v.map(
-    [...descMap.values()].map(({ key, values }) => [key, v.set(values)] as [CljValue, CljValue])
+    [...descMap.values()].map(
+      ({ key, values }) => [key, v.set(values)] as [CljValue, CljValue]
+    )
   )
 
   return v.map([
@@ -120,7 +129,11 @@ function rebuildFromParents(parentsMap: CljMap): CljMap {
  * Precomputes the full transitive closure incrementally (no rebuild from scratch).
  * Throws on self-derivation or cycle detection.
  */
-export function hierarchyDerive(h: CljMap, child: CljValue, parent: CljValue): CljMap {
+export function hierarchyDerive(
+  h: CljMap,
+  child: CljValue,
+  parent: CljValue
+): CljMap {
   if (is.equal(child, parent)) {
     throw new EvaluationError(
       `derive: cannot derive ${printString(child)} from itself`,
@@ -152,7 +165,11 @@ export function hierarchyDerive(h: CljMap, child: CljValue, parent: CljValue): C
   let newAncestorsMap = ancestorsMap
   for (const node of childAndDescs) {
     const existing = getNodeSet(newAncestorsMap, node)
-    newAncestorsMap = setNodeSet(newAncestorsMap, node, unionSets(existing, newAncsForChild))
+    newAncestorsMap = setNodeSet(
+      newAncestorsMap,
+      node,
+      unionSets(existing, newAncsForChild)
+    )
   }
 
   // The descendants to propagate upward: child + all current descendants of child
@@ -165,13 +182,21 @@ export function hierarchyDerive(h: CljMap, child: CljValue, parent: CljValue): C
   let newDescendantsMap = descendantsMap
   for (const node of parentAndAncs) {
     const existing = getNodeSet(newDescendantsMap, node)
-    newDescendantsMap = setNodeSet(newDescendantsMap, node, unionSets(existing, newDescSet))
+    newDescendantsMap = setNodeSet(
+      newDescendantsMap,
+      node,
+      unionSets(existing, newDescSet)
+    )
   }
 
   // Update :parents — add parent to child's direct parent set
   const parentsMap = getSubMap(h, ':parents')
   const existingParents = getNodeSet(parentsMap, child)
-  const newParentsMap = setNodeSet(parentsMap, child, unionSets(existingParents, v.set([parent])))
+  const newParentsMap = setNodeSet(
+    parentsMap,
+    child,
+    unionSets(existingParents, v.set([parent]))
+  )
 
   return v.map([
     [v.kw(':parents'), newParentsMap],
@@ -184,7 +209,11 @@ export function hierarchyDerive(h: CljMap, child: CljValue, parent: CljValue): C
  * Pure isa? check: true if child equals parent (reflexive) or parent is in
  * the precomputed ancestors of child.
  */
-export function hierarchyIsA(h: CljMap, child: CljValue, parent: CljValue): boolean {
+export function hierarchyIsA(
+  h: CljMap,
+  child: CljValue,
+  parent: CljValue
+): boolean {
   if (is.equal(child, parent)) return true
   const ancestorsMap = getSubMap(h, ':ancestors')
   return setContains(getNodeSet(ancestorsMap, child), parent)
@@ -194,10 +223,16 @@ export function hierarchyIsA(h: CljMap, child: CljValue, parent: CljValue): bool
  * Pure underive: removes the child→parent edge and rebuilds the transitive
  * closure from scratch using the remaining :parents map.
  */
-export function hierarchyUnderive(h: CljMap, child: CljValue, parent: CljValue): CljMap {
+export function hierarchyUnderive(
+  h: CljMap,
+  child: CljValue,
+  parent: CljValue
+): CljMap {
   const parentsMap = getSubMap(h, ':parents')
   const existingParents = getNodeSet(parentsMap, child)
-  const newParentSet = v.set(existingParents.values.filter((p) => !is.equal(p, parent)))
+  const newParentSet = v.set(
+    existingParents.values.filter((p) => !is.equal(p, parent))
+  )
   const newParentsMap = setNodeSet(parentsMap, child, newParentSet)
   return rebuildFromParents(newParentsMap)
 }
@@ -227,13 +262,19 @@ function readHierarchyValue(hVar: CljVar): CljMap | null {
   return is.map(val) ? (val as CljMap) : null
 }
 
-// ─── Exported native functions ────────────────────────────────────────────────
+const noDocExtras = {
+  'no-doc': true,
+}
 
 export const hierarchyFunctions: Record<string, CljValue> = {
   'hierarchy-derive*': v
     .nativeFn(
       'hierarchy-derive*',
-      function hierarchyDeriveNative(h: CljValue, child: CljValue, parent: CljValue) {
+      function hierarchyDeriveNative(
+        h: CljValue,
+        child: CljValue,
+        parent: CljValue
+      ) {
         if (!is.map(h)) {
           throw new EvaluationError(
             `hierarchy-derive*: expected a hierarchy map, got ${h.kind}`,
@@ -243,14 +284,23 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return hierarchyDerive(h, child, parent)
       }
     )
-    .doc('Pure derive — returns a new hierarchy with child deriving from parent.', [
-      ['h', 'child', 'parent'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Pure derive: returns a new hierarchy with child deriving from parent.',
+        arglists: [['h', 'child', 'parent']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
     ]),
 
   'hierarchy-underive*': v
     .nativeFn(
       'hierarchy-underive*',
-      function hierarchyUnderiveNative(h: CljValue, child: CljValue, parent: CljValue) {
+      function hierarchyUnderiveNative(
+        h: CljValue,
+        child: CljValue,
+        parent: CljValue
+      ) {
         if (!is.map(h)) {
           throw new EvaluationError(
             `hierarchy-underive*: expected a hierarchy map, got ${h.kind}`,
@@ -260,15 +310,23 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return hierarchyUnderive(h, child, parent)
       }
     )
-    .doc(
-      'Pure underive — returns a new hierarchy with the child→parent edge removed.',
-      [['h', 'child', 'parent']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Pure underive: returns a new hierarchy with the child→parent edge removed.',
+        arglists: [['h', 'child', 'parent']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
 
   'hierarchy-isa?*': v
     .nativeFn(
       'hierarchy-isa?*',
-      function hierarchyIsANative(h: CljValue, child: CljValue, parent: CljValue) {
+      function hierarchyIsANative(
+        h: CljValue,
+        child: CljValue,
+        parent: CljValue
+      ) {
         if (!is.map(h)) {
           throw new EvaluationError(
             `hierarchy-isa?*: expected a hierarchy map, got ${h.kind}`,
@@ -278,8 +336,13 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return v.boolean(hierarchyIsA(h, child, parent))
       }
     )
-    .doc('Returns true if child isa? parent according to the given hierarchy.', [
-      ['h', 'child', 'parent'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Pure isa? check: returns true if child isa? parent according to the given hierarchy.',
+        arglists: [['h', 'child', 'parent']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
     ]),
 
   // ─── Session-aware global *hierarchy* functions ───────────────────────────
@@ -314,10 +377,14 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return newH
       }
     )
-    .doc(
-      'Derives child from parent in the global *hierarchy* (session-safe).',
-      [['child', 'parent']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Derives child from parent in the global *hierarchy* (session-safe).',
+        arglists: [['child', 'parent']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
 
   'hierarchy-underive-global!': v
     .nativeFnCtx(
@@ -347,10 +414,14 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return newH
       }
     )
-    .doc(
-      'Underives child from parent in the global *hierarchy* (session-safe).',
-      [['child', 'parent']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Underives child from parent in the global *hierarchy* (session-safe).',
+        arglists: [['child', 'parent']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
 
   'hierarchy-isa?-global': v
     .nativeFnCtx(
@@ -368,10 +439,14 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return v.boolean(hierarchyIsA(h, child, parent))
       }
     )
-    .doc(
-      'Returns true if child isa? parent in the global *hierarchy* (session-safe).',
-      [['child', 'parent']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if child isa? parent in the global *hierarchy* (session-safe).',
+        arglists: [['child', 'parent']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
 
   'hierarchy-parents-global': v
     .nativeFnCtx(
@@ -389,10 +464,14 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return parentSet.values.length > 0 ? parentSet : v.nil()
       }
     )
-    .doc(
-      'Returns the immediate parents of tag in the global *hierarchy* (session-safe), or nil.',
-      [['tag']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the immediate parents of tag in the global *hierarchy* (session-safe), or nil.',
+        arglists: [['tag']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
 
   'hierarchy-ancestors-global': v
     .nativeFnCtx(
@@ -410,11 +489,14 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return ancSet.values.length > 0 ? ancSet : v.nil()
       }
     )
-    .doc(
-      'Returns all ancestors of tag in the global *hierarchy* (session-safe), or nil.',
-      [['tag']]
-    ),
-
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns all ancestors of tag in the global *hierarchy* (session-safe), or nil.',
+        arglists: [['tag']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
   'hierarchy-descendants-global': v
     .nativeFnCtx(
       'hierarchy-descendants-global',
@@ -431,8 +513,12 @@ export const hierarchyFunctions: Record<string, CljValue> = {
         return descSet.values.length > 0 ? descSet : v.nil()
       }
     )
-    .doc(
-      'Returns all descendants of tag in the global *hierarchy* (session-safe), or nil.',
-      [['tag']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns all descendants of tag in the global *hierarchy* (session-safe), or nil.',
+        arglists: [['tag']],
+        docGroup: DocGroups.hierarchy,
+        extra: noDocExtras,
+      }),
+    ]),
 }

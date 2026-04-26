@@ -1,15 +1,18 @@
+---
+outline: 2
+---
+
 # clojure.edn
 
 > _Namespace:_ `clojure.edn`
 
-### `pr-str`
+## Functions
 
-**fn**
+### `pr-str`
 
 ```clojure
 (pr-str val)
 ```
-
 
 Returns a string representation of val in EDN format.
   Equivalent to clojure.core/pr-str for all standard EDN-compatible types.
@@ -18,13 +21,10 @@ Returns a string representation of val in EDN format.
 
 ### `read-string`
 
-**fn**
-
 ```clojure
 (read-string s)
 (read-string opts s)
 ```
-
 
 Reads one EDN value from string s and returns it.
 

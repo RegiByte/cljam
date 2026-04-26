@@ -1,7 +1,7 @@
 // Metadata: with-meta, meta, alter-meta!
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import type {
   CljAtom,
@@ -31,10 +31,13 @@ export const metaFunctions: Record<string, CljValue> = {
       }
       return v.nil()
     })
-    .doc(
-      'Returns the metadata map of a value, or nil if the value has no metadata.',
-      [['val']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the metadata map of a value, or nil if the value has no metadata.',
+        arglists: [['val']],
+        docGroup: DocGroups.metadata,
+      }),
+    ]),
 
   'with-meta': v
     .nativeFn('with-meta', function withMetaImpl(val: CljValue, m: CljValue) {
@@ -68,8 +71,12 @@ export const metaFunctions: Record<string, CljValue> = {
       const meta = m.kind === 'nil' ? undefined : (m as CljMap)
       return { ...val, meta }
     })
-    .doc('Returns a new value with the metadata map m applied to val.', [
-      ['val', 'm'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new value with the metadata map m applied to val.',
+        arglists: [['val', 'm']],
+        docGroup: DocGroups.metadata,
+      }),
     ]),
 
   'alter-meta!': v
@@ -123,8 +130,11 @@ export const metaFunctions: Record<string, CljValue> = {
         return newMeta
       }
     )
-    .doc(
-      "Applies f to ref's current metadata (with optional args), sets the result as the new metadata, and returns it.",
-      [['ref', 'f', '&', 'args']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: "Applies f to ref's current metadata (with optional args), sets the result as the new metadata, and returns it.",
+        arglists: [['ref', 'f', '&', 'args']],
+        docGroup: DocGroups.metadata,
+      }),
+    ]),
 }

@@ -1,7 +1,9 @@
 // Auto-generated from src/clojure/test.clj — do not edit directly.
 // Re-generate with: npm run gen:core-source
 export const clojure_testSource = `\
-(ns clojure.test)
+(ns clojure.test
+  "Testing facilities. Provides macros for defining and running tests, as well as assertions and reporting. 
+   can be overridden for custom integration.")
 
 ;; ---------------------------------------------------------------------------
 ;; Dynamic vars

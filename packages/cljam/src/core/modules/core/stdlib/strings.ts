@@ -2,7 +2,7 @@
 // All public API lives in src/clojure/string.clj; these are private helpers.
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { valueToString } from '../../../transformations'
 import type {
@@ -17,6 +17,8 @@ import type {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+const DocGroup = 'Strings'
 
 function assertStr(val: CljValue | undefined, fnName: string): string {
   if (val === undefined || val.kind !== 'string') {
@@ -140,6 +142,8 @@ function doReplace(
   )
 }
 
+const noDocExtra = { 'no-doc': true }
+
 // ---------------------------------------------------------------------------
 // Exported stdlib functions
 // ---------------------------------------------------------------------------
@@ -149,40 +153,78 @@ export const stringFunctions: Record<string, CljValue> = {
     .nativeFn('str-upper-case*', function strUpperCaseImpl(sVal: CljValue) {
       return v.string(assertStr(sVal, 'str-upper-case*').toUpperCase())
     })
-    .doc('Internal helper. Converts s to upper-case.', [['s']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Converts s to upper-case.',
+        arglists: [['s']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-lower-case*': v
     .nativeFn('str-lower-case*', function strLowerCaseImpl(sVal: CljValue) {
       return v.string(assertStr(sVal, 'str-lower-case*').toLowerCase())
     })
-    .doc('Internal helper. Converts s to lower-case.', [['s']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Converts s to lower-case.',
+        arglists: [['s']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-trim*': v
     .nativeFn('str-trim*', function strTrimImpl(sVal: CljValue) {
       return v.string(assertStr(sVal, 'str-trim*').trim())
     })
-    .doc('Internal helper. Removes whitespace from both ends of s.', [['s']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Removes whitespace from both ends of s.',
+        arglists: [['s']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-triml*': v
     .nativeFn('str-triml*', function strTrimlImpl(sVal: CljValue) {
       return v.string(assertStr(sVal, 'str-triml*').trimStart())
     })
-    .doc('Internal helper. Removes whitespace from the left of s.', [['s']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Removes whitespace from the left of s.',
+        arglists: [['s']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-trimr*': v
     .nativeFn('str-trimr*', function strTrimrImpl(sVal: CljValue) {
       return v.string(assertStr(sVal, 'str-trimr*').trimEnd())
     })
-    .doc('Internal helper. Removes whitespace from the right of s.', [['s']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Removes whitespace from the right of s.',
+        arglists: [['s']],
+        docGroup: DocGroup,
+      }),
+    ]),
 
   'str-reverse*': v
     .nativeFn('str-reverse*', function strReverseImpl(sVal: CljValue) {
       return v.string([...assertStr(sVal, 'str-reverse*')].reverse().join(''))
     })
-    .doc(
-      'Internal helper. Returns s with its characters reversed (Unicode-safe).',
-      [['s']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Returns s with its characters reversed (Unicode-safe).',
+        arglists: [['s']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-starts-with*': v
     .nativeFn(
@@ -193,8 +235,13 @@ export const stringFunctions: Record<string, CljValue> = {
         return v.boolean(s.startsWith(substr))
       }
     )
-    .doc('Internal helper. Returns true if s starts with substr.', [
-      ['s', 'substr'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Returns true if s starts with substr.',
+        arglists: [['s', 'substr']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
     ]),
 
   'str-ends-with*': v
@@ -206,8 +253,13 @@ export const stringFunctions: Record<string, CljValue> = {
         return v.boolean(s.endsWith(substr))
       }
     )
-    .doc('Internal helper. Returns true if s ends with substr.', [
-      ['s', 'substr'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Returns true if s ends with substr.',
+        arglists: [['s', 'substr']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
     ]),
 
   'str-includes*': v
@@ -219,8 +271,13 @@ export const stringFunctions: Record<string, CljValue> = {
         return v.boolean(s.includes(substr))
       }
     )
-    .doc('Internal helper. Returns true if s contains substr.', [
-      ['s', 'substr'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Returns true if s contains substr.',
+        arglists: [['s', 'substr']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
     ]),
 
   'str-index-of*': v
@@ -248,9 +305,16 @@ export const stringFunctions: Record<string, CljValue> = {
         return idx === -1 ? v.nil() : v.number(idx)
       }
     )
-    .doc('Internal helper. Returns index of value in s, or nil if not found.', [
-      ['s', 'value'],
-      ['s', 'value', 'from-index'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Returns index of value in s, or nil if not found.',
+        arglists: [
+          ['s', 'value'],
+          ['s', 'value', 'from-index'],
+        ],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
     ]),
 
   'str-last-index-of*': v
@@ -278,13 +342,17 @@ export const stringFunctions: Record<string, CljValue> = {
         return idx === -1 ? v.nil() : v.number(idx)
       }
     )
-    .doc(
-      'Internal helper. Returns last index of value in s, or nil if not found.',
-      [
-        ['s', 'value'],
-        ['s', 'value', 'from-index'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Returns last index of value in s, or nil if not found.',
+        arglists: [
+          ['s', 'value'],
+          ['s', 'value', 'from-index'],
+        ],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-replace*': v
     .nativeFnCtx(
@@ -307,10 +375,14 @@ export const stringFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Internal helper. Replaces all occurrences of match with replacement in s.',
-      [['s', 'match', 'replacement']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Replaces all occurrences of match with replacement in s.',
+        arglists: [['s', 'match', 'replacement']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 
   'str-replace-first*': v
     .nativeFnCtx(
@@ -333,8 +405,12 @@ export const stringFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Internal helper. Replaces the first occurrence of match with replacement in s.',
-      [['s', 'match', 'replacement']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper. Replaces the first occurrence of match with replacement in s.',
+        arglists: [['s', 'match', 'replacement']],
+        docGroup: DocGroup,
+        extra: noDocExtra,
+      }),
+    ]),
 }

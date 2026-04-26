@@ -185,11 +185,11 @@ export function processRequireSpec(
     return
   }
 
-  let targetEnv = registry.get(nsName)
-  if (!targetEnv && resolveNs) {
-    resolveNs(nsName)
-    targetEnv = registry.get(nsName)
-  }
+  // Always attempt to load the source — resolveNs is idempotent (no-ops if
+  // already loaded). This ensures namespaces pre-declared via declareNs (native
+  // vars only, no .clj source yet) still get their source evaluated on first require.
+  if (resolveNs) resolveNs(nsName)
+  const targetEnv = registry.get(nsName)
   if (!targetEnv) {
     const err = new EvaluationError(
       `Namespace '${nsName}' not found. Only already-loaded namespaces can be required.`,

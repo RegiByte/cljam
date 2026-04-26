@@ -2,7 +2,7 @@
 // Also exports str-split* used internally by clojure.string/split.
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import type { CljRegex, CljValue } from '../../../types'
 
@@ -79,7 +79,13 @@ export const regexFunctions: Record<string, CljValue> = {
     .nativeFn('regexp?', function regexpPredImpl(x: CljValue) {
       return v.boolean(x !== undefined && is.regex(x))
     })
-    .doc('Returns true if x is a regular expression pattern.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a regular expression pattern.',
+        arglists: [['x']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   're-pattern': v
     .nativeFn('re-pattern', function rePatternImpl(s: CljValue) {
@@ -92,10 +98,13 @@ export const regexFunctions: Record<string, CljValue> = {
       const { pattern, flags } = extractInlineFlags(s.value)
       return v.regex(pattern, flags)
     })
-    .doc(
-      'Returns an instance of java.util.regex.Pattern, for use, e.g. in re-matcher.\n  (re-pattern "\\\\d+") produces the same pattern as #"\\d+".',
-      [['s']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns an instance of java.util.regex.Pattern, for use, e.g. in re-matcher.\n  (re-pattern "\\\\d+") produces the same pattern as #"\\d+".',
+        arglists: [['s']],
+        docGroup: DocGroups.regex,
+      }),
+    ]),
 
   're-find': v
     .nativeFn('re-find', function reFindImpl(reVal: CljValue, sVal: CljValue) {
@@ -106,10 +115,13 @@ export const regexFunctions: Record<string, CljValue> = {
       if (!match) return v.nil()
       return matchToClj(match)
     })
-    .doc(
-      'Returns the next regex match, if any, of string to pattern, using\n  java.util.regex.Matcher.find(). Returns the match or nil. When there\n  are groups, returns a vector of the whole match and groups (nil for\n  unmatched optional groups).',
-      [['re', 's']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the next regex match, if any, of string to pattern, using\n  java.util.regex.Matcher.find(). Returns the match or nil. When there\n  are groups, returns a vector of the whole match and groups (nil for\n  unmatched optional groups).',
+        arglists: [['re', 's']],
+        docGroup: DocGroups.regex,
+      }),
+    ]),
 
   're-matches': v
     .nativeFn(
@@ -125,10 +137,13 @@ export const regexFunctions: Record<string, CljValue> = {
         return matchToClj(match)
       }
     )
-    .doc(
-      'Returns the match, if any, of string to pattern, using\n  java.util.regex.Matcher.matches(). The entire string must match.\n  Returns the match or nil. When there are groups, returns a vector\n  of the whole match and groups (nil for unmatched optional groups).',
-      [['re', 's']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the match, if any, of string to pattern, using\n  java.util.regex.Matcher.matches(). The entire string must match.\n  Returns the match or nil. When there are groups, returns a vector\n  of the whole match and groups (nil for unmatched optional groups).',
+        arglists: [['re', 's']],
+        docGroup: DocGroups.regex,
+      }),
+    ]),
 
   're-seq': v
     .nativeFn('re-seq', function reSeqImpl(reVal: CljValue, sVal: CljValue) {
@@ -149,10 +164,13 @@ export const regexFunctions: Record<string, CljValue> = {
       if (results.length === 0) return v.nil()
       return { kind: 'list' as const, value: results }
     })
-    .doc(
-      'Returns a lazy sequence of successive matches of pattern in string,\n  using java.util.regex.Matcher.find(), each such match processed with\n  re-groups.',
-      [['re', 's']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a lazy sequence of successive matches of pattern in string,\n  using java.util.regex.Matcher.find(), each such match processed with\n  re-groups.',
+        arglists: [['re', 's']],
+        docGroup: DocGroups.regex,
+      }),
+    ]),
 
   // Internal helper used by clojure.string/split.
   // Accepts a CljRegex or CljString as separator.
@@ -219,13 +237,19 @@ export const regexFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Internal helper for clojure.string/split. Splits string s by a regex or\n  string separator. Optional limit keeps all parts when provided.',
-      [
-        ['s', 'sep'],
-        ['s', 'sep', 'limit'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Internal helper for clojure.string/split. Splits string s by a regex or\n  string separator. Optional limit keeps all parts when provided.',
+        arglists: [
+          ['s', 'sep'],
+          ['s', 'sep', 'limit'],
+        ],
+        docGroup: DocGroups.regex,
+        extra: {
+          'no-doc': true,
+        },
+      }),
+    ]),
 }
 
 // Performs the actual split, applying limit and trailing-empty-drop semantics.

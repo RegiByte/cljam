@@ -600,3 +600,20 @@ describe('session — frameStack recovery after stack overflow', () => {
     }
   })
 })
+
+describe('ns docstring', () => {
+  it('stores docstring on namespace and surfaces it via describe', () => {
+    const s = createSession()
+    s.evaluate('(ns my.demo "Handles payment processing." (:require [clojure.string :as str]))')
+    expect(s.evaluate('(:doc (describe *ns*))')).toMatchObject(v.string('Handles payment processing.'))
+    // :require clause after docstring still works
+    expect(s.evaluate('(str/upper-case "hello")')).toMatchObject(v.string('HELLO'))
+  })
+
+  it('ns without docstring has nil :doc in describe', () => {
+    const s = createSession()
+    s.evaluate('(ns my.nodoc (:require [clojure.string :as str]))')
+    expect(s.evaluate('(:doc (describe *ns*))')).toMatchObject(v.nil())
+    expect(s.evaluate('(str/upper-case "x")')).toMatchObject(v.string('X'))
+  })
+})

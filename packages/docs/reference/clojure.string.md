@@ -1,15 +1,20 @@
+---
+outline: 2
+---
+
 # clojure.string
 
 > _Namespace:_ `clojure.string`
 
-### `blank?`
+String operations. Provides functions for joining, splitting, trimming, and manipulating strings.
 
-**fn**
+## Functions
+
+### `blank?`
 
 ```clojure
 (blank? s)
 ```
-
 
 True if s is nil, empty, or contains only whitespace.
 
@@ -17,12 +22,9 @@ True if s is nil, empty, or contains only whitespace.
 
 ### `capitalize`
 
-**fn**
-
 ```clojure
 (capitalize s)
 ```
-
 
 Converts first character of the string to upper-case, all other
   characters to lower-case.
@@ -31,12 +33,9 @@ Converts first character of the string to upper-case, all other
 
 ### `ends-with?`
 
-**fn**
-
 ```clojure
 (ends-with? s substr)
 ```
-
 
 True if s ends with substr.
 
@@ -44,12 +43,9 @@ True if s ends with substr.
 
 ### `escape`
 
-**fn**
-
 ```clojure
 (escape s cmap)
 ```
-
 
 Return a new string, using cmap to escape each character ch from s as
   follows: if (cmap ch) is nil, append ch to the new string; otherwise append
@@ -65,12 +61,9 @@ Return a new string, using cmap to escape each character ch from s as
 
 ### `includes?`
 
-**fn**
-
 ```clojure
 (includes? s substr)
 ```
-
 
 True if s includes substr.
 
@@ -78,13 +71,10 @@ True if s includes substr.
 
 ### `index-of`
 
-**fn**
-
 ```clojure
 (index-of s value)
 (index-of s value from-index)
 ```
-
 
 Return index of value (string) in s, optionally searching forward from
   from-index. Return nil if value not found.
@@ -93,13 +83,10 @@ Return index of value (string) in s, optionally searching forward from
 
 ### `join`
 
-**fn**
-
 ```clojure
 (join coll)
 (join separator coll)
 ```
-
 
 Returns a string of all elements in coll, as returned by (str), separated
   by an optional separator.
@@ -108,13 +95,10 @@ Returns a string of all elements in coll, as returned by (str), separated
 
 ### `last-index-of`
 
-**fn**
-
 ```clojure
 (last-index-of s value)
 (last-index-of s value from-index)
 ```
-
 
 Return last index of value (string) in s, optionally searching backward
   from from-index. Return nil if value not found.
@@ -123,12 +107,9 @@ Return last index of value (string) in s, optionally searching backward
 
 ### `lower-case`
 
-**fn**
-
 ```clojure
 (lower-case s)
 ```
-
 
 Converts string to all lower-case.
 
@@ -136,12 +117,9 @@ Converts string to all lower-case.
 
 ### `re-quote-replacement`
 
-**fn**
-
 ```clojure
 (re-quote-replacement s)
 ```
-
 
 Given a replacement string that you wish to be a literal replacement for a
   pattern match in replace or replace-first, escape any special replacement
@@ -151,12 +129,9 @@ Given a replacement string that you wish to be a literal replacement for a
 
 ### `replace`
 
-**fn**
-
 ```clojure
 (replace s match replacement)
 ```
-
 
 Replaces all instances of match with replacement in s.
 
@@ -172,12 +147,9 @@ Replaces all instances of match with replacement in s.
 
 ### `replace-first`
 
-**fn**
-
 ```clojure
 (replace-first s match replacement)
 ```
-
 
 Replaces the first instance of match with replacement in s.
   Same match/replacement semantics as replace.
@@ -186,12 +158,9 @@ Replaces the first instance of match with replacement in s.
 
 ### `reverse`
 
-**fn**
-
 ```clojure
 (reverse s)
 ```
-
 
 Returns s with its characters reversed.
 
@@ -199,13 +168,10 @@ Returns s with its characters reversed.
 
 ### `split`
 
-**fn**
-
 ```clojure
 (split s sep)
 (split s sep limit)
 ```
-
 
 Splits string on a regular expression. Optional limit is the maximum number
   of parts returned. Trailing empty strings are not returned by default; pass
@@ -215,12 +181,9 @@ Splits string on a regular expression. Optional limit is the maximum number
 
 ### `split-lines`
 
-**fn**
-
 ```clojure
 (split-lines s)
 ```
-
 
 Splits s on \n or \r\n. Trailing empty lines are not returned.
 
@@ -228,12 +191,9 @@ Splits s on \n or \r\n. Trailing empty lines are not returned.
 
 ### `starts-with?`
 
-**fn**
-
 ```clojure
 (starts-with? s substr)
 ```
-
 
 True if s starts with substr.
 
@@ -241,12 +201,9 @@ True if s starts with substr.
 
 ### `trim`
 
-**fn**
-
 ```clojure
 (trim s)
 ```
-
 
 Removes whitespace from both ends of string.
 
@@ -254,12 +211,9 @@ Removes whitespace from both ends of string.
 
 ### `trim-newline`
 
-**fn**
-
 ```clojure
 (trim-newline s)
 ```
-
 
 Removes all trailing newline \n or return \r characters from string.
   Similar to Perl's chomp.
@@ -268,12 +222,9 @@ Removes all trailing newline \n or return \r characters from string.
 
 ### `triml`
 
-**fn**
-
 ```clojure
 (triml s)
 ```
-
 
 Removes whitespace from the left side of string.
 
@@ -281,12 +232,9 @@ Removes whitespace from the left side of string.
 
 ### `trimr`
 
-**fn**
-
 ```clojure
 (trimr s)
 ```
-
 
 Removes whitespace from the right side of string.
 
@@ -294,12 +242,9 @@ Removes whitespace from the right side of string.
 
 ### `upper-case`
 
-**fn**
-
 ```clojure
 (upper-case s)
 ```
-
 
 Converts string to all upper-case.
 

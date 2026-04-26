@@ -1,6 +1,6 @@
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { realizeDelay, realizeLazySeq } from '../../../transformations'
 import type { CljValue, Env, EvaluationContext } from '../../../types'
 
@@ -11,27 +11,48 @@ export const lazyFunctions = {
       if (is.lazySeq(value)) return realizeLazySeq(value)
       return value
     })
-    .doc(
-      'If x is a Delay or LazySeq, forces and returns the realized value. Otherwise returns x.',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'If x is a Delay or LazySeq, forces and returns the realized value. Otherwise returns x.',
+        arglists: [['x']],
+        docGroup: DocGroups.lazy,
+      }),
+    ]),
   'delay?': v
     .nativeFn('delay?', function isDelayPred(value: CljValue) {
       return v.boolean(is.delay(value))
     })
-    .doc('Returns true if x is a Delay.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a Delay.',
+        arglists: [['x']],
+        docGroup: DocGroups.lazy,
+      }),
+    ]),
   'lazy-seq?': v
     .nativeFn('lazy-seq?', function isLazySeqPred(value: CljValue) {
       return v.boolean(is.lazySeq(value))
     })
-    .doc('Returns true if x is a LazySeq.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a LazySeq.',
+        arglists: [['x']],
+        docGroup: DocGroups.lazy,
+      }),
+    ]),
   'realized?': v
     .nativeFn('realized?', function isRealized(value: CljValue) {
       if (is.delay(value)) return v.boolean(value.realized)
       if (is.lazySeq(value)) return v.boolean(value.realized)
       return v.boolean(false)
     })
-    .doc('Returns true if a Delay or LazySeq has been realized.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if a Delay or LazySeq has been realized.',
+        arglists: [['x']],
+        docGroup: DocGroups.lazy,
+      }),
+    ]),
   'make-delay': v
     .nativeFnCtx(
       'make-delay',
@@ -49,8 +70,11 @@ export const lazyFunctions = {
         return v.delay(() => ctx.applyCallable(fn, [], callEnv))
       }
     )
-    .doc(
-      'Creates a Delay that invokes thunk-fn (a zero-arg function) on first force.',
-      [['thunk-fn']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates a Delay that invokes thunk-fn (a zero-arg function) on first force.',
+        arglists: [['thunk-fn']],
+        docGroup: DocGroups.lazy,
+      }),
+    ]),
 }

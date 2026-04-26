@@ -18,6 +18,7 @@ export type CljNamespace = {
   vars: Map<string, CljVar> // user defs from (def ...)
   aliases: Map<string, CljNamespace> // :as namespace aliases
   readerAliases: Map<string, string> // :as-alias reader aliases
+  doc?: string
 }
 
 export type Env = {
@@ -49,6 +50,7 @@ export type CljMacro = {
   arities: Arity[]
   env: Env
   name?: string // set for named defmacro
+  meta?: CljMap
 }
 
 export type CljAtom = {

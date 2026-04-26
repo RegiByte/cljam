@@ -5,7 +5,7 @@
 
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
 import { type CljValue } from '../../../types'
@@ -18,7 +18,13 @@ export const vectorFunctions: Record<string, CljValue> = {
       }
       return v.vector(args)
     })
-    .doc('Returns a new vector containing the given values.', [['&', 'args']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new vector containing the given values.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   vec: v
     .nativeFn('vec', function vecImpl(coll: CljValue) {
@@ -33,7 +39,13 @@ export const vectorFunctions: Record<string, CljValue> = {
       }
       return v.vector(toSeq(coll))
     })
-    .doc('Creates a new vector containing the contents of coll.', [['coll']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates a new vector containing the contents of coll.',
+        arglists: [['coll']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   subvec: v
     .nativeFn(
@@ -67,13 +79,16 @@ export const vectorFunctions: Record<string, CljValue> = {
         return v.vector(vector.value.slice(s, e))
       }
     )
-    .doc(
-      'Returns a persistent vector of the items in vector from start (inclusive) to end (exclusive).',
-      [
-        ['v', 'start'],
-        ['v', 'start', 'end'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a vector of the items in vector from start (inclusive) to end (exclusive).',
+        arglists: [
+          ['v', 'start'],
+          ['v', 'start', 'end'],
+        ],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   peek: v
     .nativeFn('peek', function peekImpl(coll: CljValue) {
@@ -92,7 +107,13 @@ export const vectorFunctions: Record<string, CljValue> = {
         0
       )
     })
-    .doc('For a list, same as first. For a vector, same as last.', [['coll']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'For a list, same as first. For a vector, same as last.',
+        arglists: [['coll']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   pop: v
     .nativeFn('pop', function popImpl(coll: CljValue) {
@@ -115,8 +136,11 @@ export const vectorFunctions: Record<string, CljValue> = {
         0
       )
     })
-    .doc(
-      'For a list, returns a new list without the first item. For a vector, returns a new vector without the last item.',
-      [['coll']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'For a list, returns a new list without the first item. For a vector, returns a new vector without the last item.',
+        arglists: [['coll']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 }

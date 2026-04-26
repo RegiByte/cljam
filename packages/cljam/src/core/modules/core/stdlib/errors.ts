@@ -1,5 +1,5 @@
 import { CljThrownSignal, EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { is } from '../../../assertions'
 import type { CljValue } from '../../../types'
 
@@ -14,10 +14,13 @@ export const errorFunctions = {
       }
       throw new CljThrownSignal(args[0])
     })
-    .doc(
-      'Throws a value as an exception. The value may be any CljValue; maps are idiomatic.',
-      [['value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Throws a value as an exception. The value may be any CljValue; maps are idiomatic.',
+        arglists: [['value']],
+        docGroup: DocGroups.errors,
+      }),
+    ]),
 
   'ex-info': v
     .nativeFn('ex-info', function exInfoImpl(...args: CljValue[]) {
@@ -42,13 +45,16 @@ export const errorFunctions = {
       }
       return v.map(entries)
     })
-    .doc(
-      'Creates an error map with :message and :data keys. Optionally accepts a :cause.',
-      [
-        ['msg', 'data'],
-        ['msg', 'data', 'cause'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates an error map with :message and :data keys. Optionally accepts a :cause.',
+        arglists: [
+          ['msg', 'data'],
+          ['msg', 'data', 'cause'],
+        ],
+        docGroup: DocGroups.errors,
+      }),
+    ]),
 
   'ex-message': v
     .nativeFn('ex-message', function exMessageImpl(...args: CljValue[]) {
@@ -59,7 +65,13 @@ export const errorFunctions = {
       })
       return entry ? entry[1] : v.nil()
     })
-    .doc('Returns the :message of an error map, or nil.', [['e']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the :message of an error map, or nil.',
+        arglists: [['e']],
+        docGroup: DocGroups.errors,
+      }),
+    ]),
 
   'ex-data': v
     .nativeFn('ex-data', function exDataImpl(...args: CljValue[]) {
@@ -70,7 +82,13 @@ export const errorFunctions = {
       })
       return entry ? entry[1] : v.nil()
     })
-    .doc('Returns the :data map of an error map, or nil.', [['e']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the :data map of an error map, or nil.',
+        arglists: [['e']],
+        docGroup: DocGroups.errors,
+      }),
+    ]),
 
   'ex-cause': v
     .nativeFn('ex-cause', function exCauseImpl(...args: CljValue[]) {
@@ -81,5 +99,11 @@ export const errorFunctions = {
       })
       return entry ? entry[1] : v.nil()
     })
-    .doc('Returns the :cause of an error map, or nil.', [['e']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the :cause of an error map, or nil.',
+        arglists: [['e']],
+        docGroup: DocGroups.errors,
+      }),
+    ]),
 }
