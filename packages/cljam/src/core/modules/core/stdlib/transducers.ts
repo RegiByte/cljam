@@ -1,4 +1,4 @@
-// Transducer protocol primitives: reduced, volatile!, transduce
+// Transducer protocol primitives: reduced, transduce
 
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
@@ -68,98 +68,6 @@ export const transducerFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Returns the given value if it is a reduced value, otherwise returns a reduced value with the given value as its value.',
         arglists: [['value']],
-        docGroup: DocGroups.transducers,
-      }),
-    ]),
-
-  // ── Volatile ─────────────────────────────────────────────────────────────
-  'volatile!': v
-    .nativeFn('volatile!', function volatileImpl(value: CljValue) {
-      if (value === undefined) {
-        throw new EvaluationError('volatile! expects one argument', {})
-      }
-      return v.volatile(value)
-    })
-    .withMeta([
-      ...docMeta({
-        doc: 'Returns a volatile value with the given value as its value.',
-        arglists: [['value']],
-        docGroup: DocGroups.transducers,
-      }),
-    ]),
-  'volatile?': v
-    .nativeFn('volatile?', function isVolatileImpl(value: CljValue) {
-      if (value === undefined) {
-        throw new EvaluationError('volatile? expects one argument', {})
-      }
-      return v.boolean(is.volatile(value))
-    })
-    .withMeta([
-      ...docMeta({
-        doc: 'Returns true if the given value is a volatile value, false otherwise.',
-        arglists: [['value']],
-        docGroup: DocGroups.predicates,
-      }),
-    ]),
-  'vreset!': v
-    .nativeFn('vreset!', function vresetImpl(vol: CljValue, newVal: CljValue) {
-      if (!is.volatile(vol)) {
-        throw new EvaluationError(
-          `vreset! expects a volatile as its first argument, got ${printString(vol)}`,
-          { vol }
-        )
-      }
-      if (newVal === undefined) {
-        throw new EvaluationError('vreset! expects two arguments', { vol })
-      }
-      vol.value = newVal
-      return newVal
-    })
-    .withMeta([
-      ...docMeta({
-        doc: 'Resets the value of the given volatile to the given new value and returns the new value.',
-        arglists: [['vol', 'newVal']],
-        docGroup: DocGroups.transducers,
-      }),
-    ]),
-  'vswap!': v
-    .nativeFnCtx(
-      'vswap!',
-      function vswapImpl(
-        ctx: EvaluationContext,
-        callEnv: Env,
-        vol: CljValue,
-        fn: CljValue,
-        ...extraArgs: CljValue[]
-      ) {
-        if (!is.volatile(vol)) {
-          throw new EvaluationError(
-            `vswap! expects a volatile as its first argument, got ${printString(vol)}`,
-            { vol }
-          )
-        }
-        if (!is.aFunction(fn)) {
-          throw new EvaluationError(
-            `vswap! expects a function as its second argument, got ${printString(fn)}`,
-            { fn }
-          )
-        }
-        const newVal = ctx.applyFunction(
-          fn as CljFunction | CljNativeFunction,
-          [vol.value, ...extraArgs],
-          callEnv
-        )
-        vol.value = newVal
-        return newVal
-      }
-    )
-    .withMeta([
-      ...docMeta({
-        doc: 'Applies fn to the current value of the volatile, replacing the current value with the result. Returns the new value.',
-        arglists: [
-          ['vol', 'fn'],
-          ['vol', 'fn', '&', 'extraArgs'],
-        ],
         docGroup: DocGroups.transducers,
       }),
     ]),

@@ -2,10 +2,9 @@
 outline: [2, 3]
 ---
 
-# clojure.set
+# Namespace: `clojure.set`
 
-> _Namespace:_ `clojure.set`
-
+---
 Set operations. Provides functions for creating, manipulating, and querying sets.
 
 ## Functions

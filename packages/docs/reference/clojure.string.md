@@ -2,10 +2,9 @@
 outline: 2
 ---
 
-# clojure.string
+# Namespace: `clojure.string`
 
-> _Namespace:_ `clojure.string`
-
+---
 String operations. Provides functions for joining, splitting, trimming, and manipulating strings.
 
 ## Functions

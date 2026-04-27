@@ -104,14 +104,14 @@ export const clojure_coreSource = `\
 ;; defmulti uses a re-eval guard in make-multimethod! — re-loading a namespace
 ;; preserves all registered methods.
 (defmacro
-  ^{:doc-group "Multimethods"}
+  ^{:doc-group "Abstractions"}
   defmulti
   "Creates a new multimethod with the given name and dispatch function. Re-evaluating a defmulti preserves all previously registered methods."
   [name dispatch-fn & opts]
   \`(make-multimethod! ~(str name) ~dispatch-fn ~@opts))
 
 (defmacro
-  ^{:doc-group "Multimethods"}
+  ^{:doc-group "Abstractions"}
   defmethod
   "Creates and installs a new method for multimethod mm-name with dispatch value dispatch-val."
   [mm-name dispatch-val & fn-tail]
@@ -120,7 +120,7 @@ export const clojure_coreSource = `\
 ;; delay: wraps body in a zero-arg fn and defers evaluation until forced.
 ;; make-delay is a native primitive that creates the CljDelay value.
 (defmacro
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Abstractions"}
   delay
   "Takes a body of expressions and yields a Delay object that will invoke the body only the first time it is forced (via force or deref/@), and will cache the result and return it on all subsequent force calls."
   [& body]
@@ -234,9 +234,10 @@ export const clojure_coreSource = `\
                      \`(~form ~x))]
       \`(->> ~threaded ~@more))))
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (defmacro comment
   "Ignores body, yields nil"
-  [& _body] nil)
+  [& body] nil)
 
 (defmacro
   ^{:doc-group "Threading"}
@@ -323,11 +324,12 @@ export const clojure_coreSource = `\
   "Returns true if x is not nil, false otherwise"
   [x] (not (nil? x)))
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (defn
   ^{:doc-group "Predicates"}
   any?
   "Returns true for any given argument"
-  [_x] true)
+  [x] true)
 
 (defn
   ^{:doc-group "Higher-order"}
@@ -484,7 +486,7 @@ export const clojure_coreSource = `\
      coll)))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   distinct
   "Returns a vector of the elements of coll with duplicates removed,
   preserving first-seen order."
@@ -504,7 +506,7 @@ export const clojure_coreSource = `\
      1)))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   flatten-step
   "Internal helper for flatten."
   [v]
@@ -517,7 +519,7 @@ export const clojure_coreSource = `\
     [v]))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   flatten
   "Takes any nested combination of sequential things (lists/vectors) and
   returns their contents as a single flat vector."
@@ -527,7 +529,7 @@ export const clojure_coreSource = `\
     (flatten-step x)))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   reduce-kv
   "Reduces an associative structure. f should be a function of 3
   arguments: accumulator, key/index, value."
@@ -554,7 +556,7 @@ export const clojure_coreSource = `\
       {:coll coll}))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   sort-compare
   "Internal helper: normalizes comparator results."
   [cmp a b]
@@ -564,7 +566,7 @@ export const clojure_coreSource = `\
       r)))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   insert-sorted
   "Internal helper for insertion-sort based sort implementation."
   [cmp x sorted]
@@ -578,7 +580,7 @@ export const clojure_coreSource = `\
           (recur (conj left y) (rest right)))))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   sort
   "Returns the items in coll in sorted order. With no comparator, uses
   compare (works on numbers, strings, keywords, chars). Comparator may
@@ -594,7 +596,7 @@ export const clojure_coreSource = `\
       coll))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   sort-by
   "Returns a sorted sequence of items in coll, where the sort order is
   determined by comparing (keyfn item). Default comparator is compare."
@@ -620,7 +622,7 @@ export const clojure_coreSource = `\
 
 ;; into: 2-arity uses reduce+conj; 3-arity uses transduce
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   into
   "Returns a new coll consisting of to-coll with all of the items of
    from-coll conjoined. A transducer may be supplied."
@@ -629,7 +631,7 @@ export const clojure_coreSource = `\
 
 ;; sequence: materialise a transducer over a collection into a seq (list)
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   sequence
   "Coerces coll to a (possibly empty) sequence, if it is not already
   one. Will not force a seq. (sequence nil) yields (), When a
@@ -639,7 +641,7 @@ export const clojure_coreSource = `\
   ([xf coll] (apply list (into [] xf coll))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   completing
   "Takes a reducing function f of 2 args and returns a fn suitable for
   transduce by adding an arity-1 signature that calls cf (default -
@@ -653,7 +655,7 @@ export const clojure_coreSource = `\
 
 ;; map: 1-arg returns transducer; 2-arg is eager; 3+-arg zips collections
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   map
   "Returns a sequence consisting of the result of applying f to the set
   of first items of each coll, followed by applying f to the set of
@@ -689,7 +691,7 @@ export const clojure_coreSource = `\
 
 ;; filter: 1-arg returns transducer; 2-arg is eager
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   filter
   "Returns a sequence of the items in coll for which
   (pred item) returns logical true. pred must be free of side-effects.
@@ -711,7 +713,7 @@ export const clojure_coreSource = `\
         (filter pred (rest s)))))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   remove
   "Returns a lazy sequence of the items in coll for which
   (pred item) returns logical false. pred must be free of side-effects.
@@ -860,7 +862,7 @@ export const clojure_coreSource = `\
 
 ;; map-indexed: stateful transducer; passes index and item to f
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   map-indexed
   "Returns a sequence consisting of the result of applying f to 0
    and the first item of coll, followed by applying f to 1 and the second
@@ -884,7 +886,7 @@ export const clojure_coreSource = `\
 
 ;; dedupe: stateful transducer; removes consecutive duplicates
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   dedupe
   "Returns a sequence removing consecutive duplicates in coll.
    Returns a transducer when no collection is provided."
@@ -905,7 +907,7 @@ export const clojure_coreSource = `\
 
 ;; partition-all: stateful transducer; groups items into vectors of size n
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   partition-all
   "Returns a sequence of lists like partition, but may include
    partitions with fewer than n items at the end.  Returns a stateful
@@ -936,7 +938,7 @@ export const clojure_coreSource = `\
 ;; ── Documentation ────────────────────────────────────────────────────────────
 
 (defmacro
-  ^{:doc-group "Introspection"}
+  ^{:doc-group "Dev"}
   doc
   [sym]
   \`(let [v#        (var ~sym)
@@ -1029,7 +1031,7 @@ export const clojure_coreSource = `\
    (cons a (cons b (cons c (apply list* d more))))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   mapv
   "Returns a vector consisting of the result of applying f to the
   set of first items of each coll, followed by applying f to the set
@@ -1040,7 +1042,7 @@ export const clojure_coreSource = `\
   ([f c1 c2 c3 & colls] (into [] (apply map f c1 c2 c3 colls))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   filterv
   "Returns a vector of the items in coll for which
   (pred item) returns logical true."
@@ -1048,7 +1050,7 @@ export const clojure_coreSource = `\
   (into [] (filter pred) coll))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   run!
   "Runs the supplied procedure (via reduce), for purposes of side
   effects, on successive items in the collection. Returns nil."
@@ -1056,7 +1058,7 @@ export const clojure_coreSource = `\
   (reduce (fn [_ x] (proc x) nil) nil coll))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   keep
   "Returns a sequence of the non-nil results of (f item). Note,
   this means false return values will be included.  f must be free of
@@ -1080,7 +1082,7 @@ export const clojure_coreSource = `\
           (cons v (keep f (rest s)))))))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   keep-indexed
   "Returns a sequence of the non-nil results of (f index item). Note,
   this means false return values will be included.  f must be free of
@@ -1107,7 +1109,7 @@ export const clojure_coreSource = `\
      (step 0 coll))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   mapcat
   "Returns the result of applying concat to the result of applying map
   to f and colls.  Thus function f should return a collection. Returns
@@ -1128,7 +1130,7 @@ export const clojure_coreSource = `\
    (apply concat (apply map f coll more))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   interleave
   "Returns a lazy sequence of the first item in each coll, then the second etc.
   Stops as soon as any coll is exhausted."
@@ -1144,7 +1146,7 @@ export const clojure_coreSource = `\
         (concat (map first seqs) (apply interleave (map rest seqs))))))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   interpose
   "Returns a sequence of the elements of coll separated by sep.
   Returns a transducer when no collection is provided."
@@ -1168,7 +1170,7 @@ export const clojure_coreSource = `\
 
 ;; ── Lazy concat (shadows native eager concat) ──────────────────────────────
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   concat
   "Returns a lazy seq representing the concatenation of the elements in the
   supplied colls."
@@ -1191,7 +1193,7 @@ export const clojure_coreSource = `\
      (cat (concat x y) zs))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   iterate
   "Returns a lazy sequence of x, (f x), (f (f x)) etc.
   With 3 args, returns a finite sequence of n items (backwards compat)."
@@ -1204,7 +1206,7 @@ export const clojure_coreSource = `\
        acc))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   repeatedly
   "Takes a function of no args, presumably with side effects, and
   returns a lazy infinite sequence of calls to it.
@@ -1217,7 +1219,7 @@ export const clojure_coreSource = `\
        acc))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   cycle
   "Returns a lazy infinite sequence of repetitions of the items in coll.
   With 2 args (n coll), returns a finite sequence (backwards compat)."
@@ -1233,7 +1235,7 @@ export const clojure_coreSource = `\
          acc)))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   repeat
   "Returns a lazy infinite sequence of xs.
   With 2 args (n x), returns a finite sequence of n copies."
@@ -1241,7 +1243,7 @@ export const clojure_coreSource = `\
   ([n x] (repeat* n x)))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   range
   "Returns a lazy infinite sequence of integers from 0.
   With args, returns a finite sequence (delegates to native range*)."
@@ -1257,7 +1259,7 @@ export const clojure_coreSource = `\
   [] (println ""))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   dorun
   "Forces realization of a (possibly lazy) sequence. Walks the sequence
   without retaining the head. Returns nil."
@@ -1266,7 +1268,7 @@ export const clojure_coreSource = `\
     (recur (rest coll))))
 
 (defn
-  ^{:doc-group "Lazy"}
+  ^{:doc-group "Sequences"}
   doall
   "Forces realization of a (possibly lazy) sequence. Unlike dorun,
   retains the head and returns the seq."
@@ -1373,14 +1375,14 @@ export const clojure_coreSource = `\
            (recur (conj acc nval) nval (next s))))))))
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   split-at
   "Returns a vector of [(take n coll) (drop n coll)]"
   [n coll]
   [(into [] (take n) coll) (into [] (drop n) coll)])
 
 (defn
-  ^{:doc-group "Collections"}
+  ^{:doc-group "Sequences"}
   split-with
   "Returns a vector of [(take-while pred coll) (drop-while pred coll)]"
   [pred coll]
@@ -1971,7 +1973,7 @@ export const clojure_coreSource = `\
     [(str method-name) [(mapv str args)] doc]))
 
 (defmacro
-  ^{:doc-group "Protocols"}
+  ^{:doc-group "Abstractions"}
   defprotocol
   "Defines a named protocol. Creates a protocol var and one dispatch
   function var per method in the current namespace.
@@ -2030,7 +2032,7 @@ export const clojure_coreSource = `\
                    result)))))))
 
 (defmacro
-  ^{:doc-group "Protocols"}
+  ^{:doc-group "Abstractions"}
   extend-protocol
   "Extends a protocol to one or more types.
 
@@ -2049,7 +2051,7 @@ export const clojure_coreSource = `\
               groups))))
 
 (defmacro
-  ^{:doc-group "Protocols"}
+  ^{:doc-group "Abstractions"}
   extend-type
   "Extends a type to implement one or more protocols.
 
@@ -2076,7 +2078,7 @@ export const clojure_coreSource = `\
     \`(let ~bindings ~@body)))
 
 (defmacro
-  ^{:doc-group "Records"}
+  ^{:doc-group "Abstractions"}
   defrecord
   "Defines a record type: a named, typed persistent map.
   Creates ->Name (positional) and map->Name (map-based) constructors.
@@ -2125,18 +2127,18 @@ export const clojure_coreSource = `\
 ;; ─── Keyword Hierarchy ───────────────────────────────────────────────────────
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   make-hierarchy
   "Returns a new, empty hierarchy."
   []
   {:parents {} :ancestors {} :descendants {}})
 
-(def ^{:doc-group "Hierarchy" :dynamic true}
+(def ^{:doc-group "Abstractions" :dynamic true}
   *hierarchy*
   (make-hierarchy))
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   parents
   "Returns the immediate parents of tag in the hierarchy (default: *hierarchy*),
   or nil if tag has no parents."
@@ -2144,7 +2146,7 @@ export const clojure_coreSource = `\
   ([h tag] (get (:parents h) tag)))
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   ancestors
   "Returns the set of all ancestors of tag in the hierarchy (default: *hierarchy*),
   or nil if tag has no ancestors."
@@ -2152,7 +2154,7 @@ export const clojure_coreSource = `\
   ([h tag] (get (:ancestors h) tag)))
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   descendants
   "Returns the set of all descendants of tag in the hierarchy (default: *hierarchy*),
   or nil if tag has no descendants."
@@ -2160,7 +2162,7 @@ export const clojure_coreSource = `\
   ([h tag] (get (:descendants h) tag)))
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   isa?
   "Returns true if child is either identical to parent, or child derives from
   parent in the given hierarchy (default: *hierarchy*)."
@@ -2168,7 +2170,7 @@ export const clojure_coreSource = `\
   ([h child parent] (hierarchy-isa?* h child parent)))
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   derive
   "Establishes a parent/child relationship between child and parent.
 
@@ -2180,7 +2182,7 @@ export const clojure_coreSource = `\
    (hierarchy-derive* h child parent)))
 
 (defn
-  ^{:doc-group "Hierarchy"}
+  ^{:doc-group "Abstractions"}
   underive
   "Removes the parent/child relationship between child and parent.
 
@@ -2196,7 +2198,7 @@ export const clojure_coreSource = `\
 (def ^:dynamic *describe-limit* 50)
 
 (defn
-  ^{:doc-group "Introspection"}
+  ^{:doc-group "Dev"}
   describe
   "Returns a plain map describing any cljam value.
 

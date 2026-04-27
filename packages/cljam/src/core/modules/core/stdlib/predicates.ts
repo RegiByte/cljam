@@ -3,7 +3,7 @@
 // coll?, some, every?
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { docMeta, v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
 import type {
@@ -95,7 +95,7 @@ export const predicateFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Returns true if any two adjacent arguments are not equal, false otherwise.',
         arglists: [['&', 'vals']],
-        docGroup: DocGroup,
+        docGroup: DocGroups.comparison,
       }),
     ]),
   'char?': v
@@ -105,53 +105,6 @@ export const predicateFunctions: Record<string, CljValue> = {
     .withMeta([
       ...docMeta({
         doc: 'Returns true if the value is a character, false otherwise.',
-        arglists: [['x']],
-        docGroup: DocGroup,
-      }),
-    ]),
-  char: v
-    .nativeFn('char', function charImpl(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
-        throw new EvaluationError(
-          `char expects a number, got ${n !== undefined ? printString(n) : 'nothing'}`,
-          { n }
-        )
-      }
-      const cp = Math.trunc(n.value)
-      if (cp < 0 || cp > 0x10ffff) {
-        throw new EvaluationError(
-          `char: code point ${cp} is out of Unicode range`,
-          { n }
-        )
-      }
-      return v.char(String.fromCodePoint(cp))
-    })
-    .withMeta([
-      ...docMeta({
-        doc: 'Returns the character at the given Unicode code point.',
-        arglists: [['n']],
-        docGroup: DocGroup,
-      }),
-    ]),
-  int: v
-    .nativeFn('int', function intImpl(x: CljValue) {
-      if (x === undefined) {
-        throw new EvaluationError('int expects one argument', {})
-      }
-      if (x.kind === 'character') {
-        return v.number(x.value.codePointAt(0)!)
-      }
-      if (x.kind === 'number') {
-        return v.number(Math.trunc(x.value))
-      }
-      throw new EvaluationError(
-        `int expects a number or character, got ${printString(x)}`,
-        { x }
-      )
-    })
-    .withMeta([
-      ...docMeta({
-        doc: 'Coerces x to int. For characters, returns the Unicode code point.',
         arglists: [['x']],
         docGroup: DocGroup,
       }),
@@ -413,7 +366,7 @@ export const predicateFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Returns the first truthy result of applying pred to each item in coll, or nil if no item satisfies pred.',
         arglists: [['pred', 'coll']],
-        docGroup: DocGroup,
+        docGroup: DocGroups.sequences,
       }),
     ]),
   'every?': v
@@ -465,7 +418,7 @@ export const predicateFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Tests if 2 arguments are the same object (reference equality).',
         arglists: [['x', 'y']],
-        docGroup: DocGroup,
+        docGroup: DocGroups.comparison,
       }),
     ]),
   'seqable?': v
@@ -606,7 +559,7 @@ export const predicateFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Returns true if num is NaN, else false.',
         arglists: [['num']],
-        docGroup: DocGroup,
+        docGroup: DocGroups.arithmetic,
       }),
     ]),
   'infinite?': v
@@ -622,62 +575,7 @@ export const predicateFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Returns true if num is positive or negative infinity, else false.',
         arglists: [['num']],
-        docGroup: DocGroup,
-      }),
-    ]),
-  compare: v
-    .nativeFn(
-      'compare',
-      function compareImpl(x: CljValue, y: CljValue): CljValue {
-        if (is.nil(x) && is.nil(y)) return v.number(0)
-        if (is.nil(x)) return v.number(-1)
-        if (is.nil(y)) return v.number(1)
-        if (is.number(x) && is.number(y)) {
-          return v.number(
-            (x as CljNumber).value < (y as CljNumber).value
-              ? -1
-              : (x as CljNumber).value > (y as CljNumber).value
-                ? 1
-                : 0
-          )
-        }
-        if (is.string(x) && is.string(y)) {
-          return v.number(x.value < y.value ? -1 : x.value > y.value ? 1 : 0)
-        }
-        if (is.char(x) && is.char(y)) {
-          return v.number(x.value < y.value ? -1 : x.value > y.value ? 1 : 0)
-        }
-        if (is.keyword(x) && is.keyword(y)) {
-          return v.number(x.name < y.name ? -1 : x.name > y.name ? 1 : 0)
-        }
-        throw new EvaluationError(
-          `compare: cannot compare ${printString(x)} to ${printString(y)}`,
-          { x, y }
-        )
-      }
-    )
-    .withMeta([
-      ...docMeta({
-        doc: 'Comparator. Returns a negative number, zero, or a positive number.',
-        arglists: [['x', 'y']],
-        docGroup: DocGroup,
-      }),
-    ]),
-  hash: v
-    .nativeFn('hash', function hashImpl(x: CljValue) {
-      // Simple hash — consistent within a session, not cryptographic
-      const s = printString(x)
-      let h = 0
-      for (let i = 0; i < s.length; i++) {
-        h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
-      }
-      return v.number(h)
-    })
-    .withMeta([
-      ...docMeta({
-        doc: 'Returns the hash code of its argument.',
-        arglists: [['x']],
-        docGroup: DocGroup,
+        docGroup: DocGroups.arithmetic,
       }),
     ]),
 }

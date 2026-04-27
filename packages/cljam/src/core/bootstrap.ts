@@ -63,7 +63,7 @@ export function wireNsCore(
       .withMeta([
         ...docMeta({
           doc: 'Returns a list of all namespaces loaded in the session.',
-          arglists: [],
+          arglists: [[]],
           docGroup: DocGroups.introspection,
         }),
       ]),
@@ -345,7 +345,7 @@ export function wireNsCore(
       .withMeta([
         ...docMeta({
           doc: 'Returns a set of the loaded libraries.',
-          arglists: [],
+          arglists: [[]],
           docGroup: DocGroups.introspection,
         }),
       ]),
@@ -472,6 +472,11 @@ export function wireIdeStubs(registry: NamespaceRegistry, coreEnv: Env): void {
     'Runnable',
     'Cloneable',
   ]) {
-    internVar(javaClass, v.keyword(`:java.lang/${javaClass}`), coreEnv)
+    internVar(
+      javaClass,
+      v.keyword(`:java.lang/${javaClass}`),
+      coreEnv,
+      v.map([[v.keyword(':no-doc'), v.boolean(true)]])
+    )
   }
 }

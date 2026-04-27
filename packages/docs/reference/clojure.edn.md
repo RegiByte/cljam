@@ -2,9 +2,7 @@
 outline: 2
 ---
 
-# clojure.edn
-
-> _Namespace:_ `clojure.edn`
+# Namespace: `clojure.edn`
 
 ## Functions
 

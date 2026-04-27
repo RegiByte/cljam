@@ -101,6 +101,7 @@ export const multimethodFunctions: Record<string, CljValue> = {
         doc: 'Creates a multimethod with the given name and dispatch-fn in the current namespace. Accepts optional :default <sentinel-val> to customize the fallback sentinel. No-op if already a multimethod (re-eval safe).',
         arglists: [['name', 'dispatch-fn', '& opts']],
         docGroup: DocGroups.multimethods,
+        extra: { 'no-doc': true },
       }),
     ]),
 
@@ -172,6 +173,7 @@ export const multimethodFunctions: Record<string, CljValue> = {
         doc: 'Adds or replaces a method on a multimethod var. Uses :default as the fallback dispatch value.',
         arglists: [['mm-var', 'dispatch-val', 'fn']],
         docGroup: DocGroups.multimethods,
+        extra: { 'no-doc': true },
       }),
     ]),
 }

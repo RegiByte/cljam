@@ -2,10 +2,9 @@
 outline: [2, 3]
 ---
 
-# clojure.core
+# Namespace: `clojure.core`
 
-> _Namespace:_ `clojure.core`
-
+---
 The core Clojure standard library. Provides the fundamental building blocks
   of the language: collection operations, sequence processing, arithmetic,
   destructuring, macros, protocols, multimethods, atoms, and more.
@@ -13,6 +12,124 @@ The core Clojure standard library. Provides the fundamental building blocks
   This namespace is automatically loaded in every cljam session.
 
 ## Functions
+
+### Abstractions
+
+#### `ancestors`
+
+```clojure
+(ancestors tag)
+(ancestors h tag)
+```
+
+Returns the set of all ancestors of tag in the hierarchy (default: *hierarchy*),
+  or nil if tag has no ancestors.
+
+---
+
+#### `derive`
+
+```clojure
+(derive child parent)
+(derive h child parent)
+```
+
+Establishes a parent/child relationship between child and parent.
+
+  2-arity: mutates the global *hierarchy* via session-safe native.
+  3-arity: pure — returns a new hierarchy map without side effects.
+
+---
+
+#### `descendants`
+
+```clojure
+(descendants tag)
+(descendants h tag)
+```
+
+Returns the set of all descendants of tag in the hierarchy (default: *hierarchy*),
+  or nil if tag has no descendants.
+
+---
+
+#### `extenders`
+
+```clojure
+(extenders protocol)
+```
+
+Returns a vector of type-tag strings that have extended the protocol.
+
+---
+
+#### `isa?`
+
+```clojure
+(isa? child parent)
+(isa? h child parent)
+```
+
+Returns true if child is either identical to parent, or child derives from
+  parent in the given hierarchy (default: *hierarchy*).
+
+---
+
+#### `make-hierarchy`
+
+```clojure
+(make-hierarchy)
+```
+
+Returns a new, empty hierarchy.
+
+---
+
+#### `parents`
+
+```clojure
+(parents tag)
+(parents h tag)
+```
+
+Returns the immediate parents of tag in the hierarchy (default: *hierarchy*),
+  or nil if tag has no parents.
+
+---
+
+#### `protocols`
+
+```clojure
+(protocols type-kw-or-value)
+```
+
+Returns a vector of all protocols that a type implements. Accepts a keyword type tag (:string, :user/Circle) or any value.
+
+---
+
+#### `satisfies?`
+
+```clojure
+(satisfies? protocol value)
+```
+
+Returns true if value implements the protocol.
+
+---
+
+#### `underive`
+
+```clojure
+(underive child parent)
+(underive h child parent)
+```
+
+Removes the parent/child relationship between child and parent.
+
+  2-arity: mutates the global *hierarchy* via session-safe native.
+  3-arity: pure — returns a new hierarchy map without side effects.
+
+---
 
 ### Arithmetic
 
@@ -53,6 +170,16 @@ Returns the difference of the arguments. Throws on non-number arguments.
 ```
 
 Returns the quotient of the arguments. Throws on non-number arguments or division by zero.
+
+---
+
+#### `NaN?`
+
+```clojure
+(NaN? num)
+```
+
+Returns true if num is NaN, else false.
 
 ---
 
@@ -126,6 +253,16 @@ Bitwise exclusive or
 
 ---
 
+#### `char`
+
+```clojure
+(char n)
+```
+
+Returns the character at the given Unicode code point.
+
+---
+
 #### `dec`
 
 ```clojure
@@ -136,6 +273,16 @@ Returns the argument decremented by 1. Throws on non-number arguments.
 
 ---
 
+#### `even?`
+
+```clojure
+(even? n)
+```
+
+Returns true if the argument is an even number, false otherwise.
+
+---
+
 #### `inc`
 
 ```clojure
@@ -143,6 +290,26 @@ Returns the argument decremented by 1. Throws on non-number arguments.
 ```
 
 Returns the argument incremented by 1. Throws on non-number arguments.
+
+---
+
+#### `infinite?`
+
+```clojure
+(infinite? num)
+```
+
+Returns true if num is positive or negative infinity, else false.
+
+---
+
+#### `int`
+
+```clojure
+(int x)
+```
+
+Coerces x to int. For characters, returns the Unicode code point.
 
 ---
 
@@ -173,6 +340,36 @@ Returns the smallest of the arguments. Throws on non-number arguments.
 ```
 
 Returns the remainder of the first argument divided by the second argument. Throws on non-number arguments or division by zero.
+
+---
+
+#### `neg?`
+
+```clojure
+(neg? n)
+```
+
+Returns true if the argument is a negative number, false otherwise.
+
+---
+
+#### `odd?`
+
+```clojure
+(odd? n)
+```
+
+Returns true if the argument is an odd number, false otherwise.
+
+---
+
+#### `pos?`
+
+```clojure
+(pos? n)
+```
+
+Returns true if the argument is a positive number, false otherwise.
 
 ---
 
@@ -247,6 +444,16 @@ Bitwise shift right, without sign-extension
 
 ---
 
+#### `zero?`
+
+```clojure
+(zero? n)
+```
+
+Returns true if the argument is zero, false otherwise.
+
+---
+
 ### Async
 
 #### `all`
@@ -296,529 +503,6 @@ Wraps val in an immediately-resolving pending value. Useful for testing async co
 ```
 
 Applies f to the resolved value of a pending, or to val directly if not pending.
-
----
-
-### Atoms
-
-#### `add-watch`
-
-```clojure
-(add-watch atom key fn)
-```
-
-Adds a watch function to an atom. The watch fn must be a fn of 4 args: a key, the atom, its old-state, its new-state.
-
----
-
-#### `atom`
-
-```clojure
-(atom value)
-```
-
-Returns a new atom holding the given value.
-
----
-
-#### `atom?`
-
-```clojure
-(atom? value)
-```
-
-Returns true if the value is an atom, false otherwise.
-
----
-
-#### `compare-and-set!`
-
-```clojure
-(compare-and-set! atom oldval newval)
-```
-
-Atomically sets the value of atom to newval if and only if the current value of the atom is identical to oldval. Returns true if set happened, else false.
-
----
-
-#### `deref`
-
-```clojure
-(deref value)
-```
-
-Returns the wrapped value from an atom, volatile, reduced, or delay value.
-
----
-
-#### `remove-watch`
-
-```clojure
-(remove-watch atom key)
-```
-
-Removes a watch (set by add-watch) from an atom.
-
----
-
-#### `reset!`
-
-```clojure
-(reset! atomVal newVal)
-```
-
-Sets the value of the atom to newVal and returns the new value.
-
----
-
-#### `reset-vals!`
-
-```clojure
-(reset-vals! atom newval)
-```
-
-Sets the value of atom to newVal. Returns [old new].
-
----
-
-#### `set-validator!`
-
-```clojure
-(set-validator! atom fn)
-```
-
-Sets the validator-fn for an atom. fn must be nil or a side-effect-free fn of one argument.
-
----
-
-#### `swap!`
-
-```clojure
-(swap! atomVal fn & extraArgs)
-```
-
-Applies fn to the current value of the atom, replacing the current value with the result. Returns the new value.
-
----
-
-#### `swap-vals!`
-
-```clojure
-(swap-vals! atom f & args)
-```
-
-Atomically swaps the value of atom to be (apply f current-value-of-atom args). Returns [old new].
-
----
-
-### Collections
-
-#### `assoc`
-
-```clojure
-(assoc collection & kvals)
-```
-
-Associates the value val with the key k in collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the new value at index k.
-
----
-
-#### `completing`
-
-```clojure
-(completing f)
-(completing f cf)
-```
-
-Takes a reducing function f of 2 args and returns a fn suitable for
-  transduce by adding an arity-1 signature that calls cf (default -
-  identity) on the result argument.
-
----
-
-#### `dedupe`
-
-```clojure
-(dedupe)
-(dedupe coll)
-```
-
-Returns a sequence removing consecutive duplicates in coll.
-   Returns a transducer when no collection is provided.
-
----
-
-#### `dissoc`
-
-```clojure
-(dissoc collection & keys)
-```
-
-Dissociates the key k from collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the value at index k removed.
-
----
-
-#### `distinct`
-
-```clojure
-(distinct coll)
-```
-
-Returns a vector of the elements of coll with duplicates removed,
-  preserving first-seen order.
-
----
-
-#### `filter`
-
-```clojure
-(filter pred)
-(filter pred coll)
-```
-
-Returns a sequence of the items in coll for which
-  (pred item) returns logical true. pred must be free of side-effects.
-  Returns a transducer when no collection is provided.
-
----
-
-#### `filterv`
-
-```clojure
-(filterv pred coll)
-```
-
-Returns a vector of the items in coll for which
-  (pred item) returns logical true.
-
----
-
-#### `flatten`
-
-```clojure
-(flatten x)
-```
-
-Takes any nested combination of sequential things (lists/vectors) and
-  returns their contents as a single flat vector.
-
----
-
-#### `flatten-step`
-
-```clojure
-(flatten-step v)
-```
-
-Internal helper for flatten.
-
----
-
-#### `insert-sorted`
-
-```clojure
-(insert-sorted cmp x sorted)
-```
-
-Internal helper for insertion-sort based sort implementation.
-
----
-
-#### `into`
-
-```clojure
-(into to from)
-(into to xf from)
-```
-
-Returns a new coll consisting of to-coll with all of the items of
-   from-coll conjoined. A transducer may be supplied.
-
----
-
-#### `keep`
-
-```clojure
-(keep f)
-(keep f coll)
-```
-
-Returns a sequence of the non-nil results of (f item). Note,
-  this means false return values will be included.  f must be free of
-  side-effects.  Returns a transducer when no collection is provided.
-
----
-
-#### `keep-indexed`
-
-```clojure
-(keep-indexed f)
-(keep-indexed f coll)
-```
-
-Returns a sequence of the non-nil results of (f index item). Note,
-  this means false return values will be included.  f must be free of
-  side-effects.  Returns a stateful transducer when no collection is provided.
-
----
-
-#### `map`
-
-```clojure
-(map f)
-(map f coll)
-(map f c1 c2)
-(map f c1 c2 & colls)
-```
-
-Returns a sequence consisting of the result of applying f to the set
-  of first items of each coll, followed by applying f to the set of
-  second items in each coll, until any one of the colls is exhausted.
-  Any remaining items in other colls are ignored. Returns a transducer
-  when no collection is provided.
-
----
-
-#### `map-indexed`
-
-```clojure
-(map-indexed f)
-(map-indexed f coll)
-```
-
-Returns a sequence consisting of the result of applying f to 0
-   and the first item of coll, followed by applying f to 1 and the second
-   item in coll, etc, until coll is exhausted. Thus function f should
-   accept 2 arguments, index and item. Returns a stateful transducer when
-   no collection is provided.
-
----
-
-#### `mapcat`
-
-```clojure
-(mapcat f)
-(mapcat f coll)
-(mapcat f coll & more)
-```
-
-Returns the result of applying concat to the result of applying map
-  to f and colls.  Thus function f should return a collection. Returns
-  a transducer when no collections are provided.
-
----
-
-#### `mapv`
-
-```clojure
-(mapv f coll)
-(mapv f c1 c2)
-(mapv f c1 c2 c3)
-(mapv f c1 c2 c3 & colls)
-```
-
-Returns a vector consisting of the result of applying f to the
-  set of first items of each coll, followed by applying f to the set
-  of second items in each coll, until any one of the colls is exhausted.
-
----
-
-#### `partition-all`
-
-```clojure
-(partition-all n)
-(partition-all n coll)
-```
-
-Returns a sequence of lists like partition, but may include
-   partitions with fewer than n items at the end.  Returns a stateful
-   transducer when no collection is provided.
-
----
-
-#### `peek`
-
-```clojure
-(peek coll)
-```
-
-For a list, same as first. For a vector, same as last.
-
----
-
-#### `pop`
-
-```clojure
-(pop coll)
-```
-
-For a list, returns a new list without the first item. For a vector, returns a new vector without the last item.
-
----
-
-#### `reduce`
-
-```clojure
-(reduce f coll)
-(reduce f val coll)
-```
-
-Reduces a collection to a single value by iteratively applying f. (reduce f coll) or (reduce f init coll).
-
----
-
-#### `reduce-kv`
-
-```clojure
-(reduce-kv f init coll)
-```
-
-Reduces an associative structure. f should be a function of 3
-  arguments: accumulator, key/index, value.
-
----
-
-#### `remove`
-
-```clojure
-(remove pred)
-(remove pred coll)
-```
-
-Returns a lazy sequence of the items in coll for which
-  (pred item) returns logical false. pred must be free of side-effects.
-  Returns a transducer when no collection is provided.
-
----
-
-#### `run!`
-
-```clojure
-(run! proc coll)
-```
-
-Runs the supplied procedure (via reduce), for purposes of side
-  effects, on successive items in the collection. Returns nil.
-
----
-
-#### `sequence`
-
-```clojure
-(sequence coll)
-(sequence xf coll)
-```
-
-Coerces coll to a (possibly empty) sequence, if it is not already
-  one. Will not force a seq. (sequence nil) yields (), When a
-  transducer is supplied, returns a lazy sequence of applications of
-  the transform to the items in coll
-
----
-
-#### `set`
-
-```clojure
-(set coll)
-```
-
-Returns a set of the distinct elements of the given collection.
-
----
-
-#### `shuffle`
-
-```clojure
-(shuffle coll)
-```
-
-Return a random permutation of coll.
-
----
-
-#### `sort`
-
-```clojure
-(sort coll)
-(sort cmp coll)
-```
-
-Returns the items in coll in sorted order. With no comparator, uses
-  compare (works on numbers, strings, keywords, chars). Comparator may
-  return boolean or number.
-
----
-
-#### `sort-by`
-
-```clojure
-(sort-by keyfn coll)
-(sort-by keyfn cmp coll)
-```
-
-Returns a sorted sequence of items in coll, where the sort order is
-  determined by comparing (keyfn item). Default comparator is compare.
-
----
-
-#### `sort-compare`
-
-```clojure
-(sort-compare cmp a b)
-```
-
-Internal helper: normalizes comparator results.
-
----
-
-#### `split-at`
-
-```clojure
-(split-at n coll)
-```
-
-Returns a vector of [(take n coll) (drop n coll)]
-
----
-
-#### `split-with`
-
-```clojure
-(split-with pred coll)
-```
-
-Returns a vector of [(take-while pred coll) (drop-while pred coll)]
-
----
-
-#### `subvec`
-
-```clojure
-(subvec v start)
-(subvec v start end)
-```
-
-Returns a vector of the items in vector from start (inclusive) to end (exclusive).
-
----
-
-#### `vec`
-
-```clojure
-(vec coll)
-```
-
-Creates a new vector containing the contents of coll.
-
----
-
-#### `vector`
-
-```clojure
-(vector & args)
-```
-
-Returns a new vector containing the given values.
 
 ---
 
@@ -874,6 +558,26 @@ Compares adjacent arguments left to right, returns true if all comparisons retur
 
 ---
 
+#### `compare`
+
+```clojure
+(compare x y)
+```
+
+Comparator. Returns a negative number, zero, or a positive number.
+
+---
+
+#### `identical?`
+
+```clojure
+(identical? x y)
+```
+
+Tests if 2 arguments are the same object (reference equality).
+
+---
+
 #### `not`
 
 ```clojure
@@ -881,6 +585,301 @@ Compares adjacent arguments left to right, returns true if all comparisons retur
 ```
 
 Returns true if x is logical false, false otherwise.
+
+---
+
+#### `not=`
+
+```clojure
+(not= & vals)
+```
+
+Returns true if any two adjacent arguments are not equal, false otherwise.
+
+---
+
+### Dev
+
+#### `all-ns`
+
+```clojure
+(all-ns)
+```
+
+Returns a list of all namespaces loaded in the session.
+
+---
+
+#### `alter-var-root`
+
+```clojure
+(alter-var-root v f & args)
+```
+
+Atomically alters the root binding of var v by applying f to its current value plus any additional args.
+
+---
+
+#### `describe`
+
+```clojure
+(describe x)
+(describe x limit)
+```
+
+Returns a plain map describing any cljam value.
+
+  Works on protocols, records, functions, namespaces, multimethods,
+  vars, and all primitive types. Output is always a plain Clojure map —
+  composable with get, get-in, filter, and any other map operation.
+
+  For namespaces, the number of vars shown is capped by *describe-limit*
+  (default 50). Bind *describe-limit* to nil for unlimited output.
+
+  Examples:
+    (describe (-&gt;Circle 5))        ;; record
+    (describe IShape)              ;; protocol
+    (describe area)                ;; protocol dispatch fn
+    (describe println)             ;; native fn
+    (describe (find-ns 'user))     ;; namespace
+    (describe #'my-fn)             ;; var
+
+---
+
+#### `eval`
+
+```clojure
+(eval form)
+```
+
+Evaluates the given form in the global environment and returns the result.
+
+---
+
+#### `find-ns`
+
+```clojure
+(find-ns sym)
+```
+
+Returns the namespace as a value for the given symbol, or nil if the symbol is not a namespace or not loaded.
+
+---
+
+#### `gensym`
+
+```clojure
+(gensym)
+(gensym prefix)
+```
+
+Returns a unique symbol with the given prefix. Defaults to "G" if no prefix is provided.
+
+---
+
+#### `in-ns`
+
+```clojure
+(in-ns sym)
+```
+
+Sets the current namespace to the given symbol and returns the namespace as a value.
+
+---
+
+#### `loaded-libs`
+
+```clojure
+(loaded-libs)
+```
+
+Returns a set of the loaded libraries.
+
+---
+
+#### `macroexpand`
+
+```clojure
+(macroexpand form)
+```
+
+Expands all macros until the expansion is stable (head is no longer a macro)
+
+Note neither macroexpand-1 nor macroexpand will expand macros in sub-forms
+
+---
+
+#### `macroexpand-1`
+
+```clojure
+(macroexpand-1 form)
+```
+
+If the head of the form is a macro, expands it and returns the resulting forms. Otherwise, returns the form unchanged.
+
+---
+
+#### `macroexpand-all`
+
+```clojure
+(macroexpand-all form)
+```
+
+Fully expands all macros in a form recursively — including in sub-forms.
+
+Unlike macroexpand, this descends into every sub-expression.
+Expansion stops at quote/quasiquote boundaries and fn/loop bodies.
+
+---
+
+#### `name`
+
+```clojure
+(name x)
+```
+
+Returns the local name of a qualified keyword or symbol, or the string value if the argument is a string.
+
+---
+
+#### `namespace`
+
+```clojure
+(namespace x)
+```
+
+Returns the namespace string of a qualified keyword or symbol, or nil if the argument is not qualified.
+
+---
+
+#### `ns-aliases`
+
+```clojure
+(ns-aliases sym)
+```
+
+Returns a map of the aliases for the given namespace.
+
+---
+
+#### `ns-interns`
+
+```clojure
+(ns-interns sym)
+```
+
+Returns a map of the interned vars for the given namespace.
+
+---
+
+#### `ns-map`
+
+```clojure
+(ns-map sym)
+```
+
+Returns a map of the vars for the given namespace.
+
+---
+
+#### `ns-name`
+
+```clojure
+(ns-name x)
+```
+
+Returns the namespace name as a symbol for the given value.
+
+---
+
+#### `ns-publics`
+
+```clojure
+(ns-publics sym)
+```
+
+Returns a map of the public vars for the given namespace.
+
+---
+
+#### `ns-refers`
+
+```clojure
+(ns-refers sym)
+```
+
+Returns a map of the refers for the given namespace.
+
+---
+
+#### `require`
+
+```clojure
+(require args)
+```
+
+Parses the require spec and load the namespace(s) specified into the current namespace.
+
+---
+
+#### `resolve`
+
+```clojure
+(resolve sym)
+```
+
+Resolves the given symbol to a value in the current namespace.
+
+---
+
+#### `special-symbol?`
+
+```clojure
+(special-symbol? sym)
+```
+
+Returns true if the given symbol is a special symbol reserved by the language.
+
+---
+
+#### `symbol`
+
+```clojure
+(symbol name)
+(symbol ns name)
+```
+
+Returns a Symbol with the given namespace and name.
+
+---
+
+#### `the-ns`
+
+```clojure
+(the-ns sym)
+```
+
+Returns the namespace as a value for the given symbol, or nil if the symbol is not a namespace or not loaded.
+
+---
+
+#### `type`
+
+```clojure
+(type x)
+```
+
+Returns a keyword representing the type of a value. Records return :ns/RecordType; built-ins return :string, :number, :nil, etc.
+
+---
+
+#### `var-get`
+
+```clojure
+(var-get x)
+```
+
+Returns the value in the Var object.
 
 ---
 
@@ -946,94 +945,6 @@ Creates an error map with type, message, data and optionally cause
 ```
 
 Throws a value as an exception. The value may be any CljValue; maps are idiomatic.
-
----
-
-### Hierarchy
-
-#### `ancestors`
-
-```clojure
-(ancestors tag)
-(ancestors h tag)
-```
-
-Returns the set of all ancestors of tag in the hierarchy (default: *hierarchy*),
-  or nil if tag has no ancestors.
-
----
-
-#### `derive`
-
-```clojure
-(derive child parent)
-(derive h child parent)
-```
-
-Establishes a parent/child relationship between child and parent.
-
-  2-arity: mutates the global *hierarchy* via session-safe native.
-  3-arity: pure — returns a new hierarchy map without side effects.
-
----
-
-#### `descendants`
-
-```clojure
-(descendants tag)
-(descendants h tag)
-```
-
-Returns the set of all descendants of tag in the hierarchy (default: *hierarchy*),
-  or nil if tag has no descendants.
-
----
-
-#### `isa?`
-
-```clojure
-(isa? child parent)
-(isa? h child parent)
-```
-
-Returns true if child is either identical to parent, or child derives from
-  parent in the given hierarchy (default: *hierarchy*).
-
----
-
-#### `make-hierarchy`
-
-```clojure
-(make-hierarchy)
-```
-
-Returns a new, empty hierarchy.
-
----
-
-#### `parents`
-
-```clojure
-(parents tag)
-(parents h tag)
-```
-
-Returns the immediate parents of tag in the hierarchy (default: *hierarchy*),
-  or nil if tag has no parents.
-
----
-
-#### `underive`
-
-```clojure
-(underive child parent)
-(underive h child parent)
-```
-
-Removes the parent/child relationship between child and parent.
-
-  2-arity: mutates the global *hierarchy* via session-safe native.
-  3-arity: pure — returns a new hierarchy map without side effects.
 
 ---
 
@@ -1248,361 +1159,6 @@ Converts a Clojure value to a JavaScript value. Should be used sparingly at the 
 ```
 
 Converts a JavaScript value to a Clojure value. Should be used sparingly at the boundaries of the program. Unsupported types are boxed as js-value.
-
----
-
-### Introspection
-
-#### `all-ns`
-
-Returns a list of all namespaces loaded in the session.
-
----
-
-#### `describe`
-
-```clojure
-(describe x)
-(describe x limit)
-```
-
-Returns a plain map describing any cljam value.
-
-  Works on protocols, records, functions, namespaces, multimethods,
-  vars, and all primitive types. Output is always a plain Clojure map —
-  composable with get, get-in, filter, and any other map operation.
-
-  For namespaces, the number of vars shown is capped by *describe-limit*
-  (default 50). Bind *describe-limit* to nil for unlimited output.
-
-  Examples:
-    (describe (-&gt;Circle 5))        ;; record
-    (describe IShape)              ;; protocol
-    (describe area)                ;; protocol dispatch fn
-    (describe println)             ;; native fn
-    (describe (find-ns 'user))     ;; namespace
-    (describe #'my-fn)             ;; var
-
----
-
-#### `find-ns`
-
-```clojure
-(find-ns sym)
-```
-
-Returns the namespace as a value for the given symbol, or nil if the symbol is not a namespace or not loaded.
-
----
-
-#### `in-ns`
-
-```clojure
-(in-ns sym)
-```
-
-Sets the current namespace to the given symbol and returns the namespace as a value.
-
----
-
-#### `loaded-libs`
-
-Returns a set of the loaded libraries.
-
----
-
-#### `name`
-
-```clojure
-(name x)
-```
-
-Returns the local name of a qualified keyword or symbol, or the string value if the argument is a string.
-
----
-
-#### `namespace`
-
-```clojure
-(namespace x)
-```
-
-Returns the namespace string of a qualified keyword or symbol, or nil if the argument is not qualified.
-
----
-
-#### `ns-aliases`
-
-```clojure
-(ns-aliases sym)
-```
-
-Returns a map of the aliases for the given namespace.
-
----
-
-#### `ns-interns`
-
-```clojure
-(ns-interns sym)
-```
-
-Returns a map of the interned vars for the given namespace.
-
----
-
-#### `ns-map`
-
-```clojure
-(ns-map sym)
-```
-
-Returns a map of the vars for the given namespace.
-
----
-
-#### `ns-name`
-
-```clojure
-(ns-name x)
-```
-
-Returns the namespace name as a symbol for the given value.
-
----
-
-#### `ns-publics`
-
-```clojure
-(ns-publics sym)
-```
-
-Returns a map of the public vars for the given namespace.
-
----
-
-#### `ns-refers`
-
-```clojure
-(ns-refers sym)
-```
-
-Returns a map of the refers for the given namespace.
-
----
-
-#### `resolve`
-
-```clojure
-(resolve sym)
-```
-
-Resolves the given symbol to a value in the current namespace.
-
----
-
-#### `special-symbol?`
-
-```clojure
-(special-symbol? sym)
-```
-
-Returns true if the given symbol is a special symbol reserved by the language.
-
----
-
-#### `the-ns`
-
-```clojure
-(the-ns sym)
-```
-
-Returns the namespace as a value for the given symbol, or nil if the symbol is not a namespace or not loaded.
-
----
-
-#### `type`
-
-```clojure
-(type x)
-```
-
-Returns a keyword representing the type of a value. Records return :ns/RecordType; built-ins return :string, :number, :nil, etc.
-
----
-
-### Lazy
-
-#### `concat`
-
-```clojure
-(concat)
-(concat x)
-(concat x y)
-(concat x y & zs)
-```
-
-Returns a lazy seq representing the concatenation of the elements in the
-  supplied colls.
-
----
-
-#### `cycle`
-
-```clojure
-(cycle coll)
-(cycle n coll)
-```
-
-Returns a lazy infinite sequence of repetitions of the items in coll.
-  With 2 args (n coll), returns a finite sequence (backwards compat).
-
----
-
-#### `delay?`
-
-```clojure
-(delay? x)
-```
-
-Returns true if x is a Delay.
-
----
-
-#### `doall`
-
-```clojure
-(doall coll)
-```
-
-Forces realization of a (possibly lazy) sequence. Unlike dorun,
-  retains the head and returns the seq.
-
----
-
-#### `dorun`
-
-```clojure
-(dorun coll)
-```
-
-Forces realization of a (possibly lazy) sequence. Walks the sequence
-  without retaining the head. Returns nil.
-
----
-
-#### `force`
-
-```clojure
-(force x)
-```
-
-If x is a Delay or LazySeq, forces and returns the realized value. Otherwise returns x.
-
----
-
-#### `interleave`
-
-```clojure
-(interleave c1 c2)
-(interleave c1 c2 & colls)
-```
-
-Returns a lazy sequence of the first item in each coll, then the second etc.
-  Stops as soon as any coll is exhausted.
-
----
-
-#### `interpose`
-
-```clojure
-(interpose sep)
-(interpose sep coll)
-```
-
-Returns a sequence of the elements of coll separated by sep.
-  Returns a transducer when no collection is provided.
-
----
-
-#### `iterate`
-
-```clojure
-(iterate f x)
-(iterate f x n)
-```
-
-Returns a lazy sequence of x, (f x), (f (f x)) etc.
-  With 3 args, returns a finite sequence of n items (backwards compat).
-
----
-
-#### `lazy-seq?`
-
-```clojure
-(lazy-seq? x)
-```
-
-Returns true if x is a LazySeq.
-
----
-
-#### `make-delay`
-
-```clojure
-(make-delay thunk-fn)
-```
-
-Creates a Delay that invokes thunk-fn (a zero-arg function) on first force.
-
----
-
-#### `range`
-
-```clojure
-(range)
-(range end)
-(range start end)
-(range start end step)
-```
-
-Returns a lazy infinite sequence of integers from 0.
-  With args, returns a finite sequence (delegates to native range*).
-
----
-
-#### `realized?`
-
-```clojure
-(realized? x)
-```
-
-Returns true if a Delay or LazySeq has been realized.
-
----
-
-#### `repeat`
-
-```clojure
-(repeat x)
-(repeat n x)
-```
-
-Returns a lazy infinite sequence of xs.
-  With 2 args (n x), returns a finite sequence of n copies.
-
----
-
-#### `repeatedly`
-
-```clojure
-(repeatedly f)
-(repeatedly n f)
-```
-
-Takes a function of no args, presumably with side effects, and
-  returns a lazy infinite sequence of calls to it.
-  With 2 args (n f), returns a finite sequence of n calls.
 
 ---
 
@@ -1828,44 +1384,12 @@ Returns a new value with the metadata map m applied to val.
 
 ---
 
-### Multimethods
-
-#### `add-method!`
-
-```clojure
-(add-method! mm-var dispatch-val fn)
-```
-
-Adds or replaces a method on a multimethod var. Uses :default as the fallback dispatch value.
-
----
-
-#### `make-multimethod!`
-
-```clojure
-(make-multimethod! name dispatch-fn & opts)
-```
-
-Creates a multimethod with the given name and dispatch-fn in the current namespace. Accepts optional :default &lt;sentinel-val&gt; to customize the fallback sentinel. No-op if already a multimethod (re-eval safe).
-
----
-
 ### Predicates
-
-#### `NaN?`
-
-```clojure
-(NaN? num)
-```
-
-Returns true if num is NaN, else false.
-
----
 
 #### `any?`
 
 ```clojure
-(any? _x)
+(any? x)
 ```
 
 Returns true for any given argument
@@ -1892,16 +1416,6 @@ Returns true if the value is a boolean, false otherwise.
 
 ---
 
-#### `char`
-
-```clojure
-(char n)
-```
-
-Returns the character at the given Unicode code point.
-
----
-
 #### `char?`
 
 ```clojure
@@ -1919,16 +1433,6 @@ Returns true if the value is a character, false otherwise.
 ```
 
 Returns true if the value is a collection, false otherwise.
-
----
-
-#### `compare`
-
-```clojure
-(compare x y)
-```
-
-Comparator. Returns a negative number, zero, or a positive number.
 
 ---
 
@@ -1972,16 +1476,6 @@ Returns true if coll has no items. Accepts collections, strings, and nil.
 
 ---
 
-#### `even?`
-
-```clojure
-(even? n)
-```
-
-Returns true if the argument is an even number, false otherwise.
-
----
-
 #### `every?`
 
 ```clojure
@@ -2022,16 +1516,6 @@ Returns true if the value is a function, false otherwise.
 
 ---
 
-#### `hash`
-
-```clojure
-(hash x)
-```
-
-Returns the hash code of its argument.
-
----
-
 #### `ident?`
 
 ```clojure
@@ -2039,36 +1523,6 @@ Returns the hash code of its argument.
 ```
 
 Returns true if x is a symbol or keyword.
-
----
-
-#### `identical?`
-
-```clojure
-(identical? x y)
-```
-
-Tests if 2 arguments are the same object (reference equality).
-
----
-
-#### `infinite?`
-
-```clojure
-(infinite? num)
-```
-
-Returns true if num is positive or negative infinity, else false.
-
----
-
-#### `int`
-
-```clojure
-(int x)
-```
-
-Coerces x to int. For characters, returns the Unicode code point.
 
 ---
 
@@ -2152,16 +1606,6 @@ Return true if x is a negative fixed precision integer.
 
 ---
 
-#### `neg?`
-
-```clojure
-(neg? n)
-```
-
-Returns true if the argument is a negative number, false otherwise.
-
----
-
 #### `nil?`
 
 ```clojure
@@ -2187,16 +1631,6 @@ Returns false if (pred x) is logical true for every x in
 
 ---
 
-#### `not=`
-
-```clojure
-(not= & vals)
-```
-
-Returns true if any two adjacent arguments are not equal, false otherwise.
-
----
-
 #### `number?`
 
 ```clojure
@@ -2207,16 +1641,6 @@ Returns true if the value is a number, false otherwise.
 
 ---
 
-#### `odd?`
-
-```clojure
-(odd? n)
-```
-
-Returns true if the argument is an odd number, false otherwise.
-
----
-
 #### `pos-int?`
 
 ```clojure
@@ -2224,16 +1648,6 @@ Returns true if the argument is an odd number, false otherwise.
 ```
 
 Return true if x is a positive fixed precision integer.
-
----
-
-#### `pos?`
-
-```clojure
-(pos? n)
-```
-
-Returns true if the argument is a positive number, false otherwise.
 
 ---
 
@@ -2367,16 +1781,6 @@ Returns true if x is a symbol with no namespace component.
 
 ---
 
-#### `some`
-
-```clojure
-(some pred coll)
-```
-
-Returns the first truthy result of applying pred to each item in coll, or nil if no item satisfies pred.
-
----
-
 #### `some?`
 
 ```clojure
@@ -2457,219 +1861,17 @@ Returns true if the given value is a volatile value, false otherwise.
 
 ---
 
-#### `zero?`
-
-```clojure
-(zero? n)
-```
-
-Returns true if the argument is zero, false otherwise.
-
----
-
-### Protocols
-
-#### `extend-protocol!`
-
-```clojure
-(extend-protocol! proto-var type-tag impl-map)
-```
-
-Registers method implementations for type-tag on a protocol. Mutates the protocol in place.
-
----
-
-#### `extenders`
-
-```clojure
-(extenders protocol)
-```
-
-Returns a vector of type-tag strings that have extended the protocol.
-
----
-
-#### `make-protocol!`
-
-```clojure
-(make-protocol! name doc method-defs)
-```
-
-Creates a protocol with the given name, docstring, and method definitions. Interns the protocol and its dispatch functions in the current namespace.
-
----
-
-#### `make-record!`
-
-```clojure
-(make-record! record-type ns-name field-map)
-```
-
-Creates a record value. Called by generated constructors (-&gt;Name, map-&gt;Name).
-
----
-
-#### `protocols`
-
-```clojure
-(protocols type-kw-or-value)
-```
-
-Returns a vector of all protocols that a type implements. Accepts a keyword type tag (:string, :user/Circle) or any value.
-
----
-
-#### `record-type`
-
-```clojure
-(record-type record)
-```
-
-Returns the qualified type name (ns/Name) of a record.
-
----
-
-#### `satisfies?`
-
-```clojure
-(satisfies? protocol value)
-```
-
-Returns true if value implements the protocol.
-
----
-
-### Regex
-
-#### `re-find`
-
-```clojure
-(re-find re s)
-```
-
-Returns the next regex match, if any, of string to pattern, using
-  java.util.regex.Matcher.find(). Returns the match or nil. When there
-  are groups, returns a vector of the whole match and groups (nil for
-  unmatched optional groups).
-
----
-
-#### `re-matches`
-
-```clojure
-(re-matches re s)
-```
-
-Returns the match, if any, of string to pattern, using
-  java.util.regex.Matcher.matches(). The entire string must match.
-  Returns the match or nil. When there are groups, returns a vector
-  of the whole match and groups (nil for unmatched optional groups).
-
----
-
-#### `re-pattern`
-
-```clojure
-(re-pattern s)
-```
-
-Returns an instance of java.util.regex.Pattern, for use, e.g. in re-matcher.
-  (re-pattern "\\d+") produces the same pattern as #"\d+".
-
----
-
-#### `re-seq`
-
-```clojure
-(re-seq re s)
-```
-
-Returns a lazy sequence of successive matches of pattern in string,
-  using java.util.regex.Matcher.find(), each such match processed with
-  re-groups.
-
----
-
-### Runtime
-
-#### `eval`
-
-```clojure
-(eval form)
-```
-
-Evaluates the given form in the global environment and returns the result.
-
----
-
-#### `gensym`
-
-```clojure
-(gensym)
-(gensym prefix)
-```
-
-Returns a unique symbol with the given prefix. Defaults to "G" if no prefix is provided.
-
----
-
-#### `macroexpand`
-
-```clojure
-(macroexpand form)
-```
-
-Expands all macros until the expansion is stable (head is no longer a macro)
-
-Note neither macroexpand-1 nor macroexpand will expand macros in sub-forms
-
----
-
-#### `macroexpand-1`
-
-```clojure
-(macroexpand-1 form)
-```
-
-If the head of the form is a macro, expands it and returns the resulting forms. Otherwise, returns the form unchanged.
-
----
-
-#### `macroexpand-all`
-
-```clojure
-(macroexpand-all form)
-```
-
-Fully expands all macros in a form recursively — including in sub-forms.
-
-Unlike macroexpand, this descends into every sub-expression.
-Expansion stops at quote/quasiquote boundaries and fn/loop bodies.
-
----
-
-#### `require`
-
-```clojure
-(require args)
-```
-
-Parses the require spec and load the namespace(s) specified into the current namespace.
-
----
-
-#### `symbol`
-
-```clojure
-(symbol name)
-(symbol ns name)
-```
-
-Returns a Symbol with the given namespace and name.
-
----
-
 ### Sequences
+
+#### `assoc`
+
+```clojure
+(assoc collection & kvals)
+```
+
+Associates the value val with the key k in collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the new value at index k.
+
+---
 
 #### `butlast`
 
@@ -2678,6 +1880,33 @@ Returns a Symbol with the given namespace and name.
 ```
 
 Return a seq of all but the last item in coll, in linear time
+
+---
+
+#### `completing`
+
+```clojure
+(completing f)
+(completing f cf)
+```
+
+Takes a reducing function f of 2 args and returns a fn suitable for
+  transduce by adding an arity-1 signature that calls cf (default -
+  identity) on the result argument.
+
+---
+
+#### `concat`
+
+```clojure
+(concat)
+(concat x)
+(concat x y)
+(concat x y & zs)
+```
+
+Returns a lazy seq representing the concatenation of the elements in the
+  supplied colls.
 
 ---
 
@@ -2708,6 +1937,93 @@ Returns a new collection with x prepended to the head of xs.
 ```
 
 Returns the number of elements in the given countable value.
+
+---
+
+#### `cycle`
+
+```clojure
+(cycle coll)
+(cycle n coll)
+```
+
+Returns a lazy infinite sequence of repetitions of the items in coll.
+  With 2 args (n coll), returns a finite sequence (backwards compat).
+
+---
+
+#### `dedupe`
+
+```clojure
+(dedupe)
+(dedupe coll)
+```
+
+Returns a sequence removing consecutive duplicates in coll.
+   Returns a transducer when no collection is provided.
+
+---
+
+#### `delay?`
+
+```clojure
+(delay? x)
+```
+
+Returns true if x is a Delay.
+
+---
+
+#### `disj`
+
+```clojure
+(disj s & items)
+```
+
+Returns a set with the given items removed.
+
+---
+
+#### `dissoc`
+
+```clojure
+(dissoc collection & keys)
+```
+
+Dissociates the key k from collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the value at index k removed.
+
+---
+
+#### `distinct`
+
+```clojure
+(distinct coll)
+```
+
+Returns a vector of the elements of coll with duplicates removed,
+  preserving first-seen order.
+
+---
+
+#### `doall`
+
+```clojure
+(doall coll)
+```
+
+Forces realization of a (possibly lazy) sequence. Unlike dorun,
+  retains the head and returns the seq.
+
+---
+
+#### `dorun`
+
+```clojure
+(dorun coll)
+```
+
+Forces realization of a (possibly lazy) sequence. Walks the sequence
+  without retaining the head. Returns nil.
 
 ---
 
@@ -2757,6 +2073,30 @@ Returns an empty collection of the same category as coll, or nil.
 
 ---
 
+#### `filter`
+
+```clojure
+(filter pred)
+(filter pred coll)
+```
+
+Returns a sequence of the items in coll for which
+  (pred item) returns logical true. pred must be free of side-effects.
+  Returns a transducer when no collection is provided.
+
+---
+
+#### `filterv`
+
+```clojure
+(filterv pred coll)
+```
+
+Returns a vector of the items in coll for which
+  (pred item) returns logical true.
+
+---
+
 #### `first`
 
 ```clojure
@@ -2767,6 +2107,27 @@ Returns the first element of the given collection or string.
 
 ---
 
+#### `flatten`
+
+```clojure
+(flatten x)
+```
+
+Takes any nested combination of sequential things (lists/vectors) and
+  returns their contents as a single flat vector.
+
+---
+
+#### `flatten-step`
+
+```clojure
+(flatten-step v)
+```
+
+Internal helper for flatten.
+
+---
+
 #### `fnext`
 
 ```clojure
@@ -2774,6 +2135,16 @@ Returns the first element of the given collection or string.
 ```
 
 Same as (first (next x))
+
+---
+
+#### `force`
+
+```clojure
+(force x)
+```
+
+If x is a Delay or LazySeq, forces and returns the realized value. Otherwise returns x.
 
 ---
 
@@ -2788,6 +2159,100 @@ Returns the value associated with key in target. If target is a map, returns the
 
 ---
 
+#### `hash-set`
+
+```clojure
+(hash-set & xs)
+```
+
+Returns a set containing the given values.
+
+---
+
+#### `insert-sorted`
+
+```clojure
+(insert-sorted cmp x sorted)
+```
+
+Internal helper for insertion-sort based sort implementation.
+
+---
+
+#### `interleave`
+
+```clojure
+(interleave c1 c2)
+(interleave c1 c2 & colls)
+```
+
+Returns a lazy sequence of the first item in each coll, then the second etc.
+  Stops as soon as any coll is exhausted.
+
+---
+
+#### `interpose`
+
+```clojure
+(interpose sep)
+(interpose sep coll)
+```
+
+Returns a sequence of the elements of coll separated by sep.
+  Returns a transducer when no collection is provided.
+
+---
+
+#### `into`
+
+```clojure
+(into to from)
+(into to xf from)
+```
+
+Returns a new coll consisting of to-coll with all of the items of
+   from-coll conjoined. A transducer may be supplied.
+
+---
+
+#### `iterate`
+
+```clojure
+(iterate f x)
+(iterate f x n)
+```
+
+Returns a lazy sequence of x, (f x), (f (f x)) etc.
+  With 3 args, returns a finite sequence of n items (backwards compat).
+
+---
+
+#### `keep`
+
+```clojure
+(keep f)
+(keep f coll)
+```
+
+Returns a sequence of the non-nil results of (f item). Note,
+  this means false return values will be included.  f must be free of
+  side-effects.  Returns a transducer when no collection is provided.
+
+---
+
+#### `keep-indexed`
+
+```clojure
+(keep-indexed f)
+(keep-indexed f coll)
+```
+
+Returns a sequence of the non-nil results of (f index item). Note,
+  this means false return values will be included.  f must be free of
+  side-effects.  Returns a stateful transducer when no collection is provided.
+
+---
+
 #### `last`
 
 ```clojure
@@ -2795,6 +2260,16 @@ Returns the value associated with key in target. If target is a map, returns the
 ```
 
 Returns the last element of the given collection.
+
+---
+
+#### `lazy-seq?`
+
+```clojure
+(lazy-seq? x)
+```
+
+Returns true if x is a LazySeq.
 
 ---
 
@@ -2820,6 +2295,77 @@ Returns a new list containing the given values.
 
 Creates a new seq containing the items prepended to the rest, the
   last of which will be treated as a sequence.
+
+---
+
+#### `make-delay`
+
+```clojure
+(make-delay thunk-fn)
+```
+
+Creates a Delay that invokes thunk-fn (a zero-arg function) on first force.
+
+---
+
+#### `map`
+
+```clojure
+(map f)
+(map f coll)
+(map f c1 c2)
+(map f c1 c2 & colls)
+```
+
+Returns a sequence consisting of the result of applying f to the set
+  of first items of each coll, followed by applying f to the set of
+  second items in each coll, until any one of the colls is exhausted.
+  Any remaining items in other colls are ignored. Returns a transducer
+  when no collection is provided.
+
+---
+
+#### `map-indexed`
+
+```clojure
+(map-indexed f)
+(map-indexed f coll)
+```
+
+Returns a sequence consisting of the result of applying f to 0
+   and the first item of coll, followed by applying f to 1 and the second
+   item in coll, etc, until coll is exhausted. Thus function f should
+   accept 2 arguments, index and item. Returns a stateful transducer when
+   no collection is provided.
+
+---
+
+#### `mapcat`
+
+```clojure
+(mapcat f)
+(mapcat f coll)
+(mapcat f coll & more)
+```
+
+Returns the result of applying concat to the result of applying map
+  to f and colls.  Thus function f should return a collection. Returns
+  a transducer when no collections are provided.
+
+---
+
+#### `mapv`
+
+```clojure
+(mapv f coll)
+(mapv f c1 c2)
+(mapv f c1 c2 c3)
+(mapv f c1 c2 c3 & colls)
+```
+
+Returns a vector consisting of the result of applying f to the
+  set of first items of each coll, followed by applying f to the set
+  of second items in each coll, until any one of the colls is exhausted.
 
 ---
 
@@ -2910,6 +2456,19 @@ Returns a sequence of lists of n items each, at offsets step
 
 ---
 
+#### `partition-all`
+
+```clojure
+(partition-all n)
+(partition-all n coll)
+```
+
+Returns a sequence of lists like partition, but may include
+   partitions with fewer than n items at the end.  Returns a stateful
+   transducer when no collection is provided.
+
+---
+
 #### `partition-by`
 
 ```clojure
@@ -2923,6 +2482,72 @@ Applies f to each value in coll, splitting it each time f returns a
 
 ---
 
+#### `peek`
+
+```clojure
+(peek coll)
+```
+
+For a list, same as first. For a vector, same as last.
+
+---
+
+#### `pop`
+
+```clojure
+(pop coll)
+```
+
+For a list, returns a new list without the first item. For a vector, returns a new vector without the last item.
+
+---
+
+#### `range`
+
+```clojure
+(range)
+(range end)
+(range start end)
+(range start end step)
+```
+
+Returns a lazy infinite sequence of integers from 0.
+  With args, returns a finite sequence (delegates to native range*).
+
+---
+
+#### `realized?`
+
+```clojure
+(realized? x)
+```
+
+Returns true if a Delay or LazySeq has been realized.
+
+---
+
+#### `reduce`
+
+```clojure
+(reduce f coll)
+(reduce f val coll)
+```
+
+Reduces a collection to a single value by iteratively applying f. (reduce f coll) or (reduce f init coll).
+
+---
+
+#### `reduce-kv`
+
+```clojure
+(reduce-kv f init coll)
+```
+
+Reduces an associative structure. f should be a function of 3
+  arguments: accumulator, key/index, value.
+
+---
+
 #### `reductions`
 
 ```clojure
@@ -2932,6 +2557,44 @@ Applies f to each value in coll, splitting it each time f returns a
 
 Returns a sequence of the intermediate values of the reduction (as
   by reduce) of coll by f, starting with init.
+
+---
+
+#### `remove`
+
+```clojure
+(remove pred)
+(remove pred coll)
+```
+
+Returns a lazy sequence of the items in coll for which
+  (pred item) returns logical false. pred must be free of side-effects.
+  Returns a transducer when no collection is provided.
+
+---
+
+#### `repeat`
+
+```clojure
+(repeat x)
+(repeat n x)
+```
+
+Returns a lazy infinite sequence of xs.
+  With 2 args (n x), returns a finite sequence of n copies.
+
+---
+
+#### `repeatedly`
+
+```clojure
+(repeatedly f)
+(repeatedly n f)
+```
+
+Takes a function of no args, presumably with side effects, and
+  returns a lazy infinite sequence of calls to it.
+  With 2 args (n f), returns a finite sequence of n calls.
 
 ---
 
@@ -2955,6 +2618,17 @@ Returns a new sequence with the elements of the given collection in reverse orde
 
 ---
 
+#### `run!`
+
+```clojure
+(run! proc coll)
+```
+
+Runs the supplied procedure (via reduce), for purposes of side
+  effects, on successive items in the collection. Returns nil.
+
+---
+
 #### `second`
 
 ```clojure
@@ -2972,6 +2646,116 @@ Same as (first (next x))
 ```
 
 Returns a sequence of the given collection or string. Strings yield a sequence of single-character strings.
+
+---
+
+#### `sequence`
+
+```clojure
+(sequence coll)
+(sequence xf coll)
+```
+
+Coerces coll to a (possibly empty) sequence, if it is not already
+  one. Will not force a seq. (sequence nil) yields (), When a
+  transducer is supplied, returns a lazy sequence of applications of
+  the transform to the items in coll
+
+---
+
+#### `set`
+
+```clojure
+(set coll)
+```
+
+Returns a set of the distinct elements of the given collection.
+
+---
+
+#### `shuffle`
+
+```clojure
+(shuffle coll)
+```
+
+Return a random permutation of coll.
+
+---
+
+#### `some`
+
+```clojure
+(some pred coll)
+```
+
+Returns the first truthy result of applying pred to each item in coll, or nil if no item satisfies pred.
+
+---
+
+#### `sort`
+
+```clojure
+(sort coll)
+(sort cmp coll)
+```
+
+Returns the items in coll in sorted order. With no comparator, uses
+  compare (works on numbers, strings, keywords, chars). Comparator may
+  return boolean or number.
+
+---
+
+#### `sort-by`
+
+```clojure
+(sort-by keyfn coll)
+(sort-by keyfn cmp coll)
+```
+
+Returns a sorted sequence of items in coll, where the sort order is
+  determined by comparing (keyfn item). Default comparator is compare.
+
+---
+
+#### `sort-compare`
+
+```clojure
+(sort-compare cmp a b)
+```
+
+Internal helper: normalizes comparator results.
+
+---
+
+#### `split-at`
+
+```clojure
+(split-at n coll)
+```
+
+Returns a vector of [(take n coll) (drop n coll)]
+
+---
+
+#### `split-with`
+
+```clojure
+(split-with pred coll)
+```
+
+Returns a vector of [(take-while pred coll) (drop-while pred coll)]
+
+---
+
+#### `subvec`
+
+```clojure
+(subvec v start)
+(subvec v start end)
+```
+
+Returns a vector of the items in vector from start (inclusive) to end (exclusive).
 
 ---
 
@@ -3024,25 +2808,166 @@ Returns a sequence of successive items from coll while
 
 ---
 
-### Sets
-
-#### `disj`
+#### `vec`
 
 ```clojure
-(disj s & items)
+(vec coll)
 ```
 
-Returns a set with the given items removed.
+Creates a new vector containing the contents of coll.
 
 ---
 
-#### `hash-set`
+#### `vector`
 
 ```clojure
-(hash-set & xs)
+(vector & args)
 ```
 
-Returns a set containing the given values.
+Returns a new vector containing the given values.
+
+---
+
+### State
+
+#### `add-watch`
+
+```clojure
+(add-watch atom key fn)
+```
+
+Adds a watch function to an atom. The watch fn must be a fn of 4 args: a key, the atom, its old-state, its new-state.
+
+---
+
+#### `atom`
+
+```clojure
+(atom value)
+```
+
+Returns a new atom holding the given value.
+
+---
+
+#### `atom?`
+
+```clojure
+(atom? value)
+```
+
+Returns true if the value is an atom, false otherwise.
+
+---
+
+#### `compare-and-set!`
+
+```clojure
+(compare-and-set! atom oldval newval)
+```
+
+Atomically sets the value of atom to newval if and only if the current value of the atom is identical to oldval. Returns true if set happened, else false.
+
+---
+
+#### `deref`
+
+```clojure
+(deref value)
+```
+
+Returns the wrapped value from an atom, volatile, reduced, or delay value.
+
+---
+
+#### `remove-watch`
+
+```clojure
+(remove-watch atom key)
+```
+
+Removes a watch (set by add-watch) from an atom.
+
+---
+
+#### `reset!`
+
+```clojure
+(reset! atomVal newVal)
+```
+
+Sets the value of the atom to newVal and returns the new value.
+
+---
+
+#### `reset-vals!`
+
+```clojure
+(reset-vals! atom newval)
+```
+
+Sets the value of atom to newVal. Returns [old new].
+
+---
+
+#### `set-validator!`
+
+```clojure
+(set-validator! atom fn)
+```
+
+Sets the validator-fn for an atom. fn must be nil or a side-effect-free fn of one argument.
+
+---
+
+#### `swap!`
+
+```clojure
+(swap! atomVal fn & extraArgs)
+```
+
+Applies fn to the current value of the atom, replacing the current value with the result. Returns the new value.
+
+---
+
+#### `swap-vals!`
+
+```clojure
+(swap-vals! atom f & args)
+```
+
+Atomically swaps the value of atom to be (apply f current-value-of-atom args). Returns [old new].
+
+---
+
+#### `volatile!`
+
+```clojure
+(volatile! value)
+```
+
+Returns a volatile value with the given value as its value.
+
+---
+
+#### `vreset!`
+
+```clojure
+(vreset! vol newVal)
+```
+
+Resets the value of the given volatile to the given new value and returns the new value.
+
+---
+
+#### `vswap!`
+
+```clojure
+(vswap! vol fn)
+(vswap! vol fn & extraArgs)
+```
+
+Applies fn to the current value of the volatile, replacing the current value with the result. Returns the new value.
 
 ---
 
@@ -3110,6 +3035,55 @@ println to a string.
 ```
 
 pr-str to a string, followed by a newline.
+
+---
+
+#### `re-find`
+
+```clojure
+(re-find re s)
+```
+
+Returns the next regex match, if any, of string to pattern, using
+  java.util.regex.Matcher.find(). Returns the match or nil. When there
+  are groups, returns a vector of the whole match and groups (nil for
+  unmatched optional groups).
+
+---
+
+#### `re-matches`
+
+```clojure
+(re-matches re s)
+```
+
+Returns the match, if any, of string to pattern, using
+  java.util.regex.Matcher.matches(). The entire string must match.
+  Returns the match or nil. When there are groups, returns a vector
+  of the whole match and groups (nil for unmatched optional groups).
+
+---
+
+#### `re-pattern`
+
+```clojure
+(re-pattern s)
+```
+
+Returns an instance of java.util.regex.Pattern, for use, e.g. in re-matcher.
+  (re-pattern "\\d+") produces the same pattern as #"\d+".
+
+---
+
+#### `re-seq`
+
+```clojure
+(re-seq re s)
+```
+
+Returns a lazy sequence of successive matches of pattern in string,
+  using java.util.regex.Matcher.find(), each such match processed with
+  re-groups.
 
 ---
 
@@ -3204,37 +3178,6 @@ Returns the unreduced value of the given value. If the value is not a reduced va
 
 ---
 
-#### `volatile!`
-
-```clojure
-(volatile! value)
-```
-
-Returns a volatile value with the given value as its value.
-
----
-
-#### `vreset!`
-
-```clojure
-(vreset! vol newVal)
-```
-
-Resets the value of the given volatile to the given new value and returns the new value.
-
----
-
-#### `vswap!`
-
-```clojure
-(vswap! vol fn)
-(vswap! vol fn & extraArgs)
-```
-
-Applies fn to the current value of the volatile, replacing the current value with the result. Returns the new value.
-
----
-
 ### Utilities
 
 #### `boolean`
@@ -3254,6 +3197,16 @@ Coerces to boolean. Everything is true except false and nil.
 ```
 
 Returns a string describing the current Clojure version.
+
+---
+
+#### `hash`
+
+```clojure
+(hash x)
+```
+
+Returns the hash code of its argument.
 
 ---
 
@@ -3287,29 +3240,103 @@ Parses string s as a long integer. Returns nil if s is not a valid integer strin
 
 ---
 
-### Vars
-
-#### `alter-var-root`
-
-```clojure
-(alter-var-root v f & args)
-```
-
-Atomically alters the root binding of var v by applying f to its current value plus any additional args.
-
----
-
-#### `var-get`
-
-```clojure
-(var-get x)
-```
-
-Returns the value in the Var object.
-
----
-
 ## Macros
+
+### Abstractions
+
+#### `defmethod`
+
+```clojure
+(defmethod mm-name dispatch-val & fn-tail)
+```
+
+Creates and installs a new method for multimethod mm-name with dispatch value dispatch-val.
+
+---
+
+#### `defmulti`
+
+```clojure
+(defmulti name dispatch-fn & opts)
+```
+
+Creates a new multimethod with the given name and dispatch function. Re-evaluating a defmulti preserves all previously registered methods.
+
+---
+
+#### `defprotocol`
+
+```clojure
+(defprotocol name & specs)
+```
+
+Defines a named protocol. Creates a protocol var and one dispatch
+  function var per method in the current namespace.
+
+  (defprotocol IShape
+    "doc"
+    (area [this] "Compute area.")
+    (perimeter [this] "Compute perimeter."))
+
+---
+
+#### `defrecord`
+
+```clojure
+(defrecord type-name fields & specs)
+```
+
+Defines a record type: a named, typed persistent map.
+  Creates -&gt;Name (positional) and map-&gt;Name (map-based) constructors.
+  Optionally implements protocols inline.
+
+  (defrecord Circle [radius]
+    IShape
+    (area [this] (* js/Math.PI radius radius)))
+
+---
+
+#### `delay`
+
+```clojure
+(delay & body)
+```
+
+Takes a body of expressions and yields a Delay object that will invoke the body only the first time it is forced (via force or deref/@), and will cache the result and return it on all subsequent force calls.
+
+---
+
+#### `extend-protocol`
+
+```clojure
+(extend-protocol proto-sym & specs)
+```
+
+Extends a protocol to one or more types.
+
+  (extend-protocol IShape
+    nil
+    (area [_] 0)
+    String
+    (area [s] (count s)))
+
+---
+
+#### `extend-type`
+
+```clojure
+(extend-type type-sym & specs)
+```
+
+Extends a type to implement one or more protocols.
+
+  (extend-type Circle
+    IShape
+    (area [this] ...)
+    ISerializable
+    (to-json [this] ...))
+
+---
 
 ### Control Flow
 
@@ -3542,6 +3569,16 @@ binding =&gt; var-symbol temp-value-expr
 
 ---
 
+### Dev
+
+#### `doc`
+
+```clojure
+(doc sym)
+```
+
+---
+
 ### Functions
 
 #### `defn`
@@ -3586,118 +3623,6 @@ Like with-out-str but captures *err* output (warn, etc.).
 Evaluates body in a context in which *out* is bound to a fresh string
   accumulator. Returns the string of all output produced by println, print,
   pr, prn, pprint and newline during the evaluation.
-
----
-
-### Introspection
-
-#### `doc`
-
-```clojure
-(doc sym)
-```
-
----
-
-### Lazy
-
-#### `delay`
-
-```clojure
-(delay & body)
-```
-
-Takes a body of expressions and yields a Delay object that will invoke the body only the first time it is forced (via force or deref/@), and will cache the result and return it on all subsequent force calls.
-
----
-
-### Multimethods
-
-#### `defmethod`
-
-```clojure
-(defmethod mm-name dispatch-val & fn-tail)
-```
-
-Creates and installs a new method for multimethod mm-name with dispatch value dispatch-val.
-
----
-
-#### `defmulti`
-
-```clojure
-(defmulti name dispatch-fn & opts)
-```
-
-Creates a new multimethod with the given name and dispatch function. Re-evaluating a defmulti preserves all previously registered methods.
-
----
-
-### Protocols
-
-#### `defprotocol`
-
-```clojure
-(defprotocol name & specs)
-```
-
-Defines a named protocol. Creates a protocol var and one dispatch
-  function var per method in the current namespace.
-
-  (defprotocol IShape
-    "doc"
-    (area [this] "Compute area.")
-    (perimeter [this] "Compute perimeter."))
-
----
-
-#### `extend-protocol`
-
-```clojure
-(extend-protocol proto-sym & specs)
-```
-
-Extends a protocol to one or more types.
-
-  (extend-protocol IShape
-    nil
-    (area [_] 0)
-    String
-    (area [s] (count s)))
-
----
-
-#### `extend-type`
-
-```clojure
-(extend-type type-sym & specs)
-```
-
-Extends a type to implement one or more protocols.
-
-  (extend-type Circle
-    IShape
-    (area [this] ...)
-    ISerializable
-    (to-json [this] ...))
-
----
-
-### Records
-
-#### `defrecord`
-
-```clojure
-(defrecord type-name fields & specs)
-```
-
-Defines a record type: a named, typed persistent map.
-  Creates -&gt;Name (positional) and map-&gt;Name (map-based) constructors.
-  Optionally implements protocols inline.
-
-  (defrecord Circle [radius]
-    IShape
-    (area [this] (* js/Math.PI radius radius)))
 
 ---
 
@@ -3778,7 +3703,7 @@ When expr is not nil, threads it into the first form (via -&gt;&gt;), and when t
 #### `comment`
 
 ```clojure
-(comment & _body)
+(comment & body)
 ```
 
 Ignores body, yields nil
@@ -3807,7 +3732,7 @@ Same as defn, but marks the var as private.
 
 ## Special Vars
 
-### Hierarchy
+### Abstractions
 
 #### `*hierarchy*`
 
@@ -3862,151 +3787,5 @@ Same as defn, but marks the var as private.
 #### `*print-level*`
 
 **dynamic var** · default: `nil`
-
----
-
-## Keywords
-
-#### `Boolean`
-
-`:java.lang/Boolean`
-
----
-
-#### `Byte`
-
-`:java.lang/Byte`
-
----
-
-#### `Character`
-
-`:java.lang/Character`
-
----
-
-#### `Class`
-
-`:java.lang/Class`
-
----
-
-#### `Cloneable`
-
-`:java.lang/Cloneable`
-
----
-
-#### `Comparable`
-
-`:java.lang/Comparable`
-
----
-
-#### `Double`
-
-`:java.lang/Double`
-
----
-
-#### `Error`
-
-`:java.lang/Error`
-
----
-
-#### `Exception`
-
-`:java.lang/Exception`
-
----
-
-#### `Float`
-
-`:java.lang/Float`
-
----
-
-#### `Integer`
-
-`:java.lang/Integer`
-
----
-
-#### `Iterable`
-
-`:java.lang/Iterable`
-
----
-
-#### `Long`
-
-`:java.lang/Long`
-
----
-
-#### `Math`
-
-`:java.lang/Math`
-
----
-
-#### `Number`
-
-`:java.lang/Number`
-
----
-
-#### `Object`
-
-`:java.lang/Object`
-
----
-
-#### `Runnable`
-
-`:java.lang/Runnable`
-
----
-
-#### `Runtime`
-
-`:java.lang/Runtime`
-
----
-
-#### `Short`
-
-`:java.lang/Short`
-
----
-
-#### `String`
-
-`:java.lang/String`
-
----
-
-#### `System`
-
-`:java.lang/System`
-
----
-
-#### `Thread`
-
-`:java.lang/Thread`
-
----
-
-#### `Throwable`
-
-`:java.lang/Throwable`
-
----
-
-#### `Void`
-
-`:java.lang/Void`
 
 ---

@@ -2,9 +2,7 @@
 outline: 2
 ---
 
-# clojure.math
-
-> _Namespace:_ `clojure.math`
+# Namespace: `clojure.math`
 
 ## Functions
 

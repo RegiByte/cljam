@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url'
 const __dir = dirname(fileURLToPath(import.meta.url))
 const docsDir = join(__dir, '..')
 const refDir = join(docsDir, 'reference')
-const cljSrc = readFileSync(join(__dir, 'gen-api-docs.clj'), 'utf8')
+const cljSrc = readFileSync(join(__dir, 'gen_api_docs.clj'), 'utf8')
 
 async function main() {
   console.log('cljam api-docs generator')

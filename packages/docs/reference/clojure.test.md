@@ -2,10 +2,9 @@
 outline: 2
 ---
 
-# clojure.test
+# Namespace: `clojure.test`
 
-> _Namespace:_ `clojure.test`
-
+---
 Testing facilities. Provides macros for defining and running tests, as well as assertions and reporting. 
    can be overridden for custom integration.
 

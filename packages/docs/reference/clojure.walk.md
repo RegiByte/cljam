@@ -2,10 +2,9 @@
 outline: 2
 ---
 
-# clojure.walk
+# Namespace: `clojure.walk`
 
-> _Namespace:_ `clojure.walk`
-
+---
 Tree-walking utilities. Provides functions for traversing and transforming data structures.
 
 ## Functions

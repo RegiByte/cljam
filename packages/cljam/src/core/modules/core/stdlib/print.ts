@@ -83,7 +83,7 @@ export const printFunctions: Record<string, CljValue> = {
     .withMeta([
       ...docMeta({
         doc: 'Prints a newline to the current output channel. Returns nil.',
-        arglists: [],
+        arglists: [[]],
         docGroup: DocGroups.io,
       }),
     ]),

@@ -9,6 +9,7 @@ import type {
   CljNativeFunction,
   CljValue,
   Env,
+  EvaluationContext,
 } from '../../../types'
 
 function validateAtom(
@@ -349,6 +350,98 @@ export const atomFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Sets the validator-fn for an atom. fn must be nil or a side-effect-free fn of one argument.',
         arglists: [['atom', 'fn']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
+
+  // ── Volatile ──────────────────────────────────────────────────────────────
+  'volatile!': v
+    .nativeFn('volatile!', function volatileImpl(value: CljValue) {
+      if (value === undefined) {
+        throw new EvaluationError('volatile! expects one argument', {})
+      }
+      return v.volatile(value)
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a volatile value with the given value as its value.',
+        arglists: [['value']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
+  'volatile?': v
+    .nativeFn('volatile?', function isVolatileImpl(value: CljValue) {
+      if (value === undefined) {
+        throw new EvaluationError('volatile? expects one argument', {})
+      }
+      return v.boolean(is.volatile(value))
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the given value is a volatile value, false otherwise.',
+        arglists: [['value']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
+  'vreset!': v
+    .nativeFn('vreset!', function vresetImpl(vol: CljValue, newVal: CljValue) {
+      if (!is.volatile(vol)) {
+        throw new EvaluationError(
+          `vreset! expects a volatile as its first argument, got ${printString(vol)}`,
+          { vol }
+        )
+      }
+      if (newVal === undefined) {
+        throw new EvaluationError('vreset! expects two arguments', { vol })
+      }
+      vol.value = newVal
+      return newVal
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Resets the value of the given volatile to the given new value and returns the new value.',
+        arglists: [['vol', 'newVal']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
+  'vswap!': v
+    .nativeFnCtx(
+      'vswap!',
+      function vswapImpl(
+        ctx: EvaluationContext,
+        callEnv: Env,
+        vol: CljValue,
+        fn: CljValue,
+        ...extraArgs: CljValue[]
+      ) {
+        if (!is.volatile(vol)) {
+          throw new EvaluationError(
+            `vswap! expects a volatile as its first argument, got ${printString(vol)}`,
+            { vol }
+          )
+        }
+        if (!is.aFunction(fn)) {
+          throw new EvaluationError(
+            `vswap! expects a function as its second argument, got ${printString(fn)}`,
+            { fn }
+          )
+        }
+        const newVal = ctx.applyFunction(
+          fn as CljFunction | CljNativeFunction,
+          [vol.value, ...extraArgs],
+          callEnv
+        )
+        vol.value = newVal
+        return newVal
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Applies fn to the current value of the volatile, replacing the current value with the result. Returns the new value.',
+        arglists: [
+          ['vol', 'fn'],
+          ['vol', 'fn', '&', 'extraArgs'],
+        ],
         docGroup: DocGroups.atoms,
       }),
     ]),

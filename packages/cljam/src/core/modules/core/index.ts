@@ -22,6 +22,7 @@ import { lazyFunctions } from './stdlib/lazy'
 import { varFunctions } from './stdlib/vars'
 import { multimethodFunctions } from './stdlib/multimethods'
 import { protocolFunctions } from './stdlib/protocols'
+import { introspectionFunctions } from './stdlib/introspection'
 import { hierarchyFunctions } from './stdlib/hierarchy'
 import { ednFunctions, ednDynamicVars } from './stdlib/edn'
 import { mathFunctions } from './stdlib/math'
@@ -90,6 +91,7 @@ const coreNativeFunctions = {
   ...varFunctions,
   ...multimethodFunctions,
   ...protocolFunctions,
+  ...introspectionFunctions,
   ...hierarchyFunctions,
   // ...ednFunctions,
   // ...mathFunctions,

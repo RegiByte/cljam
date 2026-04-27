@@ -174,9 +174,8 @@
               :when (seq vars)]
           (render-kind-group group-key vars any-subgroups?))]
     (str "---\noutline: " outline "\n---\n\n"
-         "# " ns-str "\n\n"
-         "> _Namespace:_ `" ns-str "`\n\n"
-         (when ns-doc (str ns-doc "\n\n"))
+         "# Namespace: `" ns-str "`\n\n"
+         (when ns-doc (str "---\n" ns-doc "\n\n"))
          (str/join "\n\n" sections))))
 
 ;; ── Entry point ─────────────────────────────────────────────────────────────
