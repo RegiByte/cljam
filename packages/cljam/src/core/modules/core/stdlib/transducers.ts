@@ -1,8 +1,8 @@
-// Transducer protocol primitives: reduced, volatile!, transduce
+// Transducer protocol primitives: reduced, transduce
 
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { joinLines, printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
 import type {
@@ -22,10 +22,13 @@ export const transducerFunctions: Record<string, CljValue> = {
       }
       return v.reduced(value)
     })
-    .doc(
-      'Returns a reduced value, indicating termination of the reduction process.',
-      [['value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a reduced value, indicating termination of the reduction process.',
+        arglists: [['value']],
+        docGroup: DocGroups.transducers,
+      }),
+    ]),
   'reduced?': v
     .nativeFn('reduced?', function isReducedImpl(value: CljValue) {
       if (value === undefined) {
@@ -33,10 +36,13 @@ export const transducerFunctions: Record<string, CljValue> = {
       }
       return v.boolean(is.reduced(value))
     })
-    .doc(
-      'Returns true if the given value is a reduced value, false otherwise.',
-      [['value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the given value is a reduced value, false otherwise.',
+        arglists: [['value']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
   unreduced: v
     .nativeFn('unreduced', function unreducedImpl(value: CljValue) {
       if (value === undefined) {
@@ -44,10 +50,13 @@ export const transducerFunctions: Record<string, CljValue> = {
       }
       return is.reduced(value) ? value.value : value
     })
-    .doc(
-      'Returns the unreduced value of the given value. If the value is not a reduced value, it is returned unchanged.',
-      [['value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the unreduced value of the given value. If the value is not a reduced value, it is returned unchanged.',
+        arglists: [['value']],
+        docGroup: DocGroups.transducers,
+      }),
+    ]),
   'ensure-reduced': v
     .nativeFn('ensure-reduced', function ensureReducedImpl(value: CljValue) {
       if (value === undefined) {
@@ -55,89 +64,13 @@ export const transducerFunctions: Record<string, CljValue> = {
       }
       return is.reduced(value) ? value : v.reduced(value)
     })
-    .doc(
-      'Returns the given value if it is a reduced value, otherwise returns a reduced value with the given value as its value.',
-      [['value']]
-    ),
-
-  // ── Volatile ─────────────────────────────────────────────────────────────
-  'volatile!': v
-    .nativeFn('volatile!', function volatileImpl(value: CljValue) {
-      if (value === undefined) {
-        throw new EvaluationError('volatile! expects one argument', {})
-      }
-      return v.volatile(value)
-    })
-    .doc('Returns a volatile value with the given value as its value.', [
-      ['value'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the given value if it is a reduced value, otherwise returns a reduced value with the given value as its value.',
+        arglists: [['value']],
+        docGroup: DocGroups.transducers,
+      }),
     ]),
-  'volatile?': v
-    .nativeFn('volatile?', function isVolatileImpl(value: CljValue) {
-      if (value === undefined) {
-        throw new EvaluationError('volatile? expects one argument', {})
-      }
-      return v.boolean(is.volatile(value))
-    })
-    .doc(
-      'Returns true if the given value is a volatile value, false otherwise.',
-      [['value']]
-    ),
-  'vreset!': v
-    .nativeFn('vreset!', function vresetImpl(vol: CljValue, newVal: CljValue) {
-      if (!is.volatile(vol)) {
-        throw new EvaluationError(
-          `vreset! expects a volatile as its first argument, got ${printString(vol)}`,
-          { vol }
-        )
-      }
-      if (newVal === undefined) {
-        throw new EvaluationError('vreset! expects two arguments', { vol })
-      }
-      vol.value = newVal
-      return newVal
-    })
-    .doc(
-      'Resets the value of the given volatile to the given new value and returns the new value.',
-      [['vol', 'newVal']]
-    ),
-  'vswap!': v
-    .nativeFnCtx(
-      'vswap!',
-      function vswapImpl(
-        ctx: EvaluationContext,
-        callEnv: Env,
-        vol: CljValue,
-        fn: CljValue,
-        ...extraArgs: CljValue[]
-      ) {
-        if (!is.volatile(vol)) {
-          throw new EvaluationError(
-            `vswap! expects a volatile as its first argument, got ${printString(vol)}`,
-            { vol }
-          )
-        }
-        if (!is.aFunction(fn)) {
-          throw new EvaluationError(
-            `vswap! expects a function as its second argument, got ${printString(fn)}`,
-            { fn }
-          )
-        }
-        const newVal = ctx.applyFunction(
-          fn as CljFunction | CljNativeFunction,
-          [vol.value, ...extraArgs],
-          callEnv
-        )
-        vol.value = newVal
-        return newVal
-      }
-    )
-    .doc(
-      'Applies fn to the current value of the volatile, replacing the current value with the result. Returns the new value.',
-      [
-        ['vol', 'fn'],
-        ['vol', 'fn', '&', 'extraArgs'],
-      ]
-    ),
 
   // ── transduce ─────────────────────────────────────────────────────────────
 
@@ -232,20 +165,23 @@ export const transducerFunctions: Record<string, CljValue> = {
         return ctx.applyFunction(rf, [acc], callEnv)
       }
     )
-    .doc(
-      joinLines([
-        'reduce with a transformation of f (xf). If init is not',
-        'supplied, (f) will be called to produce it. f should be a reducing',
-        'step function that accepts both 1 and 2 arguments, if it accepts',
-        "only 2 you can add the arity-1 with 'completing'. Returns the result",
-        'of applying (the transformed) xf to init and the first item in coll,',
-        'then applying xf to that result and the 2nd item, etc. If coll',
-        'contains no items, returns init and f is not called. Note that',
-        'certain transforms may inject or skip items.',
-      ]),
-      [
-        ['xform', 'f', 'coll'],
-        ['xform', 'f', 'init', 'coll'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: joinLines([
+          'reduce with a transformation of f (xf). If init is not',
+          'supplied, (f) will be called to produce it. f should be a reducing',
+          'step function that accepts both 1 and 2 arguments, if it accepts',
+          "only 2 you can add the arity-1 with 'completing'. Returns the result",
+          'of applying (the transformed) xf to init and the first item in coll,',
+          'then applying xf to that result and the 2nd item, etc. If coll',
+          'contains no items, returns init and f is not called. Note that',
+          'certain transforms may inject or skip items.',
+        ]),
+        arglists: [
+          ['xform', 'f', 'coll'],
+          ['xform', 'f', 'init', 'coll'],
+        ],
+        docGroup: DocGroups.transducers,
+      }),
+    ]),
 }

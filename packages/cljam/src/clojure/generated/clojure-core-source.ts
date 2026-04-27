@@ -1,7 +1,17 @@
 // Auto-generated from src/clojure/core.clj — do not edit directly.
 // Re-generate with: npm run gen:core-source
 export const clojure_coreSource = `\
-(ns clojure.core)
+(ns clojure.core
+  "The core Clojure standard library. Provides the fundamental building blocks
+  of the language: collection operations, sequence processing, arithmetic,
+  destructuring, macros, protocols, multimethods, atoms, and more.
+
+  This namespace is automatically loaded in every cljam session.")
+
+
+;; Bootstrap primitives
+;; Only special forms (if, let*, def, fn*, do, quote) + native fns.                                       
+;; No Clojure-defined macros here.   
 
 ;; Bootstrap shims: lightweight macros so the Clojure layer owns let/fn/loop
 ;; from the very first line. The full destructuring-aware versions redefine
@@ -16,23 +26,73 @@ export const clojure_coreSource = `\
 (defmacro loop [bindings & body]
   \`(loop* ~bindings ~@body))
 
-;; Host shims, for autocomplete only
-(def all)
-(def async)
-(def catch*)
-(def then)
-(def repeat*)
-(def range*)
+(defmacro declare
+  "defs the supplied var names with no bindings, useful for making forward declarations."
+  [sym]
+  \`(def ~sym))
 
 
-(defmacro defn [name & fdecl]
+(defmacro
+  ^{:doc-group "Control Flow"}
+  and
+  "Evaluates exprs one at a time, from left to right. If a form returns logical false, returns that value without evaluating the rest. Otherwise returns the value of the last expr. (and) returns true."
+  [& forms]
+  (if (nil? forms)
+    true
+    (if (nil? (seq (rest forms)))
+      (first forms)
+      \`(let [v# ~(first forms)]
+         (if v# (and ~@(rest forms)) v#)))))
+
+(defmacro
+  ^{:doc-group "Control Flow"}
+  or
+  "Evaluates exprs one at a time, from left to right. If a form returns a logical true value, returns that value without evaluating the rest. Otherwise returns the value of the last expr. (or) returns nil."
+  [& forms]
+  (if (nil? forms)
+    nil
+    (if (nil? (seq (rest forms)))
+      (first forms)
+      \`(let [v# ~(first forms)]
+         (if v# v# (or ~@(rest forms)))))))
+
+
+;; Native shims, for autocomplete only.
+(declare all)
+(declare async)
+(declare catch*)
+(declare then)
+(declare loop*)
+(declare let*)
+(declare repeat*)
+(declare range*)
+(declare seen-rest?)
+(declare pprint)
+(declare hierarchy-descendants-global)
+(declare hierarchy-isa?-global)
+(declare hierarchy-isa?*)
+(declare hierarchy-derive-global!)
+(declare hierarchy-derive*)
+(declare hierarchy-underive-global!)
+(declare hierarchy-underive*)
+(declare hierarchy-parents-global)
+(declare hierarchy-ancestors-global)
+(declare describe*)
+
+(defmacro
+  ^{:doc-group "Functions"}
+  defn
+  "Same as (def name (fn [params*] exprs*)). Optionally accepts a docstring and attribute-map before params. Attaches :doc and :arglists metadata to the var."
+  [name & fdecl]
   (let [doc       (if (string? (first fdecl)) (first fdecl) nil)
         rest-decl (if doc (rest fdecl) fdecl)
         arglists  (if (vector? (first rest-decl))
                     (vector (first rest-decl))
                     (reduce (fn [acc arity] (conj acc (first arity))) [] rest-decl))
-        meta-map  (let [m (if doc {:doc doc :arglists arglists} {:arglists arglists})]
-                    (if (:private (meta name)) (assoc m :private true) m))]
+        meta-map  (let [sym-meta (if (meta name) (meta name) {})]
+                    (if doc
+                      (assoc sym-meta :doc doc :arglists arglists)
+                      (assoc sym-meta :arglists arglists)))]
     \`(def ~(with-meta name meta-map) (fn ~name ~@rest-decl))))
 
 (defmacro defn-
@@ -43,51 +103,80 @@ export const clojure_coreSource = `\
 ;; defmulti / defmethod: multimethod sugar over native make-multimethod! / add-method!
 ;; defmulti uses a re-eval guard in make-multimethod! — re-loading a namespace
 ;; preserves all registered methods.
-(defmacro defmulti [name dispatch-fn & opts]
+(defmacro
+  ^{:doc-group "Abstractions"}
+  defmulti
+  "Creates a new multimethod with the given name and dispatch function. Re-evaluating a defmulti preserves all previously registered methods."
+  [name dispatch-fn & opts]
   \`(make-multimethod! ~(str name) ~dispatch-fn ~@opts))
 
-(defmacro defmethod [mm-name dispatch-val & fn-tail]
+(defmacro
+  ^{:doc-group "Abstractions"}
+  defmethod
+  "Creates and installs a new method for multimethod mm-name with dispatch value dispatch-val."
+  [mm-name dispatch-val & fn-tail]
   \`(add-method! (var ~mm-name) ~dispatch-val (fn ~@fn-tail)))
 
 ;; delay: wraps body in a zero-arg fn and defers evaluation until forced.
 ;; make-delay is a native primitive that creates the CljDelay value.
-(defmacro delay [& body]
+(defmacro
+  ^{:doc-group "Abstractions"}
+  delay
+  "Takes a body of expressions and yields a Delay object that will invoke the body only the first time it is forced (via force or deref/@), and will cache the result and return it on all subsequent force calls."
+  [& body]
   \`(make-delay (fn* [] ~@body)))
 
 
-(defn vary-meta
+(defn
+  ^{:doc-group "Metadata"}
+  vary-meta
   "Returns an object of the same type and value as obj, with
   (apply f (meta obj) args) as its metadata."
   [obj f & args]
   (with-meta obj (apply f (meta obj) args)))
 
-(defn next
+(defn
+  ^{:doc-group "Comparison"}
+  not
+  "Returns true if x is logical false, false otherwise."
+  [x] (if x false true))
+
+(defn
+  ^{:doc-group "Sequences"}
+  next
   "Returns a seq of the items after the first. Calls seq on its
   argument.  If there are no more items, returns nil."
   [coll]
   (seq (rest coll)))
 
-(defn not
-  "Returns true if x is logical false, false otherwise."
-  [x] (if x false true))
 
-(defn second
+(defn
+  ^{:doc-group "Sequences"}
+  second
   "Same as (first (next x))"
   [coll]
   (first (next coll)))
 
 
-(defmacro when
+(defmacro
+  ^{:doc-group "Control Flow"}
+  when
   "Executes body when condition is true, otherwise returns nil."
   [condition & body]
   \`(if ~condition (do ~@body) nil))
 
-(defmacro when-not
+(defmacro
+  ^{:doc-group "Control Flow"}
+  when-not
   "Executes body when condition is false, otherwise returns nil."
   [condition & body]
   \`(if ~condition nil (do ~@body)))
 
-(defmacro if-let
+(defmacro
+  ^{:doc-group "Control Flow"}
+  if-let
+  "bindings => binding-form test
+  If test is true, evaluates then with binding-form bound to the value of test, otherwise evaluates else."
   ([bindings then] \`(if-let ~bindings ~then nil))
   ([bindings then else]
    (let [form (first bindings)
@@ -95,36 +184,33 @@ export const clojure_coreSource = `\
      \`(let [~form ~tst]
         (if ~form ~then ~else)))))
 
-(defmacro when-let [bindings & body]
+(defmacro
+  ^{:doc-group "Control Flow"}
+  when-let
+  "bindings => binding-form test
+  When test is true, evaluates body with binding-form bound to the value of test."
+  [bindings & body]
   (let [form (first bindings)
         tst  (second bindings)]
     \`(let [~form ~tst]
        (when ~form ~@body))))
 
-(defmacro and [& forms]
-  (if (nil? forms)
-    true
-    (if (nil? (seq (rest forms)))
-      (first forms)
-      \`(let [v# ~(first forms)]
-         (if v# (and ~@(rest forms)) v#)))))
-
-(defmacro or [& forms]
-  (if (nil? forms)
-    nil
-    (if (nil? (seq (rest forms)))
-      (first forms)
-      \`(let [v# ~(first forms)]
-         (if v# v# (or ~@(rest forms)))))))
-
-(defmacro cond [& clauses]
+(defmacro
+  ^{:doc-group "Control Flow"}
+  cond
+  "Takes a set of test/expr pairs. Evaluates each test one at a time from left to right. If a test returns logical true, returns the value of the corresponding expr without evaluating the remaining tests."
+  [& clauses]
   (if (nil? clauses)
     nil
     \`(if ~(first clauses)
        ~(first (next clauses))
        (cond ~@(rest (rest clauses))))))
 
-(defmacro -> [x & forms]
+(defmacro
+  ^{:doc-group "Threading"}
+  ->
+  "Threads the expr through the forms. Inserts x as the second item in the first form, making a list of it if it is not a list already. If there are more forms, inserts the first form as the second item in second form, etc."
+  [x & forms]
   (if (nil? forms)
     x
     (let [form (first forms)
@@ -134,7 +220,11 @@ export const clojure_coreSource = `\
                      \`(~form ~x))]
       \`(-> ~threaded ~@more))))
 
-(defmacro ->> [x & forms]
+(defmacro
+  ^{:doc-group "Threading"}
+  ->>
+  "Threads the expr through the forms. Inserts x as the last item in the first form, making a list of it if it is not a list already. If there are more forms, inserts the first form as the last item in second form, etc."
+  [x & forms]
   (if (nil? forms)
     x
     (let [form (first forms)
@@ -144,17 +234,24 @@ export const clojure_coreSource = `\
                      \`(~form ~x))]
       \`(->> ~threaded ~@more))))
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (defmacro comment
   "Ignores body, yields nil"
-  [& body])
+  [& body] nil)
 
-(defmacro as->
+(defmacro
+  ^{:doc-group "Threading"}
+  as->
+  "Binds name to expr, evaluates the first form in the lexical context of that binding, then binds name to that result, repeating for each successive form. Returns the result of the last form."
   [expr name & forms]
   \`(let [~name ~expr
          ~@(reduce (fn [acc form] (conj acc name form)) [] forms)]
      ~name))
 
-(defmacro cond->
+(defmacro
+  ^{:doc-group "Threading"}
+  cond->
+  "Takes an expression and a set of test/form pairs. Threads expr through each form (via ->) whose corresponding test returns logical true."
   [expr & clauses]
   (let [g (gensym "cv")
         steps (reduce
@@ -171,7 +268,10 @@ export const clojure_coreSource = `\
            ~@(reduce (fn [acc step] (conj acc g step)) [] steps)]
        ~g)))
 
-(defmacro cond->>
+(defmacro
+  ^{:doc-group "Threading"}
+  cond->>
+  "Takes an expression and a set of test/form pairs. Threads expr through each form (via ->>) whose corresponding test returns logical true."
   [expr & clauses]
   (let [g (gensym "cv")
         steps (reduce
@@ -188,7 +288,10 @@ export const clojure_coreSource = `\
            ~@(reduce (fn [acc step] (conj acc g step)) [] steps)]
        ~g)))
 
-(defmacro some->
+(defmacro
+  ^{:doc-group "Threading"}
+  some->
+  "When expr is not nil, threads it into the first form (via ->), and when that result is not nil, through the next etc."
   [expr & forms]
   (if (nil? forms)
     expr
@@ -197,7 +300,10 @@ export const clojure_coreSource = `\
          nil
          (some-> (-> v# ~(first forms)) ~@(rest forms))))))
 
-(defmacro some->>
+(defmacro
+  ^{:doc-group "Threading"}
+  some->>
+  "When expr is not nil, threads it into the first form (via ->>), and when that result is not nil, through the next etc."
   [expr & forms]
   (if (nil? forms)
     expr
@@ -206,19 +312,28 @@ export const clojure_coreSource = `\
          nil
          (some->> (->> v# ~(first forms)) ~@(rest forms))))))
 
-(defn constantly
+(defn
+  ^{:doc-group "Higher-order"}
+  constantly
   "Returns a function that takes any number of arguments and returns x."
   [x] (fn [& _] x))
 
-(defn some?
+(defn
+  ^{:doc-group "Predicates"}
+  some?
   "Returns true if x is not nil, false otherwise"
   [x] (not (nil? x)))
 
-(defn any?
+#_{:clj-kondo/ignore [:unused-binding]}
+(defn
+  ^{:doc-group "Predicates"}
+  any?
   "Returns true for any given argument"
-  [_x] true)
+  [x] true)
 
-(defn complement
+(defn
+  ^{:doc-group "Higher-order"}
+  complement
   "Takes a fn f and returns a fn that takes the same arguments as f,
   has the same effects, if any, and returns the opposite truth value."
   [f]
@@ -228,7 +343,9 @@ export const clojure_coreSource = `\
     ([x y] (not (f x y)))
     ([x y & zs] (not (apply f x y zs)))))
 
-(defn juxt
+(defn
+  ^{:doc-group "Higher-order"}
+  juxt
   "Takes a set of functions and returns a fn that is the juxtaposition
   of those fns. The returned fn takes a variable number of args and
   returns a vector containing the result of applying each fn to the args."
@@ -236,7 +353,9 @@ export const clojure_coreSource = `\
   (fn [& args]
     (reduce (fn [acc f] (conj acc (apply f args))) [] fns)))
 
-(defn merge
+(defn
+  ^{:doc-group "Maps"}
+  merge
   "Returns a map that consists of the rest of the maps conj-ed onto
   the first. If a key occurs in more than one map, the mapping from
   the latter (left-to-right) will be the mapping in the result."
@@ -257,7 +376,9 @@ export const clojure_coreSource = `\
      nil
      maps)))
 
-(defn select-keys
+(defn
+  ^{:doc-group "Maps"}
+  select-keys
   "Returns a map containing only those entries in map whose key is in keys."
   [m keys]
   (if (or (nil? m) (nil? keys))
@@ -272,7 +393,9 @@ export const clojure_coreSource = `\
        {}
        keys))))
 
-(defn update
+(defn
+  ^{:doc-group "Maps"}
+  update
   "Updates a value in an associative structure where k is a key and f is a
   function that will take the old value and any supplied args and return the
   new value, and returns a new structure."
@@ -282,7 +405,9 @@ export const clojure_coreSource = `\
                       (f (get target k))
                       (apply f (get target k) args)))))
 
-(defn get-in
+(defn
+  ^{:doc-group "Maps"}
+  get-in
   "Returns the value in a nested associative structure, where ks is a
   sequence of keys. Returns nil if the key is not present, or the not-found
   value if supplied."
@@ -296,7 +421,9 @@ export const clojure_coreSource = `\
          (recur (get m (first ks)) (next ks))
          not-found)))))
 
-(defn assoc-in
+(defn
+  ^{:doc-group "Maps"}
+  assoc-in
   "Associates a value in a nested associative structure, where ks is a
   sequence of keys and v is the new value. Returns a new nested structure."
   [m ks v]
@@ -306,14 +433,18 @@ export const clojure_coreSource = `\
       (assoc m k (assoc-in (get m k) more v))
       (assoc m k v))))
 
-(defn update-in
+(defn
+  ^{:doc-group "Maps"}
+  update-in
   "Updates a value in a nested associative structure, where ks is a
   sequence of keys and f is a function that will take the old value and any
   supplied args and return the new value. Returns a new nested structure."
   [m ks f & args]
   (assoc-in m ks (apply f (get-in m ks) args)))
 
-(defn fnil
+(defn
+  ^{:doc-group "Maps"}
+  fnil
   "Takes a function f, and returns a function that calls f, replacing
   a nil first argument with x, optionally nil second with y, nil third with z."
   ([f x]
@@ -326,7 +457,9 @@ export const clojure_coreSource = `\
    (fn [a b c & more]
      (apply f (if (nil? a) x a) (if (nil? b) y b) (if (nil? c) z c) more))))
 
-(defn frequencies
+(defn
+  ^{:doc-group "Maps"}
+  frequencies
   "Returns a map from distinct items in coll to the number of times they appear."
   [coll]
   (if (nil? coll)
@@ -337,7 +470,9 @@ export const clojure_coreSource = `\
      {}
      coll)))
 
-(defn group-by
+(defn
+  ^{:doc-group "Maps"}
+  group-by
   "Returns a map of the elements of coll keyed by the result of f on each
   element. The value at each key is a vector of matching elements."
   [f coll]
@@ -350,7 +485,9 @@ export const clojure_coreSource = `\
      {}
      coll)))
 
-(defn distinct
+(defn
+  ^{:doc-group "Sequences"}
+  distinct
   "Returns a vector of the elements of coll with duplicates removed,
   preserving first-seen order."
   [coll]
@@ -368,7 +505,9 @@ export const clojure_coreSource = `\
       coll)
      1)))
 
-(defn flatten-step
+(defn
+  ^{:doc-group "Sequences"}
+  flatten-step
   "Internal helper for flatten."
   [v]
   (if (or (list? v) (vector? v))
@@ -379,7 +518,9 @@ export const clojure_coreSource = `\
      v)
     [v]))
 
-(defn flatten
+(defn
+  ^{:doc-group "Sequences"}
+  flatten
   "Takes any nested combination of sequential things (lists/vectors) and
   returns their contents as a single flat vector."
   [x]
@@ -387,7 +528,9 @@ export const clojure_coreSource = `\
     []
     (flatten-step x)))
 
-(defn reduce-kv
+(defn
+  ^{:doc-group "Sequences"}
+  reduce-kv
   "Reduces an associative structure. f should be a function of 3
   arguments: accumulator, key/index, value."
   [f init coll]
@@ -412,7 +555,9 @@ export const clojure_coreSource = `\
       "reduce-kv expects a map or vector"
       {:coll coll}))))
 
-(defn sort-compare
+(defn
+  ^{:doc-group "Sequences"}
+  sort-compare
   "Internal helper: normalizes comparator results."
   [cmp a b]
   (let [r (cmp a b)]
@@ -420,7 +565,9 @@ export const clojure_coreSource = `\
       (< r 0)
       r)))
 
-(defn insert-sorted
+(defn
+  ^{:doc-group "Sequences"}
+  insert-sorted
   "Internal helper for insertion-sort based sort implementation."
   [cmp x sorted]
   (loop [left  []
@@ -432,7 +579,9 @@ export const clojure_coreSource = `\
           (into (conj left x) right)
           (recur (conj left y) (rest right)))))))
 
-(defn sort
+(defn
+  ^{:doc-group "Sequences"}
+  sort
   "Returns the items in coll in sorted order. With no comparator, uses
   compare (works on numbers, strings, keywords, chars). Comparator may
   return boolean or number."
@@ -446,7 +595,9 @@ export const clojure_coreSource = `\
       []
       coll))))
 
-(defn sort-by
+(defn
+  ^{:doc-group "Sequences"}
+  sort-by
   "Returns a sorted sequence of items in coll, where the sort order is
   determined by comparing (keyfn item). Default comparator is compare."
   ([keyfn coll] (sort-by keyfn compare coll))
@@ -456,9 +607,13 @@ export const clojure_coreSource = `\
       (cmp (keyfn a) (keyfn b)))
     coll)))
 
-(def not-any? (comp not some))
+(def
+  ^{:doc-group "Predicates"}
+  not-any? (comp not some))
 
-(defn not-every?
+(defn
+  ^{:doc-group "Predicates"}
+  not-every?
   "Returns false if (pred x) is logical true for every x in
   coll, else true."
   [pred coll] (not (every? pred coll)))
@@ -466,14 +621,18 @@ export const clojure_coreSource = `\
 ;; ── Transducer protocol ──────────────────────────────────────────────────────
 
 ;; into: 2-arity uses reduce+conj; 3-arity uses transduce
-(defn into
+(defn
+  ^{:doc-group "Sequences"}
+  into
   "Returns a new coll consisting of to-coll with all of the items of
    from-coll conjoined. A transducer may be supplied."
   ([to from] (reduce conj to from))
   ([to xf from] (transduce xf conj to from)))
 
 ;; sequence: materialise a transducer over a collection into a seq (list)
-(defn sequence
+(defn
+  ^{:doc-group "Sequences"}
+  sequence
   "Coerces coll to a (possibly empty) sequence, if it is not already
   one. Will not force a seq. (sequence nil) yields (), When a
   transducer is supplied, returns a lazy sequence of applications of
@@ -481,7 +640,9 @@ export const clojure_coreSource = `\
   ([coll] (apply list (into [] coll)))
   ([xf coll] (apply list (into [] xf coll))))
 
-(defn completing
+(defn
+  ^{:doc-group "Sequences"}
+  completing
   "Takes a reducing function f of 2 args and returns a fn suitable for
   transduce by adding an arity-1 signature that calls cf (default -
   identity) on the result argument."
@@ -493,7 +654,9 @@ export const clojure_coreSource = `\
      ([x y] (f x y)))))
 
 ;; map: 1-arg returns transducer; 2-arg is eager; 3+-arg zips collections
-(defn map
+(defn
+  ^{:doc-group "Sequences"}
+  map
   "Returns a sequence consisting of the result of applying f to the set
   of first items of each coll, followed by applying f to the set of
   second items in each coll, until any one of the colls is exhausted.
@@ -527,7 +690,9 @@ export const clojure_coreSource = `\
        (recur (map next seqs) (conj acc (apply f (map first seqs))))))))
 
 ;; filter: 1-arg returns transducer; 2-arg is eager
-(defn filter
+(defn
+  ^{:doc-group "Sequences"}
+  filter
   "Returns a sequence of the items in coll for which
   (pred item) returns logical true. pred must be free of side-effects.
   Returns a transducer when no collection is provided."
@@ -547,7 +712,9 @@ export const clojure_coreSource = `\
         (cons (first s) (filter pred (rest s)))
         (filter pred (rest s)))))))
 
-(defn remove
+(defn
+  ^{:doc-group "Sequences"}
+  remove
   "Returns a lazy sequence of the items in coll for which
   (pred item) returns logical false. pred must be free of side-effects.
   Returns a transducer when no collection is provided."
@@ -559,7 +726,9 @@ export const clojure_coreSource = `\
 
 ;; take: stateful transducer; signals early termination after n items
 ;; r > 0 → keep going; r = 0 → take last item and stop; r < 0 → already past limit, stop
-(defn take
+(defn
+  ^{:doc-group "Sequences"}
+  take
   "Returns a sequence of the first n items in coll, or all items if
   there are fewer than n.  Returns a stateful transducer when
   no collection is provided."
@@ -585,7 +754,9 @@ export const clojure_coreSource = `\
         (cons (first s) (take (dec n) (rest s))))))))
 
 ;; take-while: stateless transducer; emits reduced when pred fails
-(defn take-while
+(defn
+  ^{:doc-group "Sequences"}
+  take-while
   "Returns a sequence of successive items from coll while
   (pred item) returns logical true. pred must be free of side-effects.
   Returns a transducer when no collection is provided."
@@ -606,7 +777,9 @@ export const clojure_coreSource = `\
 
 ;; drop: stateful transducer; skips first n items
 ;; r >= 0 → still skipping; r < 0 → past the drop zone, start taking
-(defn drop
+(defn
+  ^{:doc-group "Sequences"}
+  drop
   "Returns a sequence of all but the first n items in coll.
    Returns a stateful transducer when no collection is provided."
   ([n]
@@ -626,12 +799,16 @@ export const clojure_coreSource = `\
      (lazy-seq (drop (dec n) (rest coll)))
      (lazy-seq (seq coll)))))
 
-(defn drop-last
+(defn
+  ^{:doc-group "Sequences"}
+  drop-last
   "Return a sequence of all but the last n (default 1) items in coll"
   ([coll] (drop-last 1 coll))
   ([n coll] (map (fn [x _] x) coll (drop n coll))))
 
-(defn take-last
+(defn
+  ^{:doc-group "Sequences"}
+  take-last
   "Returns a sequence of the last n items in coll.  Depending on the type
   of coll may be no better than linear time.  For vectors, see also subvec."
   [n coll]
@@ -641,7 +818,9 @@ export const clojure_coreSource = `\
       s)))
 
 ;; drop-while: stateful transducer; passes through once pred fails
-(defn drop-while
+(defn
+  ^{:doc-group "Sequences"}
+  drop-while
   "Returns a sequence of the items in coll starting from the
   first item for which (pred item) returns logical false.  Returns a
   stateful transducer when no collection is provided."
@@ -667,7 +846,12 @@ export const clojure_coreSource = `\
 ;; letfn: expands to letfn* (the primitive), which takes a flat vector of
 ;; [name fn-form name fn-form ...] pairs and evaluates each fn-form in a
 ;; shared env frame so all fns can see each other (mutual recursion).
-(defmacro letfn [fnspecs & body]
+(defmacro
+  ^{:doc-group "Control Flow"}
+  letfn
+  "fnspecs => (fname [params*] exprs)+
+  Takes a vector of function specs and a body. Binds each fname to its fn in a shared environment so all functions can mutually reference each other."
+  [fnspecs & body]
   (cons 'letfn*
         (cons (reduce (fn* [acc spec]
                            (conj (conj acc (first spec))
@@ -677,7 +861,9 @@ export const clojure_coreSource = `\
               body)))
 
 ;; map-indexed: stateful transducer; passes index and item to f
-(defn map-indexed
+(defn
+  ^{:doc-group "Sequences"}
+  map-indexed
   "Returns a sequence consisting of the result of applying f to 0
    and the first item of coll, followed by applying f to 1 and the second
    item in coll, etc, until coll is exhausted. Thus function f should
@@ -699,7 +885,9 @@ export const clojure_coreSource = `\
      (step 0 coll))))
 
 ;; dedupe: stateful transducer; removes consecutive duplicates
-(defn dedupe
+(defn
+  ^{:doc-group "Sequences"}
+  dedupe
   "Returns a sequence removing consecutive duplicates in coll.
    Returns a transducer when no collection is provided."
   ([]
@@ -718,7 +906,9 @@ export const clojure_coreSource = `\
    (sequence (dedupe) coll)))
 
 ;; partition-all: stateful transducer; groups items into vectors of size n
-(defn partition-all
+(defn
+  ^{:doc-group "Sequences"}
+  partition-all
   "Returns a sequence of lists like partition, but may include
    partitions with fewer than n items at the end.  Returns a stateful
    transducer when no collection is provided."
@@ -747,7 +937,10 @@ export const clojure_coreSource = `\
 
 ;; ── Documentation ────────────────────────────────────────────────────────────
 
-(defmacro doc [sym]
+(defmacro
+  ^{:doc-group "Dev"}
+  doc
+  [sym]
   \`(let [v#        (var ~sym)
          m#        (meta v#)
          d#        (:doc m#)
@@ -767,7 +960,9 @@ export const clojure_coreSource = `\
                    (if args-str# (str args-str# "\\n") "")
                    "  " (or d# "No documentation available.")))))
 
-(defn make-err
+(defn
+  ^{:doc-group "Errors"}
+  make-err
   "Creates an error map with type, message, data and optionally cause"
   ([type message] (make-err type message nil nil))
   ([type message data] (make-err type message data nil))
@@ -775,7 +970,9 @@ export const clojure_coreSource = `\
 
 ;; ── Sequence utilities ──────────────────────────────────────────────────────
 
-(defn butlast
+(defn
+  ^{:doc-group "Sequences"}
+  butlast
   "Return a seq of all but the last item in coll, in linear time"
   [coll]
   (loop [ret [] s (seq coll)]
@@ -783,19 +980,27 @@ export const clojure_coreSource = `\
       (recur (conj ret (first s)) (next s))
       (seq ret))))
 
-(defn fnext
+(defn
+  ^{:doc-group "Sequences"}
+  fnext
   "Same as (first (next x))"
   [x] (first (next x)))
 
-(defn nfirst
+(defn
+  ^{:doc-group "Sequences"}
+  nfirst
   "Same as (next (first x))"
   [x] (next (first x)))
 
-(defn nnext
+(defn
+  ^{:doc-group "Sequences"}
+  nnext
   "Same as (next (next x))"
   [x] (next (next x)))
 
-(defn nthrest
+(defn
+  ^{:doc-group "Sequences"}
+  nthrest
   "Returns the nth rest of coll, coll when n is 0."
   [coll n]
   (loop [n n xs coll]
@@ -803,7 +1008,9 @@ export const clojure_coreSource = `\
       (recur (dec n) (rest xs))
       xs)))
 
-(defn nthnext
+(defn
+  ^{:doc-group "Sequences"}
+  nthnext
   "Returns the nth next of coll, (seq coll) when n is 0."
   [coll n]
   (loop [n n xs (seq coll)]
@@ -811,7 +1018,9 @@ export const clojure_coreSource = `\
       (recur (dec n) (next xs))
       xs)))
 
-(defn list*
+(defn
+  ^{:doc-group "Sequences"}
+  list*
   "Creates a new seq containing the items prepended to the rest, the
   last of which will be treated as a sequence."
   ([args] (seq args))
@@ -821,7 +1030,9 @@ export const clojure_coreSource = `\
   ([a b c d & more]
    (cons a (cons b (cons c (apply list* d more))))))
 
-(defn mapv
+(defn
+  ^{:doc-group "Sequences"}
+  mapv
   "Returns a vector consisting of the result of applying f to the
   set of first items of each coll, followed by applying f to the set
   of second items in each coll, until any one of the colls is exhausted."
@@ -830,19 +1041,25 @@ export const clojure_coreSource = `\
   ([f c1 c2 c3] (into [] (map f c1 c2 c3)))
   ([f c1 c2 c3 & colls] (into [] (apply map f c1 c2 c3 colls))))
 
-(defn filterv
+(defn
+  ^{:doc-group "Sequences"}
+  filterv
   "Returns a vector of the items in coll for which
   (pred item) returns logical true."
   [pred coll]
   (into [] (filter pred) coll))
 
-(defn run!
+(defn
+  ^{:doc-group "Sequences"}
+  run!
   "Runs the supplied procedure (via reduce), for purposes of side
   effects, on successive items in the collection. Returns nil."
   [proc coll]
   (reduce (fn [_ x] (proc x) nil) nil coll))
 
-(defn keep
+(defn
+  ^{:doc-group "Sequences"}
+  keep
   "Returns a sequence of the non-nil results of (f item). Note,
   this means false return values will be included.  f must be free of
   side-effects.  Returns a transducer when no collection is provided."
@@ -864,7 +1081,9 @@ export const clojure_coreSource = `\
           (keep f (rest s))
           (cons v (keep f (rest s)))))))))
 
-(defn keep-indexed
+(defn
+  ^{:doc-group "Sequences"}
+  keep-indexed
   "Returns a sequence of the non-nil results of (f index item). Note,
   this means false return values will be included.  f must be free of
   side-effects.  Returns a stateful transducer when no collection is provided."
@@ -889,7 +1108,9 @@ export const clojure_coreSource = `\
                     (cons v (step (inc i) (rest xs))))))))]
      (step 0 coll))))
 
-(defn mapcat
+(defn
+  ^{:doc-group "Sequences"}
+  mapcat
   "Returns the result of applying concat to the result of applying map
   to f and colls.  Thus function f should return a collection. Returns
   a transducer when no collections are provided."
@@ -908,7 +1129,9 @@ export const clojure_coreSource = `\
   ([f coll & more]
    (apply concat (apply map f coll more))))
 
-(defn interleave
+(defn
+  ^{:doc-group "Sequences"}
+  interleave
   "Returns a lazy sequence of the first item in each coll, then the second etc.
   Stops as soon as any coll is exhausted."
   ([c1 c2]
@@ -922,7 +1145,9 @@ export const clojure_coreSource = `\
       (when (every? some? seqs)
         (concat (map first seqs) (apply interleave (map rest seqs))))))))
 
-(defn interpose
+(defn
+  ^{:doc-group "Sequences"}
+  interpose
   "Returns a sequence of the elements of coll separated by sep.
   Returns a transducer when no collection is provided."
   ([sep]
@@ -944,7 +1169,9 @@ export const clojure_coreSource = `\
    (drop 1 (interleave (repeat sep) coll))))
 
 ;; ── Lazy concat (shadows native eager concat) ──────────────────────────────
-(defn concat
+(defn
+  ^{:doc-group "Sequences"}
+  concat
   "Returns a lazy seq representing the concatenation of the elements in the
   supplied colls."
   ([] nil)
@@ -965,7 +1192,9 @@ export const clojure_coreSource = `\
                       (cat (first zs) (next zs)))))))]
      (cat (concat x y) zs))))
 
-(defn iterate
+(defn
+  ^{:doc-group "Sequences"}
+  iterate
   "Returns a lazy sequence of x, (f x), (f (f x)) etc.
   With 3 args, returns a finite sequence of n items (backwards compat)."
   ([f x]
@@ -976,7 +1205,9 @@ export const clojure_coreSource = `\
        (recur (inc i) (f v) (conj acc v))
        acc))))
 
-(defn repeatedly
+(defn
+  ^{:doc-group "Sequences"}
+  repeatedly
   "Takes a function of no args, presumably with side effects, and
   returns a lazy infinite sequence of calls to it.
   With 2 args (n f), returns a finite sequence of n calls."
@@ -987,7 +1218,9 @@ export const clojure_coreSource = `\
        (recur (inc i) (conj acc (f)))
        acc))))
 
-(defn cycle
+(defn
+  ^{:doc-group "Sequences"}
+  cycle
   "Returns a lazy infinite sequence of repetitions of the items in coll.
   With 2 args (n coll), returns a finite sequence (backwards compat)."
   ([coll]
@@ -1001,13 +1234,17 @@ export const clojure_coreSource = `\
          (recur (inc i) (into acc s))
          acc)))))
 
-(defn repeat
+(defn
+  ^{:doc-group "Sequences"}
+  repeat
   "Returns a lazy infinite sequence of xs.
   With 2 args (n x), returns a finite sequence of n copies."
   ([x] (lazy-seq (cons x (repeat x))))
   ([n x] (repeat* n x)))
 
-(defn range
+(defn
+  ^{:doc-group "Sequences"}
+  range
   "Returns a lazy infinite sequence of integers from 0.
   With args, returns a finite sequence (delegates to native range*)."
   ([] (iterate inc 0))
@@ -1015,25 +1252,33 @@ export const clojure_coreSource = `\
   ([start end] (range* start end))
   ([start end step] (range* start end step)))
 
-(defn newline
+(defn
+  ^{:doc-group "IO"}
+  newline
   "Writes a newline to *out*."
   [] (println ""))
 
-(defn dorun
+(defn
+  ^{:doc-group "Sequences"}
+  dorun
   "Forces realization of a (possibly lazy) sequence. Walks the sequence
   without retaining the head. Returns nil."
   [coll]
   (when (seq coll)
     (recur (rest coll))))
 
-(defn doall
+(defn
+  ^{:doc-group "Sequences"}
+  doall
   "Forces realization of a (possibly lazy) sequence. Unlike dorun,
   retains the head and returns the seq."
   [coll]
   (dorun coll)
   coll)
 
-(defn take-nth
+(defn
+  ^{:doc-group "Sequences"}
+  take-nth
   "Returns a sequence of every nth item in coll.  Returns a stateful
   transducer when no collection is provided."
   ([n]
@@ -1050,7 +1295,9 @@ export const clojure_coreSource = `\
   ([n coll]
    (sequence (take-nth n) coll)))
 
-(defn partition
+(defn
+  ^{:doc-group "Sequences"}
+  partition
   "Returns a sequence of lists of n items each, at offsets step
   apart. If step is not supplied, defaults to n, i.e. the partitions
   do not overlap. If a pad collection is supplied, use its elements as
@@ -1074,7 +1321,9 @@ export const clojure_coreSource = `\
            (conj acc (into [] (take n) (concat p pad)))
            (recur (seq (drop step s)) (conj acc p))))))))
 
-(defn partition-by
+(defn
+  ^{:doc-group "Sequences"}
+  partition-by
   "Applies f to each value in coll, splitting it each time f returns a
   new value.  Returns a sequence of partitions.  Returns a stateful
   transducer when no collection is provided."
@@ -1107,7 +1356,9 @@ export const clojure_coreSource = `\
             remaining (drop-while #(= (f %) fv) (next s))]
         (cons run (partition-by f remaining)))))))
 
-(defn reductions
+(defn
+  ^{:doc-group "Sequences"}
+  reductions
   "Returns a sequence of the intermediate values of the reduction (as
   by reduce) of coll by f, starting with init."
   ([f coll]
@@ -1123,17 +1374,23 @@ export const clojure_coreSource = `\
            (conj acc (unreduced nval))
            (recur (conj acc nval) nval (next s))))))))
 
-(defn split-at
+(defn
+  ^{:doc-group "Sequences"}
+  split-at
   "Returns a vector of [(take n coll) (drop n coll)]"
   [n coll]
   [(into [] (take n) coll) (into [] (drop n) coll)])
 
-(defn split-with
+(defn
+  ^{:doc-group "Sequences"}
+  split-with
   "Returns a vector of [(take-while pred coll) (drop-while pred coll)]"
   [pred coll]
   [(into [] (take-while pred) coll) (into [] (drop-while pred) coll)])
 
-(defn merge-with
+(defn
+  ^{:doc-group "Maps"}
+  merge-with
   "Returns a map that consists of the rest of the maps conj-ed onto
   the first.  If a key occurs in more than one map, the mapping(s)
   from the latter (left-to-right) will be combined with the mapping in
@@ -1155,7 +1412,9 @@ export const clojure_coreSource = `\
    nil
    maps))
 
-(defn update-keys
+(defn
+  ^{:doc-group "Maps"}
+  update-keys
   "m f => apply f to each key in m"
   [m f]
   (reduce
@@ -1164,7 +1423,9 @@ export const clojure_coreSource = `\
    {}
    m))
 
-(defn update-vals
+(defn
+  ^{:doc-group "Maps"}
+  update-vals
   "m f => apply f to each val in m"
   [m f]
   (reduce
@@ -1173,12 +1434,16 @@ export const clojure_coreSource = `\
    {}
    m))
 
-(defn not-empty
+(defn
+  ^{:doc-group "Sequences"}
+  not-empty
   "If coll is empty, returns nil, else coll"
   [coll]
   (when (seq coll) coll))
 
-(defn memoize
+(defn
+  ^{:doc-group "Higher-order"}
+  memoize
   "Returns a memoized version of a referentially transparent function. The
   memoized version of the function keeps a cache of the mapping from arguments
   to results and, when calls with the same arguments are repeated often, has
@@ -1193,7 +1458,9 @@ export const clojure_coreSource = `\
             ret)
           cached)))))
 
-(defn trampoline
+(defn
+  ^{:doc-group "Higher-order"}
+  trampoline
   "trampoline can be used to convert algorithms requiring mutual
   recursion without stack consumption. Calls f with supplied args, if
   any. If f returns a fn, calls that fn with no arguments, and
@@ -1210,7 +1477,9 @@ export const clojure_coreSource = `\
        (recur (ret))
        ret))))
 
-(defmacro with-redefs
+(defmacro
+  ^{:doc-group "Control Flow"}
+  with-redefs
   "binding => var-symbol temp-value-expr
   Temporarily redefines Vars while executing the body. The
   temp-value-exprs will be evaluated and each resulting value will
@@ -1230,7 +1499,9 @@ export const clojure_coreSource = `\
 
 ;; ── Macros: conditionals and control flow ───────────────────────────────────
 
-(defmacro if-some
+(defmacro
+  ^{:doc-group "Control Flow"}
+  if-some
   "bindings => binding-form test
   If test is not nil, evaluates then with binding-form bound to the
   value of test, if not, yields else"
@@ -1244,7 +1515,9 @@ export const clojure_coreSource = `\
           (let [~form temp#]
             ~then))))))
 
-(defmacro when-some
+(defmacro
+  ^{:doc-group "Control Flow"}
+  when-some
   "bindings => binding-form test
   When test is not nil, evaluates body with binding-form bound to the
   value of test"
@@ -1256,7 +1529,9 @@ export const clojure_coreSource = `\
          (let [~form temp#]
            ~@body)))))
 
-(defmacro when-first
+(defmacro
+  ^{:doc-group "Control Flow"}
+  when-first
   "bindings => x xs
   Roughly the same as (when (seq xs) (let [x (first xs)] body)) but xs is evaluated only once"
   [bindings & body]
@@ -1267,7 +1542,9 @@ export const clojure_coreSource = `\
          (let [~x (first temp#)]
            ~@body)))))
 
-(defn condp-emit [gpred gexpr clauses]
+(defn
+  ^{:no-doc true}
+  condp-emit [gpred gexpr clauses]
   (if (nil? clauses)
     \`(throw (ex-info (str "No matching clause: " ~gexpr) {}))
     (if (nil? (next clauses))
@@ -1276,7 +1553,9 @@ export const clojure_coreSource = `\
          ~(second clauses)
          ~(condp-emit gpred gexpr (next (next clauses)))))))
 
-(defmacro condp
+(defmacro
+  ^{:doc-group "Control Flow"}
+  condp
   "Takes a binary predicate, an expression, and a set of clauses.
   Each clause can take the form of either:
     test-expr result-expr
@@ -1288,7 +1567,10 @@ export const clojure_coreSource = `\
            ~gexpr ~expr]
        ~(condp-emit gpred gexpr clauses))))
 
-(defn case-emit [ge clauses]
+(defn
+  ^{:no-doc true}
+  case-emit
+  [ge clauses]
   (if (nil? clauses)
     \`(throw (ex-info (str "No matching clause: " ~ge) {}))
     (if (nil? (next clauses))
@@ -1297,7 +1579,9 @@ export const clojure_coreSource = `\
          ~(second clauses)
          ~(case-emit ge (next (next clauses)))))))
 
-(defmacro case
+(defmacro
+  ^{:doc-group "Control Flow"}
+  case
   "Takes an expression, and a set of clauses. Each clause can take the form of
   either:
     test-constant result-expr
@@ -1308,7 +1592,9 @@ export const clojure_coreSource = `\
     \`(let [~ge ~e]
        ~(case-emit ge clauses))))
 
-(defmacro dotimes
+(defmacro
+  ^{:doc-group "Control Flow"}
+  dotimes
   "bindings => name n
   Repeatedly executes body (presumably for side-effects) with name
   bound to integers from 0 through n-1."
@@ -1321,7 +1607,9 @@ export const clojure_coreSource = `\
            ~@body
            (recur (inc ~i)))))))
 
-(defmacro while
+(defmacro
+  ^{:doc-group "Control Flow"}
+  while
   "Repeatedly executes body while test expression is true. Presumes
   some side-effect will cause test to become false/nil."
   [test & body]
@@ -1330,7 +1618,9 @@ export const clojure_coreSource = `\
        ~@body
        (recur))))
 
-(defmacro doseq
+(defmacro
+  ^{:doc-group "Control Flow"}
+  doseq
   "Repeatedly executes body (presumably for side-effects) with
   bindings. Supports :let, :when, and :while modifiers."
   [seq-exprs & body]
@@ -1356,7 +1646,9 @@ export const clojure_coreSource = `\
             \`(run! (fn [~k] (doseq ~(apply concat rest-bindings) ~@body)) ~v)
             \`(run! (fn [~k] ~@body) ~v)))))))
 
-(defmacro for
+(defmacro
+  ^{:doc-group "Control Flow"}
+  for
   "List comprehension. Takes a vector of one or more
   binding-form/collection-expr pairs, each followed by zero or more
   modifiers, and yields a sequence of evaluations of expr.
@@ -1397,7 +1689,9 @@ export const clojure_coreSource = `\
 ;;   - (instance? Named x) / (ident? x) → (or (keyword? x) (symbol? x))
 ;;   - (keyword nil name) → guarded to 1-arity (keyword name) when ns is nil
 ;;   - (key entry) / (val entry) → (first entry) / (second entry)
-(defn destructure [bindings]
+(defn
+  ^{:no-doc true}
+  destructure [bindings]
   (let*
    [bents (partition 2 bindings)
     pb    (fn pb [bvec b v]
@@ -1408,41 +1702,46 @@ export const clojure_coreSource = `\
                             gseq     (gensym "seq__")
                             gfirst   (gensym "first__")
                             has-rest (some #{'&} b)]
-                       (loop* [ret (let* [ret (conj bvec gvec val)]
-                                     (if has-rest
-                                       (conj ret gseq (list 'seq gvec))
-                                       ret))
-                               n          0
-                               bs         b
-                               seen-rest? false]
-                              (if (seq bs)
-                                (let* [firstb (first bs)]
-                                  (cond
-                                    (= firstb '&)
-                                    (recur (pb ret (second bs) gseq)
-                                           n
-                                           (next (next bs))
-                                           true)
+                       (loop [ret (let [ret (conj bvec gvec
+                                                  (list 'if (list 'or (list 'nil? val) (list 'sequential? val))
+                                                        val
+                                                        (list 'throw (list 'ex-info
+                                                                           (list 'str "Cannot destructure " (list 'pr-str val) " as a sequential collection")
+                                                                           (hash-map)))))]
+                                    (if has-rest
+                                      (conj ret gseq (list 'seq gvec))
+                                      ret))
+                              n          0
+                              bs         b
+                              seen-rest? false]
+                         (if (seq bs)
+                           (let [firstb (first bs)]
+                             (cond
+                               (= firstb '&)
+                               (recur (pb ret (second bs) gseq)
+                                      n
+                                      (next (next bs))
+                                      true)
 
-                                    (= firstb :as)
-                                    (pb ret (second bs) gvec)
+                               (= firstb :as)
+                               (pb ret (second bs) gvec)
 
-                                    :else
-                                    (if seen-rest?
-                                      (throw (ex-info "Unsupported binding form, only :as can follow & parameter" {}))
-                                      (recur (pb (if has-rest
-                                                   (-> ret
-                                                       (conj gfirst) (conj (list 'first gseq))
-                                                       (conj gseq)   (conj (list 'next gseq)))
-                                                   ret)
-                                                 firstb
-                                                 (if has-rest
-                                                   gfirst
-                                                   (list 'nth gvec n nil)))
-                                             (inc n)
-                                             (next bs)
-                                             seen-rest?))))
-                                ret))))
+                               :else
+                               (if seen-rest?
+                                 (throw (ex-info "Unsupported binding form, only :as can follow & parameter" {}))
+                                 (recur (pb (if has-rest
+                                              (-> ret
+                                                  (conj gfirst) (conj (list 'first gseq))
+                                                  (conj gseq)   (conj (list 'next gseq)))
+                                              ret)
+                                            firstb
+                                            (if has-rest
+                                              gfirst
+                                              (list 'nth gvec n nil)))
+                                        (inc n)
+                                        (next bs)
+                                        seen-rest?))))
+                           ret))))
 
                    ;; ── map pattern ──────────────────────────────────────
                    pmap
@@ -1487,38 +1786,44 @@ export const clojure_coreSource = `\
                        ;; When & is followed by a map pattern, the rest args
                        ;; arrive as a flat seq (:k1 v1 :k2 v2 ...) and must
                        ;; be turned into a map before we can do key lookups.
-                       (loop* [ret     (-> bvec
-                                           (conj gmap)
-                                           (conj (list 'if (list 'map? v) v
-                                                       (list 'if (list 'nil? v) (hash-map)
-                                                             (list 'apply 'hash-map v))))
-                                           ((fn [r]
-                                              (if (:as b)
-                                                (conj r (:as b) gmap)
-                                                r))))
-                               entries (seq bes)]
-                              (if entries
-                                (let* [entry (first entries)
-                                       bb    (first entry)
-                                       bk    (second entry)
-                                       local (if (or (keyword? bb) (symbol? bb))
-                                               (symbol (name bb))
-                                               bb)
-                                       ;; Use (if (contains? ...) (get ...) default) so that
-                                       ;; :or defaults are only evaluated when the key is absent.
-                                       ;; Intentional divergence from JVM Clojure, which generates
-                                       ;; (get m k default-expr) and evaluates the default eagerly.
-                                       ;; See docs/core-language.md § "Intentional Divergences".
-                                       bv    (if (and defaults (contains? defaults local))
-                                               (list 'if (list 'contains? gmap bk)
-                                                     (list 'get gmap bk)
-                                                     (get defaults local))
-                                               (list 'get gmap bk))]
-                                  (recur (if (or (keyword? bb) (symbol? bb))
-                                           (-> ret (conj local bv))
-                                           (pb ret bb bv))
-                                         (next entries)))
-                                ret))))]
+                       ;; Non-map, non-nil, non-sequential values throw a clear
+                       ;; error rather than leaking (apply hash-map ...) internals.
+                       (loop [ret     (-> bvec
+                                          (conj gmap)
+                                          (conj (list 'if (list 'map? v) v
+                                                      (list 'if (list 'nil? v) (hash-map)
+                                                            (list 'if (list 'sequential? v)
+                                                                  (list 'apply 'hash-map v)
+                                                                  (list 'throw (list 'ex-info
+                                                                                     (list 'str "Cannot destructure " (list 'pr-str v) " as a map")
+                                                                                     (hash-map)))))))
+                                          ((fn [r]
+                                             (if (:as b)
+                                               (conj r (:as b) gmap)
+                                               r))))
+                              entries (seq bes)]
+                         (if entries
+                           (let* [entry (first entries)
+                                  bb    (first entry)
+                                  bk    (second entry)
+                                  local (if (or (keyword? bb) (symbol? bb))
+                                          (symbol (name bb))
+                                          bb)
+                                  ;; Use (if (contains? ...) (get ...) default) so that
+                                  ;; :or defaults are only evaluated when the key is absent.
+                                  ;; Intentional divergence from JVM Clojure, which generates
+                                  ;; (get m k default-expr) and evaluates the default eagerly.
+                                  ;; See docs/core-language.md § "Intentional Divergences".
+                                  bv    (if (and defaults (contains? defaults local))
+                                          (list 'if (list 'contains? gmap bk)
+                                                (list 'get gmap bk)
+                                                (get defaults local))
+                                          (list 'get gmap bk))]
+                             (recur (if (or (keyword? bb) (symbol? bb))
+                                      (-> ret (conj local bv))
+                                      (pb ret bb bv))
+                                    (next entries)))
+                           ret))))]
               (cond
                 (symbol? b) (-> bvec (conj b) (conj v))
                 (vector? b) (pvec bvec b v)
@@ -1529,24 +1834,32 @@ export const clojure_coreSource = `\
       bindings
       (reduce process-entry [] bents))))
 
-(defn maybe-destructured
+(defn
+  ^{:no-doc true}
+  maybe-destructured
   [params body]
   (if (every? symbol? params)
     (cons params body)
-    (loop* [params params
-            new-params []
-            lets []]
-           (if params
-             (if (symbol? (first params))
-               (recur (next params) (conj new-params (first params)) lets)
-               (let* [gparam (gensym "p__")]
-                 (recur (next params)
-                        (conj new-params gparam)
-                        (-> lets (conj (first params)) (conj gparam)))))
-             (list (vec new-params)
-                   (cons 'let (cons (vec lets) body)))))))
+    (loop [params params
+           new-params []
+           lets []]
+      (if params
+        (if (symbol? (first params))
+          (recur (next params) (conj new-params (first params)) lets)
+          (let* [gparam (gensym "p__")]
+            (recur (next params)
+                   (conj new-params gparam)
+                   (-> lets (conj (first params)) (conj gparam)))))
+        (list (vec new-params)
+              (cons 'let (cons (vec lets) body)))))))
 
-(defmacro fn [& sigs]
+#_{:clj-kondo/ignore [:redefined-var]}
+(defmacro
+  ^{:doc-group "Functions"}
+  fn
+  "params => positional-params*, or positional-params* & rest-param
+  Defines an anonymous function. Supports destructuring, multiple arities, and an optional name for self-recursion."
+  [& sigs]
   (let* [name    (if (symbol? (first sigs)) (first sigs) nil)
          sigs    (if name (next sigs) sigs)
          sigs    (if (vector? (first sigs)) (list sigs) sigs)
@@ -1559,14 +1872,25 @@ export const clojure_coreSource = `\
       (list* 'fn* name new-sigs)
       (cons 'fn* new-sigs))))
 
-(defmacro let [bindings & body]
+#_{:clj-kondo/ignore [:redefined-var]}
+(defmacro
+  ^{:doc-group "Control Flow"}
+  let
+  "binding => binding-form init-expr
+  Evaluates the exprs in a lexical context in which the symbols in the binding-forms are bound to their respective init-exprs values. Supports destructuring."
+  [bindings & body]
   (if (not (vector? bindings))
     (throw (ex-info "let requires a vector for its bindings" {}))
     (if (not (even? (count bindings)))
       (throw (ex-info "let requires an even number of forms in binding vector" {}))
       \`(let* ~(destructure bindings) ~@body))))
 
-(defmacro loop [bindings & body]
+#_{:clj-kondo/ignore [:redefined-var]}
+(defmacro
+  ^{:doc-group "Control Flow"}
+  loop
+  "Evaluates the exprs in a lexical context in which the symbols in the binding-forms are bound to their respective init-exprs values, then evaluates body. recur rebinds the bindings to the supplied values and re-evaluates body."
+  [bindings & body]
   (if (not (vector? bindings))
     (throw (ex-info "loop requires a vector for its binding" {}))
     (if (not (even? (count bindings)))
@@ -1592,7 +1916,9 @@ export const clojure_coreSource = `\
 
 
 
-(defmacro with-out-str
+(defmacro
+  ^{:doc-group "IO"}
+  with-out-str
   "Evaluates body in a context in which *out* is bound to a fresh string
   accumulator. Returns the string of all output produced by println, print,
   pr, prn, pprint and newline during the evaluation."
@@ -1602,7 +1928,9 @@ export const clojure_coreSource = `\
        ~@body)
      @buf#))
 
-(defmacro with-err-str
+(defmacro
+  ^{:doc-group "IO"}
+  with-err-str
   "Like with-out-str but captures *err* output (warn, etc.)."
   [& body]
   \`(let [buf# (atom "")]
@@ -1610,7 +1938,9 @@ export const clojure_coreSource = `\
        ~@body)
      @buf#))
 
-(defn pprint-str
+(defn
+  ^{:doc-group "IO"}
+  pprint-str
   "Returns the pretty-printed string representation of x, optionally
   limiting line width to max-width (default 80)."
   ([x] (with-out-str (pprint x)))
@@ -1642,7 +1972,9 @@ export const clojure_coreSource = `\
         doc         (when (string? (nth form 2 nil)) (nth form 2 nil))]
     [(str method-name) [(mapv str args)] doc]))
 
-(defmacro defprotocol
+(defmacro
+  ^{:doc-group "Abstractions"}
+  defprotocol
   "Defines a named protocol. Creates a protocol var and one dispatch
   function var per method in the current namespace.
 
@@ -1699,7 +2031,9 @@ export const clojure_coreSource = `\
                    (conj current-methods form)
                    result)))))))
 
-(defmacro extend-protocol
+(defmacro
+  ^{:doc-group "Abstractions"}
+  extend-protocol
   "Extends a protocol to one or more types.
 
   (extend-protocol IShape
@@ -1716,7 +2050,9 @@ export const clojure_coreSource = `\
                   \`(extend-protocol! ~proto-sym ~type-tag ~impl-map)))
               groups))))
 
-(defmacro extend-type
+(defmacro
+  ^{:doc-group "Abstractions"}
+  extend-type
   "Extends a type to implement one or more protocols.
 
   (extend-type Circle
@@ -1741,7 +2077,9 @@ export const clojure_coreSource = `\
   (let [bindings (vec (mapcat (fn [f] [f \`(~(keyword (name f)) ~this-sym)]) fields))]
     \`(let ~bindings ~@body)))
 
-(defmacro defrecord
+(defmacro
+  ^{:doc-group "Abstractions"}
+  defrecord
   "Defines a record type: a named, typed persistent map.
   Creates ->Name (positional) and map->Name (map-based) constructors.
   Optionally implements protocols inline.
@@ -1788,39 +2126,52 @@ export const clojure_coreSource = `\
 
 ;; ─── Keyword Hierarchy ───────────────────────────────────────────────────────
 
-(defn make-hierarchy
+(defn
+  ^{:doc-group "Abstractions"}
+  make-hierarchy
   "Returns a new, empty hierarchy."
   []
   {:parents {} :ancestors {} :descendants {}})
 
-(def ^:dynamic *hierarchy*
+(def ^{:doc-group "Abstractions" :dynamic true}
+  *hierarchy*
   (make-hierarchy))
 
-(defn parents
+(defn
+  ^{:doc-group "Abstractions"}
+  parents
   "Returns the immediate parents of tag in the hierarchy (default: *hierarchy*),
   or nil if tag has no parents."
   ([tag]   (hierarchy-parents-global tag))
   ([h tag] (get (:parents h) tag)))
 
-(defn ancestors
+(defn
+  ^{:doc-group "Abstractions"}
+  ancestors
   "Returns the set of all ancestors of tag in the hierarchy (default: *hierarchy*),
   or nil if tag has no ancestors."
   ([tag]   (hierarchy-ancestors-global tag))
   ([h tag] (get (:ancestors h) tag)))
 
-(defn descendants
+(defn
+  ^{:doc-group "Abstractions"}
+  descendants
   "Returns the set of all descendants of tag in the hierarchy (default: *hierarchy*),
   or nil if tag has no descendants."
   ([tag]   (hierarchy-descendants-global tag))
   ([h tag] (get (:descendants h) tag)))
 
-(defn isa?
+(defn
+  ^{:doc-group "Abstractions"}
+  isa?
   "Returns true if child is either identical to parent, or child derives from
   parent in the given hierarchy (default: *hierarchy*)."
   ([child parent]   (hierarchy-isa?-global child parent))
   ([h child parent] (hierarchy-isa?* h child parent)))
 
-(defn derive
+(defn
+  ^{:doc-group "Abstractions"}
+  derive
   "Establishes a parent/child relationship between child and parent.
 
   2-arity: mutates the global *hierarchy* via session-safe native.
@@ -1830,7 +2181,9 @@ export const clojure_coreSource = `\
   ([h child parent]
    (hierarchy-derive* h child parent)))
 
-(defn underive
+(defn
+  ^{:doc-group "Abstractions"}
+  underive
   "Removes the parent/child relationship between child and parent.
 
   2-arity: mutates the global *hierarchy* via session-safe native.
@@ -1844,7 +2197,9 @@ export const clojure_coreSource = `\
 ;; Bind to nil for unlimited output: (binding [*describe-limit* nil] (describe ...))
 (def ^:dynamic *describe-limit* 50)
 
-(defn describe
+(defn
+  ^{:doc-group "Dev"}
+  describe
   "Returns a plain map describing any cljam value.
 
   Works on protocols, records, functions, namespaces, multimethods,
@@ -1863,4 +2218,9 @@ export const clojure_coreSource = `\
     (describe #'my-fn)             ;; var"
   ([x] (describe* x *describe-limit*))
   ([x limit] (describe* x limit)))
+
+;; ── Doc-group annotations ────────────────────────────────────────────────────
+;; Add ^{:doc-group "Name"} to vars to create named sub-sections within each
+;; ## kind group in the API reference. Ungrouped vars fall to ### General.
+;; Expand these annotations in your own time — a few starters are provided here.
 `

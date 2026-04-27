@@ -3,9 +3,15 @@
 import { is } from '../../../assertions'
 import { derefValue, getNamespaceEnv, tryLookup } from '../../../env'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { makeGensym } from '../../../gensym'
-import { buildPrintContext, joinLines, prettyPrintString, printString, withPrintContext } from '../../../printer'
+import {
+  buildPrintContext,
+  joinLines,
+  prettyPrintString,
+  printString,
+  withPrintContext,
+} from '../../../printer'
 import { readForms } from '../../../reader'
 import { tokenize } from '../../../tokenizer'
 import { valueToString } from '../../../transformations'
@@ -26,7 +32,8 @@ function lookupMacroValue(
     const nsPrefix = name.slice(0, slashIdx)
     const localName = name.slice(slashIdx + 1)
     const nsEnv = getNamespaceEnv(callEnv)
-    const targetNs = nsEnv.ns?.aliases.get(nsPrefix) ?? ctx.resolveNs(nsPrefix) ?? null
+    const targetNs =
+      nsEnv.ns?.aliases.get(nsPrefix) ?? ctx.resolveNs(nsPrefix) ?? null
     if (!targetNs) return undefined
     const varEntry = targetNs.vars.get(localName)
     return varEntry !== undefined ? derefValue(varEntry) : undefined
@@ -41,8 +48,14 @@ export const utilFunctions: Record<string, CljValue> = {
         args.map((v) => (v.kind === 'nil' ? '' : valueToString(v))).join('')
       )
     })
-    .doc('Returns a concatenated string representation of the given values.', [
-      ['&', 'args'],
+    .withMeta([
+      ...docMeta({
+        doc: joinLines([
+          'Returns a concatenated string representation of the given values.',
+        ]),
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.strings,
+      }),
     ]),
   subs: v
     .nativeFn(
@@ -76,13 +89,18 @@ export const utilFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Returns the substring of s beginning at start, and optionally ending before end.',
-      [
-        ['s', 'start'],
-        ['s', 'start', 'end'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: joinLines([
+          'Returns the substring of s beginning at start, and optionally ending before end.',
+        ]),
+        arglists: [
+          ['s', 'start'],
+          ['s', 'start', 'end'],
+        ],
+        docGroup: DocGroups.strings,
+      }),
+    ]),
   type: v
     .nativeFn('type', function typeImpl(x: CljValue) {
       if (x === undefined) {
@@ -126,10 +144,13 @@ export const utilFunctions: Record<string, CljValue> = {
       }
       return v.keyword(kw)
     })
-    .doc(
-      'Returns a keyword representing the type of a value. Records return :ns/RecordType; built-ins return :string, :number, :nil, etc.',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a keyword representing the type of a value. Records return :ns/RecordType; built-ins return :string, :number, :nil, etc.',
+        arglists: [['x']],
+        docGroup: DocGroups.introspection,
+      }),
+    ]),
   gensym: v
     .nativeFn('gensym', function gensymImpl(...args: CljValue[]) {
       if (args.length > 1) {
@@ -149,7 +170,14 @@ export const utilFunctions: Record<string, CljValue> = {
     .doc(
       'Returns a unique symbol with the given prefix. Defaults to "G" if no prefix is provided.',
       [[], ['prefix']]
-    ),
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a unique symbol with the given prefix. Defaults to "G" if no prefix is provided.',
+        arglists: [[], ['prefix']],
+        docGroup: DocGroups.runtime,
+      }),
+    ]),
   eval: v
     .nativeFnCtx(
       'eval',
@@ -167,10 +195,13 @@ export const utilFunctions: Record<string, CljValue> = {
         return ctx.evaluate(expanded, callEnv)
       }
     )
-    .doc(
-      'Evaluates the given form in the global environment and returns the result.',
-      [['form']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Evaluates the given form in the global environment and returns the result.',
+        arglists: [['form']],
+        docGroup: DocGroups.runtime,
+      }),
+    ]),
 
   'macroexpand-1': v
     .nativeFnCtx(
@@ -189,10 +220,13 @@ export const utilFunctions: Record<string, CljValue> = {
         return ctx.applyMacro(macroValue, form.value.slice(1))
       }
     )
-    .doc(
-      'If the head of the form is a macro, expands it and returns the resulting forms. Otherwise, returns the form unchanged.',
-      [['form']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'If the head of the form is a macro, expands it and returns the resulting forms. Otherwise, returns the form unchanged.',
+        arglists: [['form']],
+        docGroup: DocGroups.runtime,
+      }),
+    ]),
 
   macroexpand: v
     .nativeFnCtx(
@@ -214,14 +248,17 @@ export const utilFunctions: Record<string, CljValue> = {
         }
       }
     )
-    .doc(
-      joinLines([
-        'Expands all macros until the expansion is stable (head is no longer a macro)',
-        '',
-        'Note neither macroexpand-1 nor macroexpand will expand macros in sub-forms',
-      ]),
-      [['form']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: joinLines([
+          'Expands all macros until the expansion is stable (head is no longer a macro)',
+          '',
+          'Note neither macroexpand-1 nor macroexpand will expand macros in sub-forms',
+        ]),
+        arglists: [['form']],
+        docGroup: DocGroups.runtime,
+      }),
+    ]),
 
   'macroexpand-all': v
     .nativeFnCtx(
@@ -234,15 +271,18 @@ export const utilFunctions: Record<string, CljValue> = {
         return ctx.expandAll(form, callEnv)
       }
     )
-    .doc(
-      joinLines([
-        'Fully expands all macros in a form recursively — including in sub-forms.',
-        '',
-        'Unlike macroexpand, this descends into every sub-expression.',
-        'Expansion stops at quote/quasiquote boundaries and fn/loop bodies.',
-      ]),
-      [['form']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: joinLines([
+          'Fully expands all macros in a form recursively — including in sub-forms.',
+          '',
+          'Unlike macroexpand, this descends into every sub-expression.',
+          'Expansion stops at quote/quasiquote boundaries and fn/loop bodies.',
+        ]),
+        arglists: [['form']],
+        docGroup: DocGroups.runtime,
+      }),
+    ]),
 
   // Returns the namespace string of a qualified keyword or symbol, or nil.
   // (namespace :user/foo) => "user"
@@ -270,10 +310,13 @@ export const utilFunctions: Record<string, CljValue> = {
       if (slashIdx <= 0) return v.nil()
       return v.string(raw.slice(0, slashIdx))
     })
-    .doc(
-      'Returns the namespace string of a qualified keyword or symbol, or nil if the argument is not qualified.',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the namespace string of a qualified keyword or symbol, or nil if the argument is not qualified.',
+        arglists: [['x']],
+        docGroup: DocGroups.introspection,
+      }),
+    ]),
 
   // Returns the local name of a keyword or symbol as a string.
   // (name :user/foo) => "foo"
@@ -301,10 +344,13 @@ export const utilFunctions: Record<string, CljValue> = {
       const slashIdx = raw.indexOf('/')
       return v.string(slashIdx >= 0 ? raw.slice(slashIdx + 1) : raw)
     })
-    .doc(
-      'Returns the local name of a qualified keyword or symbol, or the string value if the argument is a string.',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the local name of a qualified keyword or symbol, or the string value if the argument is a string.',
+        arglists: [['x']],
+        docGroup: DocGroups.introspection,
+      }),
+    ]),
 
   // Constructs a keyword.
   // (keyword "foo")        => :foo
@@ -335,46 +381,73 @@ export const utilFunctions: Record<string, CljValue> = {
       }
       return v.keyword(`:${args[0].value}/${args[1].value}`)
     })
-    .doc(
-      joinLines([
-        'Constructs a keyword with the given name and namespace strings. Returns a keyword value.',
-        '',
-        'Note: do not use : in the keyword strings, it will be added automatically.',
-        'e.g. (keyword "foo") => :foo',
-      ]),
-      [['name'], ['ns', 'name']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: joinLines([
+          'Constructs a keyword with the given name and namespace strings. Returns a keyword value.',
+          '',
+          'Note: do not use : in the keyword strings, it will be added automatically.',
+          'e.g. (keyword "foo") => :foo',
+        ]),
+        arglists: [['name'], ['ns', 'name']],
+        docGroup: DocGroups.strings,
+      }),
+    ]),
 
   boolean: v
     .nativeFn('boolean', function booleanImpl(x: CljValue) {
       if (x === undefined) return v.boolean(false)
       return v.boolean(is.truthy(x))
     })
-    .doc('Coerces to boolean. Everything is true except false and nil.', [
-      ['x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Coerces to boolean. Everything is true except false and nil.',
+        arglists: [['x']],
+        docGroup: DocGroups.utilities,
+      }),
     ]),
 
   'clojure-version': v
     .nativeFn('clojure-version', function clojureVersionImpl() {
       return v.string('1.12.0')
     })
-    .doc('Returns a string describing the current Clojure version.', [[]]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a string describing the current Clojure version.',
+        arglists: [[]],
+        docGroup: DocGroups.utilities,
+      }),
+    ]),
 
   'pr-str': v
-    .nativeFnCtx('pr-str', function prStrImpl(ctx: EvaluationContext, _callEnv, ...args: CljValue[]) {
-      return withPrintContext(buildPrintContext(ctx), () =>
-        v.string(args.map(printString).join(' '))
-      )
-    })
-    .doc(
-      'Returns a readable string representation of the given values (strings are quoted).',
-      [['&', 'args']]
-    ),
+    .nativeFnCtx(
+      'pr-str',
+      function prStrImpl(
+        ctx: EvaluationContext,
+        _callEnv,
+        ...args: CljValue[]
+      ) {
+        return withPrintContext(buildPrintContext(ctx), () =>
+          v.string(args.map(printString).join(' '))
+        )
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a readable string representation of the given values (strings are quoted).',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.strings,
+      }),
+    ]),
 
   'pretty-print-str': v
     .nativeFnCtx(
       'pretty-print-str',
-      function prettyPrintStrImpl(ctx: EvaluationContext, _callEnv, ...args: CljValue[]) {
+      function prettyPrintStrImpl(
+        ctx: EvaluationContext,
+        _callEnv,
+        ...args: CljValue[]
+      ) {
         if (args.length === 0) return v.string('')
         const form = args[0]
         const widthArg = args[1]
@@ -387,9 +460,12 @@ export const utilFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc('Returns a pretty-printed string representation of form.', [
-      ['form'],
-      ['form', 'max-width'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a pretty-printed string representation of form.',
+        arglists: [['form'], ['form', 'max-width']],
+        docGroup: DocGroups.strings,
+      }),
     ]),
 
   'read-string': v
@@ -402,38 +478,71 @@ export const utilFunctions: Record<string, CljValue> = {
         )
       }
       const tokens = tokenize(s.value)
-      const forms = readForms(tokens)
+      const forms = readForms(tokens, undefined, undefined, s.value)
       if (forms.length === 0) return v.nil()
       return forms[0]
     })
-    .doc(
-      'Reads one object from the string s. Returns nil if string is empty.',
-      [['s']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Reads one object from the string s. Returns nil if string is empty.',
+        arglists: [['s']],
+        docGroup: DocGroups.strings,
+      }),
+    ]),
 
   'prn-str': v
-    .nativeFnCtx('prn-str', function prnStrImpl(ctx: EvaluationContext, _callEnv, ...args: CljValue[]) {
-      return withPrintContext(buildPrintContext(ctx), () =>
-        v.string(args.map(printString).join(' ') + '\n')
-      )
-    })
-    .doc('pr-str to a string, followed by a newline.', [['&', 'args']]),
+    .nativeFnCtx(
+      'prn-str',
+      function prnStrImpl(
+        ctx: EvaluationContext,
+        _callEnv,
+        ...args: CljValue[]
+      ) {
+        return withPrintContext(buildPrintContext(ctx), () =>
+          v.string(args.map(printString).join(' ') + '\n')
+        )
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'pr-str to a string, followed by a newline.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.strings,
+      }),
+    ]),
 
   'print-str': v
-    .nativeFnCtx('print-str', function printStrImpl(ctx: EvaluationContext, _callEnv, ...args: CljValue[]) {
-      return withPrintContext(buildPrintContext(ctx), () =>
-        v.string(args.map(valueToString).join(' '))
-      )
-    })
-    .doc('print to a string (human-readable, no quotes on strings).', [
-      ['&', 'args'],
+    .nativeFnCtx(
+      'print-str',
+      function printStrImpl(
+        ctx: EvaluationContext,
+        _callEnv,
+        ...args: CljValue[]
+      ) {
+        return withPrintContext(buildPrintContext(ctx), () =>
+          v.string(args.map(valueToString).join(' '))
+        )
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'print to a string (human-readable, no quotes on strings).',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.strings,
+      }),
     ]),
 
   'println-str': v
     .nativeFn('println-str', function printlnStrImpl(...args: CljValue[]) {
       return v.string(args.map(valueToString).join(' ') + '\n')
     })
-    .doc('println to a string.', [['&', 'args']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'println to a string.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.strings,
+      }),
+    ]),
 
   symbol: v
     .nativeFn('symbol', function symbolImpl(...args: CljValue[]) {
@@ -458,9 +567,12 @@ export const utilFunctions: Record<string, CljValue> = {
       }
       return v.symbol(`${args[0].value}/${args[1].value}`)
     })
-    .doc('Returns a Symbol with the given namespace and name.', [
-      ['name'],
-      ['ns', 'name'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a Symbol with the given namespace and name.',
+        arglists: [['name'], ['ns', 'name']],
+        docGroup: DocGroups.runtime,
+      }),
     ]),
 
   // Clojure 1.11 safe-parse functions — return nil instead of throwing on invalid input.
@@ -478,10 +590,13 @@ export const utilFunctions: Record<string, CljValue> = {
       const n = Number.parseInt(s.value, 10)
       return Number.isFinite(n) ? v.number(n) : v.nil()
     })
-    .doc(
-      'Parses string s as a long integer. Returns nil if s is not a valid integer string.',
-      [['s']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Parses string s as a long integer. Returns nil if s is not a valid integer string.',
+        arglists: [['s']],
+        docGroup: DocGroups.utilities,
+      }),
+    ]),
 
   'parse-double': v
     .nativeFn('parse-double', function parseDoubleImpl(s: CljValue) {
@@ -499,10 +614,13 @@ export const utilFunctions: Record<string, CljValue> = {
       if (Number.isNaN(n) && trimmed !== 'NaN') return v.nil()
       return v.number(n)
     })
-    .doc(
-      'Parses string s as a double. Returns nil if s is not a valid number string.',
-      [['s']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Parses string s as a double. Returns nil if s is not a valid number string.',
+        arglists: [['s']],
+        docGroup: DocGroups.utilities,
+      }),
+    ]),
 
   'parse-boolean': v
     .nativeFn('parse-boolean', function parseBooleanImpl(s: CljValue) {
@@ -517,8 +635,11 @@ export const utilFunctions: Record<string, CljValue> = {
       if (s.value === 'false') return v.boolean(false)
       return v.nil()
     })
-    .doc(
-      'Parses string s as a boolean. Returns true for "true", false for "false", nil for anything else.',
-      [['s']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Parses string s as a boolean. Returns true for "true", false for "false", nil for anything else.',
+        arglists: [['s']],
+        docGroup: DocGroups.utilities,
+      }),
+    ]),
 }

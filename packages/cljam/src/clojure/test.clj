@@ -1,4 +1,6 @@
-(ns clojure.test)
+(ns clojure.test
+  "Testing facilities. Provides macros for defining and running tests, as well as assertions and reporting. 
+   can be overridden for custom integration.")
 
 ;; ---------------------------------------------------------------------------
 ;; Dynamic vars

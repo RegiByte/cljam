@@ -1,6 +1,6 @@
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { getNamespaceEnv, internVar } from '../../../env'
 import type {
   CljKeyword,
@@ -27,7 +27,13 @@ export const multimethodFunctions: Record<string, CljValue> = {
     .nativeFn('multimethod?', function isMultimethodImpl(x: CljValue) {
       return v.boolean(is.multiMethod(x))
     })
-    .doc('Returns true if x is a multimethod.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a multimethod.',
+        arglists: [['x']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   /**
    * Creates a multimethod with the given name and dispatch-fn, and interns it
@@ -72,19 +78,32 @@ export const multimethodFunctions: Record<string, CljValue> = {
         // Parse optional flat keyword-value pairs: :default <sentinel-val>
         let defaultDispatchVal: CljValue | undefined
         for (let i = 0; i + 1 < opts.length; i += 2) {
-          if (is.keyword(opts[i]) && (opts[i] as CljKeyword).name === ':default') {
+          if (
+            is.keyword(opts[i]) &&
+            (opts[i] as CljKeyword).name === ':default'
+          ) {
             defaultDispatchVal = opts[i + 1]
           }
         }
-        const mm = v.multiMethod(name, dispatchFn, [], undefined, defaultDispatchVal)
+        const mm = v.multiMethod(
+          name,
+          dispatchFn,
+          [],
+          undefined,
+          defaultDispatchVal
+        )
         internVar(name, mm, nsEnv)
         return v.nil()
       }
     )
-    .doc(
-      'Creates a multimethod with the given name and dispatch-fn in the current namespace. Accepts optional :default <sentinel-val> to customize the fallback sentinel. No-op if already a multimethod (re-eval safe).',
-      [['name', 'dispatch-fn', '& opts']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates a multimethod with the given name and dispatch-fn in the current namespace. Accepts optional :default <sentinel-val> to customize the fallback sentinel. No-op if already a multimethod (re-eval safe).',
+        arglists: [['name', 'dispatch-fn', '& opts']],
+        docGroup: DocGroups.multimethods,
+        extra: { 'no-doc': true },
+      }),
+    ]),
 
   /**
    * Adds or replaces a method on a multimethod var.
@@ -149,8 +168,12 @@ export const multimethodFunctions: Record<string, CljValue> = {
         return v.nil()
       }
     )
-    .doc(
-      'Adds or replaces a method on a multimethod var. Uses :default as the fallback dispatch value.',
-      [['mm-var', 'dispatch-val', 'fn']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Adds or replaces a method on a multimethod var. Uses :default as the fallback dispatch value.',
+        arglists: [['mm-var', 'dispatch-val', 'fn']],
+        docGroup: DocGroups.multimethods,
+        extra: { 'no-doc': true },
+      }),
+    ]),
 }

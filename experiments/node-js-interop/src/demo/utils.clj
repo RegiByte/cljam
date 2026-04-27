@@ -2,7 +2,14 @@
   (:require [clojure.string :as str]
             ["node:path" :as path]
             ["node:http" :as http]
-            [cljam.date :as date]))
+            ["node:fs" :as fs]
+            [cljam.date :as date]
+            [cljam.integrant.core :as ig]
+            [clojure.math :as math]
+            [clojure.walk :as walk]
+            [clojure.edn :as edn]
+            [clojure.math :as math]
+            [js :as js]))
 
 
 (defn file-ext
@@ -20,96 +27,56 @@
   [filenames]
   (group-by file-ext filenames))
 
-
-
-
-(. js/console log "Hello through console.log!!")
-(js/console.log "Hello through console.log!!")
-
-(map #(. js/Math pow % 2) [1 2 3 4 5])
-
-(file-ext "foo.com/bar.cljss")
-
-*ns*
-
-(println "hi!")
-
-(defn deep [n]
-  (if (zero? n)
-    :done
-    (deep (dec n))))
-
-;; Regular recursion is limited by the JS call stack.
-;; In compiled mode, each Conjure call costs ~7 JS frames.
-;; JS stack limit (~10k frames) / 7 ≈ ~1400 max recursion depth.
-;; Contrast with loop/recur below — that is TCO and handles millions.
-(deep 200)
-(deep 500)
-(deep 800)
-
-(loop [n 1000000]
-  (if (zero? n)
-    :done
-    (recur (dec n))))
-
-(inc 2)
-
 (comment
+  (inc 2)
+  (inc 3)
+  (+ 1 2 3)
 
-  (doc js/call)
+  (range 1 20)
+  (->> (range 1 20 2)
+       (map #(* math/TAU %)))
+
+
+  (describe mapv)
+
+
+  (+ 1 2 3)
+
+  (describe some)
+
+
+  (some even? [1 3])
+
+  (def iatom (atom 1))
+  @iatom
+
+  (swap! iatom inc)
+  (js/setTimeout #(do (println "Hello, World!") (swap! iatom inc)) 1000)
+  (inc 3)
+
+  (js/clearInterval @iatom)
+  (reset! iatom nil)
+
+  (let [t1 (js/setTimeout #(println "Hello, World! From timeout 1!") 5000)
+        t2 (js/setTimeout #(do (js/clearTimeout t1) (println "Hello, World! From timeout 2!")) 3000)]
+    [t1 t2])
+
+  (cwd)
+  (pwd)
+  (cd "src")
+
+  (def config-str (slurp "system.config.edn"))
 
   
-  (date/to-iso (date/now))
-  (date/now)
+  (meta #'+)
 
-  (date/year (date/now))
-  (date/month (date/now))
-  (date/day (date/now))
-  (date/hour (date/now))
-  (let [date (date/from-iso "2026-04-05T12:55:30.000Z")]
-    [(date/year date)
-     (date/month date)
-     (date/day date)
-     (date/hour date)
-     (date/minute date) 
-     (date/second date)])
-  (-> (date/from-iso "2026-04-05T12:55:30.000Z")
-      (date/to-iso))
-  
-  (-> (date/now)
-      (date/add-days 10)
-      (date/to-iso))
+  (meta #'filter)
 
-  (-> (date/now)
-      (date/add-days -2)
-      (date/add-hours -3)
-      (date/to-iso))
-  
-  (date/diff-days (date/from-iso "2026-04-05T12:55:30.000Z") 
-                  (date/from-iso "2026-04-07T12:55:30.000Z"))
+  (math/log 10)
 
-  (deep 800)
-  (deep 1000)
-  (deep 2000)
-  (deep 3000)
-  (deep 4000)
-  (deep 5000)
-  (deep 5500)
-  (deep 5530)
-  (deep 6000)
-  (deep 6500)
-  (deep 7000)
-  (deep 7500)
-  (deep 7778) ;; <-- new max
-  )
+  (pprint (describe (find-ns 'clojure.math)))
 
-(def the-data [1 2 3])
-(def mapped (map inc the-data))
+  (meta #'math/math-floor*)
 
-(comment
-  mapped
-  (describe (find-ns 'demo.utils))  
   ;
-
   )
-

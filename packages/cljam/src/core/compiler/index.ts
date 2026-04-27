@@ -177,8 +177,19 @@ function compileSymbol(
   if (slot !== null) {
     return (_env, _ctx) => slot.value! // direct slot access, no lookup
   }
-  // Regular lookup
-  return (env, _ctx) => lookup(symbolName, env)
+  // Regular lookup — capture pos at compile time so lookup failures point at
+  // the symbol in the source rather than the call site.
+  const pos = getPos(node)
+  return (env, _ctx) => {
+    try {
+      return lookup(symbolName, env)
+    } catch (e) {
+      if (e instanceof EvaluationError && !e.pos && pos) {
+        e.pos = pos
+      }
+      throw e
+    }
+  }
 }
 
 /**

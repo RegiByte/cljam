@@ -7,11 +7,12 @@
     "dev": "vitepress dev",
     "build": "vitepress build",
     "preview": "vitepress preview",
-    "repl": "cljam repl"
+    "repl": "cljam repl",
+    "gen:api-docs": "bun scripts/gen-api-docs.ts"
   },
   "devDependencies": {
     "vitepress": "^1.5.0",
-    "@regibyte/cljam": "workspace:*",
+    "@regibyte/cljam": "file:../cljam",
     "monaco-editor": "^0.55.1",
     "@bithero/monaco-editor-vite-plugin": "^1.0.3"
   }

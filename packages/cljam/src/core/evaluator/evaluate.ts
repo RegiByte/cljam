@@ -75,7 +75,15 @@ export function evaluateWithContext(
         }
         return derefValue(v)
       }
-      return lookup(expr.name, env)
+      try {
+        return lookup(expr.name, env)
+      } catch (e) {
+        if (e instanceof EvaluationError && !e.pos) {
+          const pos = getPos(expr)
+          if (pos) e.pos = pos
+        }
+        throw e
+      }
     }
     case valueKeywords.vector:
       return evaluateVector(expr, env, ctx)

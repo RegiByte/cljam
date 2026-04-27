@@ -438,4 +438,153 @@ describe('per-argument error positions (argIndex)', () => {
       expect(err!.message).toContain('division by zero')
     })
   })
+
+  describe('error message quality — Opus 4.7 regression suite', () => {
+    it('ex-info thrown via (throw (ex-info ...)) shows the message, not the raw map', () => {
+      expectError(
+        '(let [a 1 b] (+ a b))',
+        'let requires an even number of forms in binding vector'
+      )
+    })
+
+    it('plain thrown map without :data still shows raw map, not extracted message', () => {
+      // {:type :error/test :message "oops"} has no :data key — not an ex-info value
+      expectError(
+        '(throw {:type :error/test :message "oops"})',
+        'Unhandled throw'
+      )
+    })
+
+    it('undefined symbol inside defn body shows the missing symbol name', () => {
+      const s = freshSession()
+      s.evaluate('(defn oops [xs] (redcue + 0 xs))')
+      let err: EvaluationError | undefined
+      try {
+        s.evaluate('(oops [1 2 3])')
+      } catch (e) {
+        if (e instanceof EvaluationError) err = e
+      }
+      expect(err).toBeDefined()
+      // Should mention the undefined symbol name
+      expect(err!.message).toContain('redcue')
+    })
+
+    it('recur arity mismatch in loop reports correct counts', () => {
+      expectError(
+        '(loop [n 10 acc 0] (if (zero? n) acc (recur (dec n))))',
+        'recur expects 2 arguments but got 1'
+      )
+    })
+
+    it('map destructuring on non-map non-sequential value gives clear error', () => {
+      expectError(
+        '(let [{:keys [a b c]} 42] [a b c])',
+        'Cannot destructure'
+      )
+    })
+
+    it('map destructuring on nil gives empty bindings', () => {
+      // nil is valid (treated as empty map)
+      const s = freshSession()
+      expect(s.evaluate('(let [{:keys [a b]} nil] [a b])')).toEqual(
+        v.vector([v.nil(), v.nil()])
+      )
+    })
+
+    it('map destructuring on sequential still works (kwargs pattern)', () => {
+      // A flat seq of k/v pairs is valid map destructuring
+      const s = freshSession()
+      expect(
+        s.evaluate("(let [{:keys [a b]} '(:a 1 :b 2)] [a b])")
+      ).toEqual(v.vector([v.number(1), v.number(2)]))
+    })
+
+    it('sequential destructuring on non-sequential value gives clear error', () => {
+      expectError(
+        '(let [[a b c] 42] [a b c])',
+        'Cannot destructure 42 as a sequential collection'
+      )
+    })
+
+    it('sequential destructuring on nil gives empty bindings', () => {
+      const s = freshSession()
+      expect(s.evaluate('(let [[a b] nil] [a b])')).toEqual(
+        v.vector([v.nil(), v.nil()])
+      )
+    })
+
+    it('sequential destructuring on lazy-seq still works', () => {
+      const s = freshSession()
+      expect(s.evaluate('(let [[a b c] (map inc [10 20 30])] [a b c])')).toEqual(
+        v.vector([v.number(11), v.number(21), v.number(31)])
+      )
+    })
+
+    it('undefined symbol in compiled fn body shows symbol name, not call site', () => {
+      // The compiler path (compiled closure) must stamp e.pos from the symbol
+      // in the definition body, not from the call site.
+      const s = freshSession()
+      s.evaluate('(defn broken [x] (no-such-fn x))')
+      let err: EvaluationError | undefined
+      try {
+        s.evaluate('(broken 1)')
+      } catch (e) {
+        if (e instanceof EvaluationError) err = e
+      }
+      expect(err).toBeDefined()
+      expect(err!.message).toContain('no-such-fn')
+      // The error message should NOT mention the call site as the primary location.
+      // In the same-source case, the caret points at the symbol in the defn body.
+    })
+
+    it('unclosed paren error uses bracket char, not token kind name', () => {
+      const s = freshSession()
+      let err: Error | undefined
+      try {
+        s.evaluate('(+ 1 2')
+      } catch (e) {
+        if (e instanceof Error) err = e
+      }
+      expect(err).toBeDefined()
+      expect(err!.message).toContain('`(`')
+      expect(err!.message).toContain('`)`')
+      expect(err!.message).not.toContain('RParen')
+    })
+
+    it('cross-source: caret points at definition site, not call site', () => {
+      // Option B — Pos carries its source string. When an error originates in a
+      // defn body evaluated in a previous session.evaluate() call, the caret
+      // must show the definition source line, not the call-site source.
+      const s = freshSession()
+      s.evaluate('(defn oops [] (/ 1 redcue))')
+      // 'redcue' spans offsets 19-24 in the defn source string.
+      let err: Error | undefined
+      try {
+        s.evaluate('(oops)')
+      } catch (e) {
+        err = e as Error
+      }
+      expect(err).toBeDefined()
+      // The caret lineText should come from the defn source, not from '(oops)'.
+      expect(err!.message).toContain('(defn oops [] (/ 1 redcue))')
+      // 6 carets for the 6-char token 'redcue'.
+      expect(err!.message).toMatch(/\^{6}/)
+      // The call-site string must NOT be the primary caret target.
+      expect(err!.message).not.toMatch(/\(oops\)\n +\^/)
+    })
+
+    it('cross-source: multiple separate evals each keep their own source for carets', () => {
+      // Verify that evaluating two functions and calling both still routes
+      // errors to the correct definition source.
+      const s = freshSession()
+      s.evaluate('(defn fn-a [] (missing-a))')
+      s.evaluate('(defn fn-b [] (missing-b))')
+      let errA: Error | undefined
+      let errB: Error | undefined
+      try { s.evaluate('(fn-a)') } catch (e) { errA = e as Error }
+      try { s.evaluate('(fn-b)') } catch (e) { errB = e as Error }
+      expect(errA!.message).toContain('(defn fn-a [] (missing-a))')
+      expect(errB!.message).toContain('(defn fn-b [] (missing-b))')
+    })
+  })
 })

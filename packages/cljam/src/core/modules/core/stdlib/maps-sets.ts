@@ -7,7 +7,7 @@
 
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
 import { type CljNumber, type CljValue } from '../../../types'
@@ -32,8 +32,12 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
       }
       return v.map(entries)
     })
-    .doc('Returns a new hash-map containing the given key-value pairs.', [
-      ['&', 'kvals'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new hash-map containing the given key-value pairs.',
+        arglists: [['&', 'kvals']],
+        docGroup: DocGroups.maps,
+      }),
     ]),
 
   assoc: v
@@ -138,10 +142,13 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Associates the value val with the key k in collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the new value at index k.',
-      [['collection', '&', 'kvals']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Associates the value val with the key k in collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the new value at index k.',
+        arglists: [['collection', '&', 'kvals']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   dissoc: v
     .nativeFn(
@@ -227,10 +234,13 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Dissociates the key k from collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the value at index k removed.',
-      [['collection', '&', 'keys']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Dissociates the key k from collection. If collection is a map, returns a new map with the same mappings, otherwise returns a vector with the value at index k removed.',
+        arglists: [['collection', '&', 'keys']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   zipmap: v
     .nativeFn('zipmap', function zipmapImpl(ks: CljValue, vs: CljValue) {
@@ -255,10 +265,13 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
       }
       return v.map(entries)
     })
-    .doc(
-      'Returns a new map with the keys and values of the given collections.',
-      [['ks', 'vs']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new map with the keys and values of the given collections.',
+        arglists: [['ks', 'vs']],
+        docGroup: DocGroups.maps,
+      }),
+    ]),
 
   keys: v
     .nativeFn('keys', function keysImpl(m: CljValue) {
@@ -270,9 +283,19 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
         )
       }
       const entries = is.record(m) ? m.fields : m.entries
-      return v.vector(entries.map(function extractKey([k]) { return k }))
+      return v.vector(
+        entries.map(function extractKey([k]) {
+          return k
+        })
+      )
     })
-    .doc('Returns a vector of the keys of the given map or record.', [['m']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a vector of the keys of the given map or record.',
+        arglists: [['m']],
+        docGroup: DocGroups.maps,
+      }),
+    ]),
 
   vals: v
     .nativeFn('vals', function valsImpl(m: CljValue) {
@@ -284,9 +307,19 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
         )
       }
       const entries = is.record(m) ? m.fields : m.entries
-      return v.vector(entries.map(function extractVal([, val]) { return val }))
+      return v.vector(
+        entries.map(function extractVal([, val]) {
+          return val
+        })
+      )
     })
-    .doc('Returns a vector of the values of the given map or record.', [['m']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a vector of the values of the given map or record.',
+        arglists: [['m']],
+        docGroup: DocGroups.maps,
+      }),
+    ]),
 
   'hash-set': v
     .nativeFn('hash-set', function hashSetImpl(...args: CljValue[]) {
@@ -298,7 +331,13 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
       }
       return v.set(deduped)
     })
-    .doc('Returns a set containing the given values.', [['&', 'xs']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a set containing the given values.',
+        arglists: [['&', 'xs']],
+        docGroup: DocGroups.sets,
+      }),
+    ]),
 
   set: v
     .nativeFn('set', function setImpl(coll: CljValue) {
@@ -312,15 +351,25 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
       }
       return v.set(deduped)
     })
-    .doc('Returns a set of the distinct elements of the given collection.', [
-      ['coll'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a set of the distinct elements of the given collection.',
+        arglists: [['coll']],
+        docGroup: DocGroups.collections,
+      }),
     ]),
 
   'set?': v
     .nativeFn('set?', function setPredicateImpl(x: CljValue) {
       return v.boolean(x !== undefined && x.kind === 'set')
     })
-    .doc('Returns true if x is a set.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a set.',
+        arglists: [['x']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   disj: v
     .nativeFn('disj', function disjImpl(s: CljValue, ...items: CljValue[]) {
@@ -337,5 +386,11 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
       )
       return v.set(newValues)
     })
-    .doc('Returns a set with the given items removed.', [['s', '&', 'items']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a set with the given items removed.',
+        arglists: [['s', '&', 'items']],
+        docGroup: DocGroups.sets,
+      }),
+    ]),
 }

@@ -1,7 +1,7 @@
 // Native math helpers used by clojure.math.
 // All public API lives in src/clojure/math.clj; these are private helpers.
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import type { CljNumber, CljValue } from '../../../types'
 
@@ -38,6 +38,10 @@ function rint(x: number): number {
   return Math.round(x)
 }
 
+const hideDocExtras = {
+  'no-doc': true,
+} as const
+
 // ---------------------------------------------------------------------------
 // Exported record
 // ---------------------------------------------------------------------------
@@ -45,175 +49,353 @@ function rint(x: number): number {
 export const mathFunctions: Record<string, CljValue> = {
   // ── Rounding ──────────────────────────────────────────────────────────────
 
-  'math-floor*': v
+  'floor*': v
     .nativeFn('math-floor*', function mathFloorImpl(x: CljValue) {
       return v.number(Math.floor(assertNum(x, 'floor')))
     })
-    .doc('Returns the largest integer ≤ x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the largest integer ≤ x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-ceil*': v
+  'ceil*': v
     .nativeFn('math-ceil*', function mathCeilImpl(x: CljValue) {
       return v.number(Math.ceil(assertNum(x, 'ceil')))
     })
-    .doc('Returns the smallest integer ≥ x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the smallest integer ≥ x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-round*': v
+  'round*': v
     .nativeFn('math-round*', function mathRoundImpl(x: CljValue) {
       return v.number(Math.round(assertNum(x, 'round')))
     })
-    .doc('Returns the closest integer to x, with ties rounding up.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the closest integer to x, with ties rounding up.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-rint*': v
+  'rint*': v
     .nativeFn('math-rint*', function mathRintImpl(x: CljValue) {
       return v.number(rint(assertNum(x, 'rint')))
     })
-    .doc(
-      'Returns the integer closest to x, with ties rounding to the nearest even (IEEE 754 round-half-to-even).',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the integer closest to x, with ties rounding to the nearest even (IEEE 754 round-half-to-even).',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
   // ── Exponents / logarithms ────────────────────────────────────────────────
 
-  'math-pow*': v
+  'pow*': v
     .nativeFn('math-pow*', function mathPowImpl(x: CljValue, y: CljValue) {
       const [xn, yn] = assertNum2(x, y, 'pow')
       return v.number(Math.pow(xn, yn))
     })
-    .doc('Returns x raised to the power of y.', [['x', 'y']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns x raised to the power of y.',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-exp*': v
+  'exp*': v
     .nativeFn('math-exp*', function mathExpImpl(x: CljValue) {
       return v.number(Math.exp(assertNum(x, 'exp')))
     })
-    .doc("Returns Euler's number e raised to the power of x.", [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: "Returns Euler's number e raised to the power of x.",
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-log*': v
+  'log*': v
     .nativeFn('math-log*', function mathLogImpl(x: CljValue) {
       return v.number(Math.log(assertNum(x, 'log')))
     })
-    .doc('Returns the natural logarithm (base e) of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the natural logarithm (base e) of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-log10*': v
+  'log10*': v
     .nativeFn('math-log10*', function mathLog10Impl(x: CljValue) {
       return v.number(Math.log10(assertNum(x, 'log10')))
     })
-    .doc('Returns the base-10 logarithm of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the base-10 logarithm of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-cbrt*': v
+  'cbrt*': v
     .nativeFn('math-cbrt*', function mathCbrtImpl(x: CljValue) {
       return v.number(Math.cbrt(assertNum(x, 'cbrt')))
     })
-    .doc('Returns the cube root of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the cube root of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-hypot*': v
+  'hypot*': v
     .nativeFn('math-hypot*', function mathHypotImpl(x: CljValue, y: CljValue) {
       const [xn, yn] = assertNum2(x, y, 'hypot')
       return v.number(Math.hypot(xn, yn))
     })
-    .doc('Returns sqrt(x² + y²), the length of the hypotenuse.', [['x', 'y']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns sqrt(x² + y²), the length of the hypotenuse.',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
   // ── Trigonometry ──────────────────────────────────────────────────────────
 
-  'math-sin*': v
+  'sin*': v
     .nativeFn('math-sin*', function mathSinImpl(x: CljValue) {
       return v.number(Math.sin(assertNum(x, 'sin')))
     })
-    .doc('Returns the sine of x (in radians).', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the sine of x (in radians).',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-cos*': v
+  'cos*': v
     .nativeFn('math-cos*', function mathCosImpl(x: CljValue) {
       return v.number(Math.cos(assertNum(x, 'cos')))
     })
-    .doc('Returns the cosine of x (in radians).', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the cosine of x (in radians).',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-tan*': v
+  'tan*': v
     .nativeFn('math-tan*', function mathTanImpl(x: CljValue) {
       return v.number(Math.tan(assertNum(x, 'tan')))
     })
-    .doc('Returns the tangent of x (in radians).', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the tangent of x (in radians).',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-asin*': v
+  'asin*': v
     .nativeFn('math-asin*', function mathAsinImpl(x: CljValue) {
       return v.number(Math.asin(assertNum(x, 'asin')))
     })
-    .doc('Returns the arc sine of x, in radians.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the arc sine of x, in radians.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-acos*': v
+  'acos*': v
     .nativeFn('math-acos*', function mathAcosImpl(x: CljValue) {
       return v.number(Math.acos(assertNum(x, 'acos')))
     })
-    .doc('Returns the arc cosine of x, in radians.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the arc cosine of x, in radians.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-atan*': v
+  'atan*': v
     .nativeFn('math-atan*', function mathAtanImpl(x: CljValue) {
       return v.number(Math.atan(assertNum(x, 'atan')))
     })
-    .doc('Returns the arc tangent of x, in radians.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the arc tangent of x, in radians.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-atan2*': v
+  'atan2*': v
     .nativeFn('math-atan2*', function mathAtan2Impl(y: CljValue, x: CljValue) {
       const [yn, xn] = assertNum2(y, x, 'atan2')
       return v.number(Math.atan2(yn, xn))
     })
-    .doc('Returns the angle θ from the conversion of rectangular (x, y) to polar (r, θ). Args: y, x.', [
-      ['y', 'x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the angle θ from the conversion of rectangular (x, y) to polar (r, θ). Args: y, x.',
+        arglists: [['y', 'x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
     ]),
 
   // ── Hyperbolic ────────────────────────────────────────────────────────────
 
-  'math-sinh*': v
+  'sinh*': v
     .nativeFn('math-sinh*', function mathSinhImpl(x: CljValue) {
       return v.number(Math.sinh(assertNum(x, 'sinh')))
     })
-    .doc('Returns the hyperbolic sine of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the hyperbolic sine of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-cosh*': v
+  'cosh*': v
     .nativeFn('math-cosh*', function mathCoshImpl(x: CljValue) {
       return v.number(Math.cosh(assertNum(x, 'cosh')))
     })
-    .doc('Returns the hyperbolic cosine of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the hyperbolic cosine of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-tanh*': v
+  'tanh*': v
     .nativeFn('math-tanh*', function mathTanhImpl(x: CljValue) {
       return v.number(Math.tanh(assertNum(x, 'tanh')))
     })
-    .doc('Returns the hyperbolic tangent of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the hyperbolic tangent of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
   // ── Miscellaneous ─────────────────────────────────────────────────────────
 
-  'math-signum*': v
+  'signum*': v
     .nativeFn('math-signum*', function mathSignumImpl(x: CljValue) {
       const n = assertNum(x, 'signum')
       if (n === 0 || Number.isNaN(n)) return v.number(n)
       return v.number(n > 0 ? 1.0 : -1.0)
     })
-    .doc('Returns -1.0, 0.0, or 1.0 indicating the sign of x.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns -1.0, 0.0, or 1.0 indicating the sign of x.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-floor-div*': v
-    .nativeFn('math-floor-div*', function mathFloorDivImpl(x: CljValue, y: CljValue) {
-      const [xn, yn] = assertNum2(x, y, 'floor-div')
-      if (yn === 0) throw new EvaluationError('floor-div: division by zero', { x, y })
-      return v.number(Math.floor(xn / yn))
-    })
-    .doc('Returns the largest integer ≤ x/y (floor division).', [['x', 'y']]),
+  'floor-div*': v
+    .nativeFn(
+      'math-floor-div*',
+      function mathFloorDivImpl(x: CljValue, y: CljValue) {
+        const [xn, yn] = assertNum2(x, y, 'floor-div')
+        if (yn === 0)
+          throw new EvaluationError('floor-div: division by zero', { x, y })
+        return v.number(Math.floor(xn / yn))
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the largest integer ≤ x/y (floor division).',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-floor-mod*': v
-    .nativeFn('math-floor-mod*', function mathFloorModImpl(x: CljValue, y: CljValue) {
-      const [xn, yn] = assertNum2(x, y, 'floor-mod')
-      if (yn === 0) throw new EvaluationError('floor-mod: division by zero', { x, y })
-      return v.number(((xn % yn) + yn) % yn)
-    })
-    .doc('Returns x - (floor-div x y) * y (floor modulo).', [['x', 'y']]),
+  'floor-mod*': v
+    .nativeFn(
+      'math-floor-mod*',
+      function mathFloorModImpl(x: CljValue, y: CljValue) {
+        const [xn, yn] = assertNum2(x, y, 'floor-mod')
+        if (yn === 0)
+          throw new EvaluationError('floor-mod: division by zero', { x, y })
+        return v.number(((xn % yn) + yn) % yn)
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns x - (floor-div x y) * y (floor modulo).',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-to-radians*': v
+  'to-radians*': v
     .nativeFn('math-to-radians*', function mathToRadiansImpl(x: CljValue) {
       return v.number((assertNum(x, 'to-radians') * Math.PI) / 180)
     })
-    .doc('Converts an angle in degrees to radians.', [['deg']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Converts an angle in degrees to radians.',
+        arglists: [['deg']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 
-  'math-to-degrees*': v
+  'to-degrees*': v
     .nativeFn('math-to-degrees*', function mathToDegreesImpl(x: CljValue) {
       return v.number((assertNum(x, 'to-degrees') * 180) / Math.PI)
     })
-    .doc('Converts an angle in radians to degrees.', [['rad']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Converts an angle in radians to degrees.',
+        arglists: [['rad']],
+        docGroup: DocGroups.arithmetic,
+        extra: hideDocExtras,
+      }),
+    ]),
 }

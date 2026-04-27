@@ -741,10 +741,34 @@ export function startNreplServer(options: NreplServerOptions = {}): net.Server {
   }
 
   if (writePortFile) {
+    // CLI / standalone use: surface bind failures with a clear message and
+    // exit non-zero so the parent (shell, Calva jack-in) doesn't hang waiting
+    // for a banner that will never come.
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        process.stderr.write(
+          `\n✗ nREPL server failed to start: port ${port} on host ${host} is already in use.\n` +
+            `  Another nREPL server is likely already running. Stop it with:\n` +
+            `      lsof -i :${port}    # find the PID\n` +
+            `      kill <pid>          # then re-run\n` +
+            `  Or pass a different { port } to startNreplServer.\n\n`
+        )
+      } else if (err.code === 'EACCES') {
+        process.stderr.write(
+          `\n✗ nREPL server failed to start: permission denied for port ${port} on host ${host}.\n` +
+            `  Use a port >= 1024 or run with elevated privileges.\n\n`
+        )
+      } else {
+        process.stderr.write(
+          `\n✗ nREPL server failed to start: ${err.message} (code: ${err.code ?? 'unknown'})\n\n`
+        )
+      }
+      process.exit(1)
+    })
     server.listen(port, host, () => {
       writeFileSync(portFile, String(port), 'utf8')
       process.stdout.write(
-        `Conjure nREPL server v${VERSION} started on port ${port}\n`
+        `nREPL server started on port ${port} on host ${host} - nrepl://${host}:${port} (cljam v${VERSION})\n`
       )
     })
     server.on('close', cleanup)
@@ -758,6 +782,8 @@ export function startNreplServer(options: NreplServerOptions = {}): net.Server {
       process.exit(0)
     })
   } else {
+    // Embedded use: emit 'error' as normal so the caller can attach their
+    // own listener (`server.on('error', ...)`) and react however they like.
     server.listen(port, host)
   }
 

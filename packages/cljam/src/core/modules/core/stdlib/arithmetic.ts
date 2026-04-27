@@ -1,6 +1,6 @@
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
 import type { CljList, CljNumber, CljValue, CljVector } from '../../../types'
@@ -10,21 +10,19 @@ export const arithmeticFunctions: Record<string, CljValue> = {
     .nativeFn('+', function add(...nums: CljValue[]) {
       if (nums.length === 0) return v.number(0)
       if (nums.length === 2) {
-        if (nums[0].kind !== 'number')
+        if (!is.number(nums[0]))
           throw EvaluationError.atArg(
             '+ expects all arguments to be numbers',
             { args: nums },
             0
           )
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '+ expects all arguments to be numbers',
             { args: nums },
             1
           )
-        return v.number(
-          (nums[0] as CljNumber).value + (nums[1] as CljNumber).value
-        )
+        return v.number(nums[0].value + nums[1].value)
       }
       let result = 0
       for (let i = 0; i < nums.length; i++) {
@@ -38,8 +36,29 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(result)
     })
-    .doc('Returns the sum of the arguments. Throws on non-number arguments.', [
-      ['&', 'nums'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the sum of the arguments. Throws on non-number arguments.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.arithmetic,
+        extra: {
+          // TODO: remove these
+          someNum: 42,
+          someBool: true,
+          someString: 'hello',
+          someSymbol: v.symbol('hello'),
+          someKeyword: v.keyword(':hello'),
+          someVector: v.vector([v.number(1), v.number(2), v.number(3)]),
+          someMap: v.map([
+            [v.keyword(':a'), v.number(1)],
+            [v.keyword(':b'), v.number(2)],
+            [v.keyword(':c'), v.number(3)],
+          ]),
+          someSet: v.set([v.number(1), v.number(2), v.number(3)]),
+          someList: v.list([v.number(1), v.number(2), v.number(3)]),
+          someAtom: v.atom(v.number(1)),
+        },
+      }),
     ]),
 
   '-': v
@@ -78,10 +97,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(result)
     })
-    .doc(
-      'Returns the difference of the arguments. Throws on non-number arguments.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the difference of the arguments. Throws on non-number arguments.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   '*': v
     .nativeFn('*', function multiply(...nums: CljValue[]) {
@@ -115,10 +137,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(result)
     })
-    .doc(
-      'Returns the product of the arguments. Throws on non-number arguments.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the product of the arguments. Throws on non-number arguments.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   '/': v
     .nativeFn('/', function divide(...nums: CljValue[]) {
@@ -162,10 +187,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(result)
     })
-    .doc(
-      'Returns the quotient of the arguments. Throws on non-number arguments or division by zero.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the quotient of the arguments. Throws on non-number arguments or division by zero.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   '>': v
     .nativeFn('>', function greaterThan(...nums: CljValue[]) {
@@ -210,10 +238,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean(true)
     })
-    .doc(
-      'Compares adjacent arguments left to right, returns true if all values are in ascending order, false otherwise.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Compares adjacent arguments left to right, returns true if all values are in descending order, false otherwise.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.comparison,
+      }),
+    ]),
 
   '<': v
     .nativeFn('<', function lessThan(...nums: CljValue[]) {
@@ -252,10 +283,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean(true)
     })
-    .doc(
-      'Compares adjacent arguments left to right, returns true if all values are in descending order, false otherwise.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Compares adjacent arguments left to right, returns true if all values are in ascending order, false otherwise.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.comparison,
+      }),
+    ]),
 
   '>=': v
     .nativeFn('>=', function greaterThanOrEqual(...nums: CljValue[]) {
@@ -294,10 +328,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean(true)
     })
-    .doc(
-      'Compares adjacent arguments left to right, returns true if all comparisons returns true for greater than or equal to checks, false otherwise.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Compares adjacent arguments left to right, returns true if all comparisons returns true for greater than or equal to checks, false otherwise.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.comparison,
+      }),
+    ]),
 
   '<=': v
     .nativeFn('<=', function lessThanOrEqual(...nums: CljValue[]) {
@@ -336,10 +373,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean(true)
     })
-    .doc(
-      'Compares adjacent arguments left to right, returns true if all comparisons returns true for less than or equal to checks, false otherwise.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Compares adjacent arguments left to right, returns true if all comparisons returns true for less than or equal to checks, false otherwise.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.comparison,
+      }),
+    ]),
 
   '=': v
     .nativeFn('=', function equals(...vals: CljValue[]) {
@@ -355,10 +395,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean(true)
     })
-    .doc(
-      'Compares adjacent arguments left to right, returns true if all values are structurally equal, false otherwise.',
-      [['&', 'vals']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Compares adjacent arguments left to right, returns true if all values are structurally equal, false otherwise.',
+        arglists: [['&', 'vals']],
+        docGroup: DocGroups.comparison,
+      }),
+    ]),
 
   inc: v
     .nativeFn('inc', function increment(x: CljValue) {
@@ -371,10 +414,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number((x as CljNumber).value + 1)
     })
-    .doc(
-      'Returns the argument incremented by 1. Throws on non-number arguments.',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the argument incremented by 1. Throws on non-number arguments.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   dec: v
     .nativeFn('dec', function decrement(x: CljValue) {
@@ -387,10 +433,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number((x as CljNumber).value - 1)
     })
-    .doc(
-      'Returns the argument decremented by 1. Throws on non-number arguments.',
-      [['x']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the argument decremented by 1. Throws on non-number arguments.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   max: v
     .nativeFn('max', function maximum(...nums: CljValue[]) {
@@ -417,10 +466,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(best)
     })
-    .doc(
-      'Returns the largest of the arguments. Throws on non-number arguments.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the largest of the arguments. Throws on non-number arguments.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   min: v
     .nativeFn('min', function minimum(...nums: CljValue[]) {
@@ -447,10 +499,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(best)
     })
-    .doc(
-      'Returns the smallest of the arguments. Throws on non-number arguments.',
-      [['&', 'nums']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the smallest of the arguments. Throws on non-number arguments.',
+        arglists: [['&', 'nums']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   mod: v
     .nativeFn('mod', function modulo(n: CljValue, d: CljValue) {
@@ -479,10 +534,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         result < 0 ? result + Math.abs((d as CljNumber).value) : result
       )
     })
-    .doc(
-      'Returns the remainder of the first argument divided by the second argument. Throws on non-number arguments or division by zero.',
-      [['n', 'd']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the remainder of the first argument divided by the second argument. Throws on non-number arguments or division by zero.',
+        arglists: [['n', 'd']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'even?': v
     .nativeFn('even?', function isEven(n: CljValue) {
@@ -495,8 +553,12 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean((n as CljNumber).value % 2 === 0)
     })
-    .doc('Returns true if the argument is an even number, false otherwise.', [
-      ['n'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the argument is an even number, false otherwise.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
     ]),
 
   'odd?': v
@@ -510,8 +572,12 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean(Math.abs((n as CljNumber).value) % 2 !== 0)
     })
-    .doc('Returns true if the argument is an odd number, false otherwise.', [
-      ['n'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the argument is an odd number, false otherwise.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
     ]),
 
   'pos?': v
@@ -525,10 +591,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean((n as CljNumber).value > 0)
     })
-    .doc(
-      'Returns true if the argument is a positive number, false otherwise.',
-      [['n']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the argument is a positive number, false otherwise.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'neg?': v
     .nativeFn('neg?', function isNegative(n: CljValue) {
@@ -541,10 +610,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean((n as CljNumber).value < 0)
     })
-    .doc(
-      'Returns true if the argument is a negative number, false otherwise.',
-      [['n']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the argument is a negative number, false otherwise.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'zero?': v
     .nativeFn('zero?', function isZero(n: CljValue) {
@@ -557,7 +629,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.boolean((n as CljNumber).value === 0)
     })
-    .doc('Returns true if the argument is zero, false otherwise.', [['n']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the argument is zero, false otherwise.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   abs: v
     .nativeFn('abs', function absImpl(n: CljValue) {
@@ -570,7 +648,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(Math.abs((n as CljNumber).value))
     })
-    .doc('Returns the absolute value of a.', [['a']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the absolute value of a.',
+        arglists: [['a']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   sqrt: v
     .nativeFn('sqrt', function sqrtImpl(n: CljValue) {
@@ -583,7 +667,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(Math.sqrt((n as CljNumber).value))
     })
-    .doc('Returns the square root of n.', [['n']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the square root of n.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   quot: v
     .nativeFn('quot', function quotImpl(num: CljValue, div: CljValue) {
@@ -608,7 +698,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         Math.trunc((num as CljNumber).value / (div as CljNumber).value)
       )
     })
-    .doc('quot[ient] of dividing numerator by denominator.', [['num', 'div']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'quot[ient] of dividing numerator by denominator.',
+        arglists: [['num', 'div']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   rem: v
     .nativeFn('rem', function remImpl(num: CljValue, div: CljValue) {
@@ -631,7 +727,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number((num as CljNumber).value % (div as CljNumber).value)
     })
-    .doc('remainder of dividing numerator by denominator.', [['num', 'div']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'remainder of dividing numerator by denominator.',
+        arglists: [['num', 'div']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   rand: v
     .nativeFn('rand', function randImpl(...args: CljValue[]) {
@@ -641,10 +743,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(Math.random() * (args[0] as CljNumber).value)
     })
-    .doc(
-      'Returns a random floating point number between 0 (inclusive) and n (default 1) (exclusive).',
-      [[], ['n']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a random floating point number between 0 (inclusive) and n (default 1) (exclusive).',
+        arglists: [[], ['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'rand-int': v
     .nativeFn('rand-int', function randIntImpl(n: CljValue) {
@@ -653,8 +758,12 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.number(Math.floor(Math.random() * (n as CljNumber).value))
     })
-    .doc('Returns a random integer between 0 (inclusive) and n (exclusive).', [
-      ['n'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a random integer between 0 (inclusive) and n (exclusive).',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
     ]),
 
   'rand-nth': v
@@ -676,7 +785,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return items[Math.floor(Math.random() * items.length)]
     })
-    .doc('Return a random element of the (sequential) collection.', [['coll']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Return a random element of the (sequential) collection.',
+        arglists: [['coll']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   shuffle: v
     .nativeFn('shuffle', function shuffleImpl(coll: CljValue) {
@@ -695,7 +810,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       return v.vector(arr)
     })
-    .doc('Return a random permutation of coll.', [['coll']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Return a random permutation of coll.',
+        arglists: [['coll']],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   'bit-and': v
     .nativeFn('bit-and', function bitAndImpl(x: CljValue, y: CljValue) {
@@ -705,7 +826,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw EvaluationError.atArg('bit-and expects numbers', { y }, 1)
       return v.number((x as CljNumber).value & (y as CljNumber).value)
     })
-    .doc('Bitwise and', [['x', 'y']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise and',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'bit-or': v
     .nativeFn('bit-or', function bitOrImpl(x: CljValue, y: CljValue) {
@@ -715,7 +842,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw EvaluationError.atArg('bit-or expects numbers', { y }, 1)
       return v.number((x as CljNumber).value | (y as CljNumber).value)
     })
-    .doc('Bitwise or', [['x', 'y']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise or',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'bit-xor': v
     .nativeFn('bit-xor', function bitXorImpl(x: CljValue, y: CljValue) {
@@ -725,7 +858,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw EvaluationError.atArg('bit-xor expects numbers', { y }, 1)
       return v.number((x as CljNumber).value ^ (y as CljNumber).value)
     })
-    .doc('Bitwise exclusive or', [['x', 'y']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise exclusive or',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'bit-not': v
     .nativeFn('bit-not', function bitNotImpl(x: CljValue) {
@@ -733,7 +872,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw EvaluationError.atArg('bit-not expects a number', { x }, 0)
       return v.number(~(x as CljNumber).value)
     })
-    .doc('Bitwise complement', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise complement',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'bit-shift-left': v
     .nativeFn(
@@ -754,7 +899,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         return v.number((x as CljNumber).value << (n as CljNumber).value)
       }
     )
-    .doc('Bitwise shift left', [['x', 'n']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise shift left',
+        arglists: [['x', 'n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'bit-shift-right': v
     .nativeFn(
@@ -775,7 +926,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         return v.number((x as CljNumber).value >> (n as CljNumber).value)
       }
     )
-    .doc('Bitwise shift right', [['x', 'n']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise shift right',
+        arglists: [['x', 'n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
 
   'unsigned-bit-shift-right': v
     .nativeFn(
@@ -796,5 +953,119 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         return v.number((x as CljNumber).value >>> (n as CljNumber).value)
       }
     )
-    .doc('Bitwise shift right, without sign-extension', [['x', 'n']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Bitwise shift right, without sign-extension',
+        arglists: [['x', 'n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
+
+  // ── Char / int coercions ──────────────────────────────────────────────────
+  char: v
+    .nativeFn('char', function charImpl(n: CljValue) {
+      if (n === undefined || n.kind !== 'number') {
+        throw new EvaluationError(
+          `char expects a number, got ${n !== undefined ? printString(n) : 'nothing'}`,
+          { n }
+        )
+      }
+      const cp = Math.trunc(n.value)
+      if (cp < 0 || cp > 0x10ffff) {
+        throw new EvaluationError(
+          `char: code point ${cp} is out of Unicode range`,
+          { n }
+        )
+      }
+      return v.char(String.fromCodePoint(cp))
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the character at the given Unicode code point.',
+        arglists: [['n']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
+  int: v
+    .nativeFn('int', function intImpl(x: CljValue) {
+      if (x === undefined) {
+        throw new EvaluationError('int expects one argument', {})
+      }
+      if (x.kind === 'character') {
+        return v.number(x.value.codePointAt(0)!)
+      }
+      if (x.kind === 'number') {
+        return v.number(Math.trunc(x.value))
+      }
+      throw new EvaluationError(
+        `int expects a number or character, got ${printString(x)}`,
+        { x }
+      )
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Coerces x to int. For characters, returns the Unicode code point.',
+        arglists: [['x']],
+        docGroup: DocGroups.arithmetic,
+      }),
+    ]),
+
+  // ── Comparison ────────────────────────────────────────────────────────────
+  compare: v
+    .nativeFn(
+      'compare',
+      function compareImpl(x: CljValue, y: CljValue): CljValue {
+        if (is.nil(x) && is.nil(y)) return v.number(0)
+        if (is.nil(x)) return v.number(-1)
+        if (is.nil(y)) return v.number(1)
+        if (is.number(x) && is.number(y)) {
+          return v.number(
+            (x as CljNumber).value < (y as CljNumber).value
+              ? -1
+              : (x as CljNumber).value > (y as CljNumber).value
+                ? 1
+                : 0
+          )
+        }
+        if (is.string(x) && is.string(y)) {
+          return v.number(x.value < y.value ? -1 : x.value > y.value ? 1 : 0)
+        }
+        if (is.char(x) && is.char(y)) {
+          return v.number(x.value < y.value ? -1 : x.value > y.value ? 1 : 0)
+        }
+        if (is.keyword(x) && is.keyword(y)) {
+          return v.number(x.name < y.name ? -1 : x.name > y.name ? 1 : 0)
+        }
+        throw new EvaluationError(
+          `compare: cannot compare ${printString(x)} to ${printString(y)}`,
+          { x, y }
+        )
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Comparator. Returns a negative number, zero, or a positive number.',
+        arglists: [['x', 'y']],
+        docGroup: DocGroups.comparison,
+      }),
+    ]),
+
+  // ── Hashing ───────────────────────────────────────────────────────────────
+  hash: v
+    .nativeFn('hash', function hashImpl(x: CljValue) {
+      // Simple hash — consistent within a session, not cryptographic
+      const s = printString(x)
+      let h = 0
+      for (let i = 0; i < s.length; i++) {
+        h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+      }
+      return v.number(h)
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the hash code of its argument.',
+        arglists: [['x']],
+        docGroup: DocGroups.utilities,
+      }),
+    ]),
 }

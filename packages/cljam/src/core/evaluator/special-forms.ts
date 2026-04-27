@@ -211,11 +211,18 @@ function evaluateDef(
 }
 
 const evaluateNs = (
-  _list: CljList,
-  _env: Env,
+  list: CljList,
+  env: Env,
   _ctx: EvaluationContext
 ): CljValue => {
-  return v.nil() // special form handled by the environment, no effects here
+  // The ns form is pre-processed at the token level (alias map, require clauses).
+  // The only runtime work here is capturing the optional docstring at position 2.
+  const maybeDoc = list.value[2]
+  if (maybeDoc?.kind === 'string') {
+    const nsEnv = getNamespaceEnv(env)
+    if (nsEnv.ns) nsEnv.ns.doc = maybeDoc.value
+  }
+  return v.nil()
 }
 
 function evaluateIf(list: CljList, env: Env, ctx: EvaluationContext): CljValue {
@@ -360,7 +367,7 @@ function evaluateLoopStar(
           throw new EvaluationError(
             `recur expects ${names.length} arguments but got ${e.args.length}`,
             { list, env },
-            getPos(list)
+            e.pos ?? getPos(list)
           )
         }
         currentValues = e.args
@@ -452,8 +459,34 @@ function evaluateDefmacro(
   const arities = parseArities(arityForms, env)
   const macro = v.multiArityMacro(arities, env)
   macro.name = name.name
+
+  // Extract :arglists from the raw param vectors (before destructuring runs).
+  // Single-arity: arityForms[0] is the param vector [x y & rest].
+  // Multi-arity: each arityForms[i].value[0] is the per-arity param vector.
+  const arglistVecs: CljValue[] = is.vector(arityForms[0])
+    ? [arityForms[0]]
+    : arityForms.filter(is.list).map((f) => f.value[0]).filter(is.vector)
+
+  // Build full var meta: position info + :doc + :arglists.
   const varMeta = buildVarMeta(name.meta, ctx, name)
-  const finalMeta = docstring ? mergeDocIntoMeta(varMeta, docstring) : varMeta
+  let finalMeta = docstring ? mergeDocIntoMeta(varMeta, docstring) : varMeta
+  if (arglistVecs.length > 0) {
+    const arglistsKv: [CljValue, CljValue] = [v.keyword(':arglists'), v.vector(arglistVecs)]
+    const base = (finalMeta?.entries ?? []).filter(([k]) => !(k.kind === 'keyword' && k.name === ':arglists'))
+    finalMeta = { kind: 'map', entries: [...base, arglistsKv] }
+  }
+
+  // Propagate :doc and :arglists to the macro value itself so describe can
+  // read them without needing the var (mirrors how evaluateDef handles functions).
+  const macroMetaEntries: [CljValue, CljValue][] = []
+  for (const key of [':doc', ':arglists']) {
+    const entry = finalMeta?.entries.find(([k]) => k.kind === 'keyword' && k.name === key)
+    if (entry) macroMetaEntries.push(entry)
+  }
+  if (macroMetaEntries.length > 0) {
+    macro.meta = { kind: 'map', entries: macroMetaEntries }
+  }
+
   internVar(name.name, macro, getNamespaceEnv(env), finalMeta)
   return v.nil()
 }
@@ -464,7 +497,7 @@ function evaluateRecur(
   ctx: EvaluationContext
 ): CljValue {
   const args = list.value.slice(1).map((v) => ctx.evaluate(v, env))
-  throw new RecurSignal(args)
+  throw new RecurSignal(args, getPos(list))
 }
 
 function evaluateVar(

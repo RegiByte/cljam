@@ -20,11 +20,15 @@ Add to your project's `.claude.json` (or global `~/.claude/claude.json`):
   "mcpServers": {
     "cljam": {
       "command": "npx",
-      "args": ["@regibyte/cljam-mcp"]
+      "args": ["@regibyte/cljam-mcp", "--root-dir", "/path/to/workspace"]
     }
   }
 }
 ```
+
+`--root-dir` is optional, but recommended. It gives every new session the same
+workspace root, source roots, and `cljam.libraries` configuration. You can also
+set `CLJAM_MCP_ROOT_DIR=/path/to/workspace` instead of passing an argument.
 
 ### Claude Desktop / other MCP clients
 
@@ -33,7 +37,7 @@ Same config, different file location (see your client's documentation for the co
 ### Bun
 
 ```bash
-bunx @regibyte/cljam-mcp
+bunx @regibyte/cljam-mcp --root-dir /path/to/workspace
 ```
 
 ***
@@ -46,7 +50,7 @@ For LLM-driven work: create sessions, eval Clojure, load files, introspect.
 
 ```
 new_session {}
-→ { session_id: "abc123", ns: "user", preset: "sandbox" }
+→ { session_id: "abc123", ns: "user", preset: "agent", root_dir: "/path/to/workspace" }
 
 eval { session_id: "abc123", code: "(+ 1 2)" }
 → { result: "3", ns: "user" }
@@ -56,6 +60,10 @@ eval { session_id: "abc123", code: "(def x 42)\n(str \"x is \" x)" }
 ```
 
 State persists across `eval` calls. `def`, `defn`, `require`, `ns` all work as expected.
+
+Sessions use the MCP agent workspace configuration by default: captured output,
+Node.js host bindings such as `process`, `Buffer`, `fetch`, and dynamic imports
+for day-to-day work with Node modules.
 
 ### Loading project files
 
@@ -67,25 +75,44 @@ load_file { session_id: "abc123", path: "src/my/lib.clj" }
 eval { session_id: "abc123", code: "(my.lib/greet \"world\")" }
 ```
 
-`root_dir` also triggers library auto-loading from `package.json`:
+If `root_dir` is omitted, the server-level `--root-dir` is used. `root_dir`
+also triggers source-root discovery and library auto-loading from `package.json`:
 
 ```json
 {
   "cljam": {
-    "libraries": ["@regibyte/cljam-schema"]
+    "sourceRoots": ["src/clojure"],
+    "libraries": ["@regibyte/cljam-schema"],
+    "main": "my.app"
   }
 }
 ```
 
-### Presets
+### Auto-loading an entrypoint namespace
 
-| Preset | Access |
-|---|---|
-| `"sandbox"` (default) | Math only. No I/O, no imports, no host globals. |
-| `"node"` | Full Node.js: `process`, `fetch`, `console`, dynamic `import()`. |
+`cljam.main` (optional) declares a bootstrap entrypoint. When set, every new
+session in this workspace:
 
+1. Requires the namespace — equivalent to `(require '[my.app])`
+2. Switches `currentNs` into it — `eval` calls land inside `my.app` directly
+
+So an agent can call `(some-fn ...)` unqualified right after `new_session {}`,
+without an extra `require`/`in-ns` round-trip.
+
+To run a bootstrap function on session start, use the `ns:fn` form:
+
+```json
+{ "cljam": { "main": "my.app:start" } }
 ```
-new_session { preset: "node", root_dir: "/path/to/project" }
+
+The function is called with no arguments after the require. If the bootstrap
+fails the session still comes up, the error is reported as `main_load_error`
+in the `new_session` response.
+
+Override per server invocation with `--main` or `CLJAM_MCP_MAIN`:
+
+```bash
+cljam-mcp --root-dir /path/to/workspace --main my.tests:run-all
 ```
 
 ### Introspection with `describe`

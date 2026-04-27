@@ -1,7 +1,7 @@
 import { isNamespace, isSymbol } from './assertions'
 import { internVar, makeNamespace, tryLookup } from './env'
 import { EvaluationError } from './errors'
-import { v } from './factories'
+import { DocGroups, docMeta, v } from './factories'
 import type { CljNamespace, CljValue, Env, EvaluationContext } from './types'
 import { ensureNamespaceInRegistry, processRequireSpec } from './registry'
 import type { NamespaceRegistry } from './registry'
@@ -36,212 +36,368 @@ export function wireNsCore(
   // Namespace introspection
   internVar(
     'ns-name',
-    v.nativeFn('ns-name', (x: CljValue) => {
-      if (x === undefined) return v.nil()
-      if (x.kind === 'namespace') return v.symbol(x.name)
-      if (x.kind === 'symbol') return x
-      if (x.kind === 'string') return v.symbol(x.value)
-      return v.nil()
-    }),
+    v
+      .nativeFn('ns-name', (x: CljValue) => {
+        if (x === undefined) return v.nil()
+        if (x.kind === 'namespace') return v.symbol(x.name)
+        if (x.kind === 'symbol') return x
+        if (x.kind === 'string') return v.symbol(x.value)
+        return v.nil()
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns the namespace name as a symbol for the given value.',
+          arglists: [['x']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'all-ns',
-    v.nativeFn('all-ns', () =>
-      v.list([...registry.values()].map((env) => env.ns!).filter(Boolean))
-    ),
+    v
+      .nativeFn('all-ns', () =>
+        v.list([...registry.values()].map((env) => env.ns!).filter(Boolean))
+      )
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a list of all namespaces loaded in the session.',
+          arglists: [[]],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'find-ns',
-    v.nativeFn('find-ns', (sym: CljValue) => {
-      if (sym === undefined || !isSymbol(sym)) return v.nil()
-      return registry.get(sym.name)?.ns ?? v.nil()
-    }),
+    v
+      .nativeFn('find-ns', (sym: CljValue) => {
+        if (sym === undefined || !isSymbol(sym)) return v.nil()
+        return registry.get(sym.name)?.ns ?? v.nil()
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns the namespace as a value for the given symbol, or nil if the symbol is not a namespace or not loaded.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'in-ns',
-    v.nativeFnCtx('in-ns', (ctx, _callEnv, sym: CljValue) => {
-      if (!sym || !isSymbol(sym)) {
-        throw new EvaluationError('in-ns expects a symbol', { sym })
-      }
-      if (ctx.setCurrentNs) ctx.setCurrentNs(sym.name)
-      return registry.get(sym.name)?.ns ?? v.nil()
-    }),
+    v
+      .nativeFnCtx('in-ns', (ctx, _callEnv, sym: CljValue) => {
+        if (!sym || !isSymbol(sym)) {
+          throw new EvaluationError('in-ns expects a symbol', { sym })
+        }
+        if (ctx.setCurrentNs) ctx.setCurrentNs(sym.name)
+        return registry.get(sym.name)?.ns ?? v.nil()
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Sets the current namespace to the given symbol and returns the namespace as a value.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'ns-aliases',
-    v.nativeFn('ns-aliases', (sym: CljValue) => {
-      const ns = resolveNsSym(sym)
-      if (!ns) return v.map([])
-      const entries: [CljValue, CljValue][] = []
-      ns.aliases.forEach((targetNs, alias) => {
-        entries.push([v.symbol(alias), targetNs])
+    v
+      .nativeFn('ns-aliases', (sym: CljValue) => {
+        const ns = resolveNsSym(sym)
+        if (!ns) return v.map([])
+        const entries: [CljValue, CljValue][] = []
+        ns.aliases.forEach((targetNs, alias) => {
+          entries.push([v.symbol(alias), targetNs])
+        })
+        return v.map(entries)
       })
-      return v.map(entries)
-    }),
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a map of the aliases for the given namespace.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'ns-interns',
-    v.nativeFn('ns-interns', (sym: CljValue) => {
-      const ns = resolveNsSym(sym)
-      if (!ns) return v.map([])
-      const entries: [CljValue, CljValue][] = []
-      ns.vars.forEach((theVar, name) => {
-        if (theVar.ns === ns.name) entries.push([v.symbol(name), theVar])
+    v
+      .nativeFn('ns-interns', (sym: CljValue) => {
+        const ns = resolveNsSym(sym)
+        if (!ns) return v.map([])
+        const entries: [CljValue, CljValue][] = []
+        ns.vars.forEach((theVar, name) => {
+          if (theVar.ns === ns.name) entries.push([v.symbol(name), theVar])
+        })
+        return v.map(entries)
       })
-      return v.map(entries)
-    }),
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a map of the interned vars for the given namespace.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'ns-publics',
-    v.nativeFn('ns-publics', (sym: CljValue) => {
-      const ns = resolveNsSym(sym)
-      if (!ns) return v.map([])
-      const entries: [CljValue, CljValue][] = []
-      ns.vars.forEach((theVar, name) => {
-        if (theVar.ns !== ns.name) return
-        const isPrivate = (theVar.meta?.entries ?? []).some(
-          ([k, val]) =>
-            k.kind === 'keyword' &&
-            k.name === ':private' &&
-            val.kind === 'boolean' &&
-            val.value === true
-        )
-        if (!isPrivate) entries.push([v.symbol(name), theVar])
+    v
+      .nativeFn('ns-publics', (sym: CljValue) => {
+        const ns = resolveNsSym(sym)
+        if (!ns) return v.map([])
+        const entries: [CljValue, CljValue][] = []
+        ns.vars.forEach((theVar, name) => {
+          if (theVar.ns !== ns.name) return
+          const isPrivate = (theVar.meta?.entries ?? []).some(
+            ([k, val]) =>
+              k.kind === 'keyword' &&
+              k.name === ':private' &&
+              val.kind === 'boolean' &&
+              val.value === true
+          )
+          if (!isPrivate) entries.push([v.symbol(name), theVar])
+        })
+        return v.map(entries)
       })
-      return v.map(entries)
-    }),
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a map of the public vars for the given namespace.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'ns-refers',
-    v.nativeFn('ns-refers', (sym: CljValue) => {
-      const ns = resolveNsSym(sym)
-      if (!ns) return v.map([])
-      const entries: [CljValue, CljValue][] = []
-      ns.vars.forEach((theVar, name) => {
-        if (theVar.ns !== ns.name) entries.push([v.symbol(name), theVar])
+    v
+      .nativeFn('ns-refers', (sym: CljValue) => {
+        const ns = resolveNsSym(sym)
+        if (!ns) return v.map([])
+        const entries: [CljValue, CljValue][] = []
+        ns.vars.forEach((theVar, name) => {
+          if (theVar.ns !== ns.name) entries.push([v.symbol(name), theVar])
+        })
+        return v.map(entries)
       })
-      return v.map(entries)
-    }),
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a map of the refers for the given namespace.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'ns-map',
-    v.nativeFn('ns-map', (sym: CljValue) => {
-      const ns = resolveNsSym(sym)
-      if (!ns) return v.map([])
-      const entries: [CljValue, CljValue][] = []
-      ns.vars.forEach((theVar, name) => {
-        entries.push([v.symbol(name), theVar])
+    v
+      .nativeFn('ns-map', (sym: CljValue) => {
+        const ns = resolveNsSym(sym)
+        if (!ns) return v.map([])
+        const entries: [CljValue, CljValue][] = []
+        ns.vars.forEach((theVar, name) => {
+          entries.push([v.symbol(name), theVar])
+        })
+        return v.map(entries)
       })
-      return v.map(entries)
-    }),
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a map of the vars for the given namespace.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'ns-imports',
-    v.nativeFn('ns-imports', (_sym: CljValue) => v.map([])),
+    v
+      .nativeFn('ns-imports', (_sym: CljValue) => v.map([]))
+      .withMeta([
+        ...docMeta({
+          doc: '',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+          extra: {
+            'no-doc': true,
+          },
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'the-ns',
-    v.nativeFn('the-ns', (sym: CljValue) => {
-      if (sym === undefined) return v.nil()
-      if (isNamespace(sym)) return sym
-      if (!isSymbol(sym)) return v.nil()
-      return registry.get(sym.name)?.ns ?? v.nil()
-    }),
+    v
+      .nativeFn('the-ns', (sym: CljValue) => {
+        if (sym === undefined) return v.nil()
+        if (isNamespace(sym)) return sym
+        if (!isSymbol(sym)) return v.nil()
+        return registry.get(sym.name)?.ns ?? v.nil()
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns the namespace as a value for the given symbol, or nil if the symbol is not a namespace or not loaded.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'instance?',
-    v.nativeFn('instance?', (_cls: CljValue, _obj: CljValue) =>
-      v.boolean(false)
-    ),
+    v
+      .nativeFn('instance?', (_cls: CljValue, _obj: CljValue) =>
+        v.boolean(false)
+      )
+      .withMeta([
+        ...docMeta({
+          doc: '',
+          arglists: [['cls', 'obj']],
+          docGroup: DocGroups.introspection,
+          extra: {
+            'no-doc': true,
+          },
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'class',
-    v.nativeFn('class', (x: CljValue) => {
-      if (x === undefined) return v.nil()
-      return v.string(`conjure.${x.kind}`)
-    }),
+    v
+      .nativeFn('class', (x: CljValue) => {
+        if (x === undefined) return v.nil()
+        return v.string(`conjure.${x.kind}`)
+      })
+      .withMeta([
+        ...docMeta({
+          doc: '',
+          arglists: [['x']],
+          docGroup: DocGroups.introspection,
+          extra: {
+            'no-doc': true,
+          },
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'class?',
-    v.nativeFn('class?', (_x: CljValue) => v.boolean(false)),
+    v
+      .nativeFn('class?', (_x: CljValue) => v.boolean(false))
+      .withMeta([
+        ...docMeta({
+          doc: '',
+          arglists: [['x']],
+          docGroup: DocGroups.introspection,
+          extra: {
+            'no-doc': true,
+          },
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'special-symbol?',
-    v.nativeFn('special-symbol?', (sym: CljValue) => {
-      if (sym === undefined || !isSymbol(sym)) return v.boolean(false)
-      const specials = new Set([
-        ...Object.values(specialFormKeywords),
-        'import',
-      ])
-      return v.boolean(specials.has(sym.name))
-    }),
+    v
+      .nativeFn('special-symbol?', (sym: CljValue) => {
+        if (sym === undefined || !isSymbol(sym)) return v.boolean(false)
+        const specials = new Set([
+          ...Object.values(specialFormKeywords),
+          'import',
+        ])
+        return v.boolean(specials.has(sym.name))
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns true if the given symbol is a special symbol reserved by the language.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'loaded-libs',
-    v.nativeFn('loaded-libs', () => v.set([...registry.keys()].map(v.symbol))),
+    v
+      .nativeFn('loaded-libs', () => v.set([...registry.keys()].map(v.symbol)))
+      .withMeta([
+        ...docMeta({
+          doc: 'Returns a set of the loaded libraries.',
+          arglists: [[]],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 
   // require — context-aware so it can thread ctx to resolveNamespace
   internVar(
     'require',
-    v.nativeFnCtx('require', (ctx, _callEnv, ...args: CljValue[]) => {
-      const currentEnv = registry.get(getCurrentNs())!
-      for (const arg of args) {
-        processRequireSpec(arg, currentEnv, registry, (nsName) =>
-          resolveNamespace(nsName, ctx)
-        )
-      }
-      return v.nil()
-    }),
+    v
+      .nativeFnCtx('require', (ctx, _callEnv, ...args: CljValue[]) => {
+        const currentEnv = registry.get(getCurrentNs())!
+        for (const arg of args) {
+          processRequireSpec(arg, currentEnv, registry, (nsName) =>
+            resolveNamespace(nsName, ctx)
+          )
+        }
+        return v.nil()
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Parses the require spec and load the namespace(s) specified into the current namespace.',
+          arglists: [['args']],
+          docGroup: DocGroups.runtime,
+        }),
+      ]),
     coreEnv
   )
 
   internVar(
     'resolve',
-    v.nativeFn('resolve', (sym: CljValue) => {
-      if (!isSymbol(sym)) return v.nil()
-      const slashIdx = sym.name.indexOf('/')
-      if (slashIdx > 0) {
-        const nsName = sym.name.slice(0, slashIdx)
-        const symName = sym.name.slice(slashIdx + 1)
-        const nsEnv = registry.get(nsName) ?? null
-        if (!nsEnv) return v.nil()
-        return tryLookup(symName, nsEnv) ?? v.nil()
-      }
-      const currentEnv = registry.get(getCurrentNs())!
-      return tryLookup(sym.name, currentEnv) ?? v.nil()
-    }),
+    v
+      .nativeFn('resolve', (sym: CljValue) => {
+        if (!isSymbol(sym)) return v.nil()
+        const slashIdx = sym.name.indexOf('/')
+        if (slashIdx > 0) {
+          const nsName = sym.name.slice(0, slashIdx)
+          const symName = sym.name.slice(slashIdx + 1)
+          const nsEnv = registry.get(nsName) ?? null
+          if (!nsEnv) return v.nil()
+          return tryLookup(symName, nsEnv) ?? v.nil()
+        }
+        const currentEnv = registry.get(getCurrentNs())!
+        return tryLookup(sym.name, currentEnv) ?? v.nil()
+      })
+      .withMeta([
+        ...docMeta({
+          doc: 'Resolves the given symbol to a value in the current namespace.',
+          arglists: [['sym']],
+          docGroup: DocGroups.introspection,
+        }),
+      ]),
     coreEnv
   )
 }
@@ -316,6 +472,11 @@ export function wireIdeStubs(registry: NamespaceRegistry, coreEnv: Env): void {
     'Runnable',
     'Cloneable',
   ]) {
-    internVar(javaClass, v.keyword(`:java.lang/${javaClass}`), coreEnv)
+    internVar(
+      javaClass,
+      v.keyword(`:java.lang/${javaClass}`),
+      coreEnv,
+      v.map([[v.keyword(':no-doc'), v.boolean(true)]])
+    )
   }
 }

@@ -18,6 +18,7 @@ export type CljNamespace = {
   vars: Map<string, CljVar> // user defs from (def ...)
   aliases: Map<string, CljNamespace> // :as namespace aliases
   readerAliases: Map<string, string> // :as-alias reader aliases
+  doc?: string
 }
 
 export type Env = {
@@ -49,6 +50,7 @@ export type CljMacro = {
   arities: Arity[]
   env: Env
   name?: string // set for named defmacro
+  meta?: CljMap
 }
 
 export type CljAtom = {
@@ -195,6 +197,17 @@ export type EvaluationContext = {
    */
   setCurrentNs?: (name: string) => void
   /**
+   * The session's current working directory. Readable by `pwd`, mutable by `cd`.
+   * Defaults to process.cwd() in Node/Bun; "/" in browser/embedded contexts.
+   * Wired by buildSessionFacade.
+   */
+  currentDir?: string
+  /**
+   * Updates the session's current working directory. Wired by buildSessionFacade.
+   * Called by `cd` at runtime.
+   */
+  setCurrentDir?: (dir: string) => void
+  /**
    * Clojure-level call stack for stack traces. Pushed/popped at each function
    * call site. Snapshot (reversed, innermost-first) is stored on EvaluationError.frames.
    */
@@ -278,7 +291,7 @@ export type Cursor = {
   offset: number
 }
 
-export type Pos = { start: number; end: number } // absolute char offsets into the source string
+export type Pos = { start: number; end: number; source?: string; lineOffset?: number; colOffset?: number } // absolute char offsets; source+lineOffset+colOffset enable file-relative display
 
 export interface StackFrame {
   fnName: string | null   // symbol name at the call site, null for non-symbol heads (anonymous calls)

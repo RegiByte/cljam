@@ -112,11 +112,19 @@ function buildRuntime(
   // Updated via runtime.syncNsVar() which session.setNs calls.
   let currentNsRef = 'user'
 
-  // resolveNamespace: loads a namespace by name if not already in the registry.
+  // sourceLoadedNs: tracks namespaces whose .clj source has been evaluated.
+  // Distinct from the registry — a namespace can be pre-declared via declareNs
+  // (native vars only) without its source being loaded. resolveNamespace is
+  // idempotent against this set, so repeated require calls are no-ops.
+  const sourceLoadedNs = new Set<string>()
+
+  // resolveNamespace: loads a namespace's .clj source if it hasn't been loaded
+  // yet. Idempotent — returns true immediately if already source-loaded.
   // ctx is passed explicitly — this is the active EvaluationContext at the
   // call site. For loadFile calls, it's the file's ctx. For runtime require
   // native fn calls, it comes from the evaluator via cljNativeFunctionWithContext.
   function resolveNamespace(nsName: string, ctx: EvaluationContext): boolean {
+    if (sourceLoadedNs.has(nsName)) return true
     // Priority 1: built-in namespaces (clojure.core, clojure.string, etc.)
     const builtInLoader = builtInNamespaceSources[nsName]
     if (builtInLoader) {
@@ -202,8 +210,13 @@ function buildRuntime(
       fromEnv: Env,
       ctx: EvaluationContext
     ): void {
-      processRequireSpec(spec, fromEnv, registry, (nsName) =>
-        resolveNamespace(nsName, ctx), ctx.allowedPackages, isLibraryNamespace
+      processRequireSpec(
+        spec,
+        fromEnv,
+        registry,
+        (nsName) => resolveNamespace(nsName, ctx),
+        ctx.allowedPackages,
+        isLibraryNamespace
       )
     },
 
@@ -226,8 +239,13 @@ function buildRuntime(
               { specifier }
             )
           }
-          processRequireSpec(spec, fromEnv, registry, (nsName) =>
-            resolveNamespace(nsName, ctx), ctx.allowedPackages, isLibraryNamespace
+          processRequireSpec(
+            spec,
+            fromEnv,
+            registry,
+            (nsName) => resolveNamespace(nsName, ctx),
+            ctx.allowedPackages,
+            isLibraryNamespace
           )
         }
       }
@@ -297,8 +315,13 @@ function buildRuntime(
             internVar(aliasName, v.jsValue(rawModule), fromEnv)
           } else {
             // Symbol require spec — sync path
-            processRequireSpec(spec, fromEnv, registry, (nsName) =>
-              resolveNamespace(nsName, ctx), ctx.allowedPackages, isLibraryNamespace
+            processRequireSpec(
+              spec,
+              fromEnv,
+              registry,
+              (nsName) => resolveNamespace(nsName, ctx),
+              ctx.allowedPackages,
+              isLibraryNamespace
             )
           }
         }
@@ -313,8 +336,9 @@ function buildRuntime(
     ): string {
       const tokens = tokenize(source)
       const targetNs = extractNsNameFromTokens(tokens) ?? nsName ?? 'user'
+      sourceLoadedNs.add(targetNs)
       const aliasMap = extractAliasMapFromTokens(tokens)
-      const forms = readForms(tokens, targetNs, aliasMap)
+      const forms = readForms(tokens, targetNs, aliasMap, source)
       const env = this.ensureNamespace(targetNs)
       ctx.currentSource = source
       ctx.currentFile = filePath

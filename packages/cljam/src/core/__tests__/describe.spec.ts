@@ -576,11 +576,14 @@ describe('describe — primitives', () => {
     expect(m[':count']).toEqual(v.number(3))
   })
 
-  it('atom: kind and deref-kind', () => {
+  it('atom: kind, deref-kind, and value describe', () => {
     const sess = s()
     const m = mapToObj(sess.evaluate('(describe (atom {:x 1}))'))
     expect(m[':kind']).toEqual(v.keyword(':atom'))
     expect(m[':deref-kind']).toEqual(v.keyword(':map'))
+    const inner = mapToObj(m[':value'])
+    expect(inner[':kind']).toEqual(v.keyword(':map'))
+    expect(inner[':count']).toEqual(v.number(1))
   })
 
   it('regex: kind, pattern, flags', () => {

@@ -7,15 +7,18 @@
 //   // wire your own transport
 //
 // CLI usage:
-//   npx cljam-mcp          # starts an MCP server on stdio
+//   npx cljam-mcp --root-dir /path/to/workspace
+//   npx cljam-mcp --root-dir /path/to/workspace --main my.app:start
+//   CLJAM_MCP_ROOT_DIR=/path/to/workspace npx cljam-mcp
+//   CLJAM_MCP_MAIN=my.app npx cljam-mcp --root-dir /path/to/workspace
 //
 // Tools exposed:
-//   new_session    — create a sandbox or node-preset session
+//   new_session    — create an agent workspace session
 //   eval           — evaluate Clojure code, returns EDN result + captured stdout
-//   clone_session  — fork a session from a snapshot
 //   list_sessions  — list active sessions
 //   delete_session — free a session
 //   load_file      — load a .clj file by path
 
 export { createMcpServer, startMcpServer } from './src/server.js'
+export type { McpServerOptions } from './src/server.js'
 export type { SessionRecord, Preset } from './src/session-manager.js'

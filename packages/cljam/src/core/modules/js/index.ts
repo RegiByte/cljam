@@ -9,7 +9,7 @@ import {
 } from '../../conversions'
 import { EvaluationError } from '../../errors'
 import { cljToJs, jsToClj } from '../../evaluator/js-interop'
-import { v } from '../../factories'
+import { DocGroups, docMeta, v } from '../../factories'
 import { valueKeywords } from '../../keywords'
 import type { RuntimeModule, VarDeclaration, VarMap } from '../../module'
 import type { CljValue, Env, EvaluationContext } from '../../types'
@@ -66,34 +66,53 @@ function extractJsTarget(val: CljValue, fnName: string): unknown {
  */
 const coreNativeFunctions: Record<string, CljValue> = {
   // JS interop — deep conversion functions
-  'clj->js': v.nativeFnCtx(
-    'clj->js',
-    (ctx: EvaluationContext, callEnv: Env, val: CljValue) => {
-      if (is.jsValue(val)) return val
-      const applier: FunctionApplier = {
-        applyFunction: (fn, args) => ctx.applyCallable(fn, args, callEnv),
-      }
-      return v.jsValue(cljToJsDeep(val, applier))
-    }
-  ),
-  'js->clj': v.nativeFn('js->clj', (val: CljValue, opts?: CljValue) => {
-    if (val.kind === 'nil') return val
-    if (!is.jsValue(val)) {
-      throw new EvaluationError(`js->clj expects a js-value, got ${val.kind}`, {
-        val,
-      })
-    }
-    const keywordizeKeys = (() => {
-      if (!opts || opts.kind !== 'map') return false
-      for (const [k, flag] of opts.entries) {
-        if (k.kind === 'keyword' && k.name === ':keywordize-keys') {
-          return flag.kind !== 'boolean' || flag.value !== false
+  'clj->js': v
+    .nativeFnCtx(
+      'clj->js',
+      (ctx: EvaluationContext, callEnv: Env, val: CljValue) => {
+        if (is.jsValue(val)) return val
+        const applier: FunctionApplier = {
+          applyFunction: (fn, args) => ctx.applyCallable(fn, args, callEnv),
         }
+        return v.jsValue(cljToJsDeep(val, applier))
       }
-      return false
-    })()
-    return jsToCljDeep(val.value, { keywordizeKeys })
-  }),
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Converts a Clojure value to a JavaScript value. Should be used sparingly at the boundaries of the program.',
+        arglists: [['val']],
+        docGroup: DocGroups.interop,
+      }),
+    ]),
+  'js->clj': v
+    .nativeFn('js->clj', (val: CljValue, opts?: CljValue) => {
+      if (val.kind === 'nil') return val
+      if (!is.jsValue(val)) {
+        throw new EvaluationError(
+          `js->clj expects a js-value, got ${val.kind}`,
+          {
+            val,
+          }
+        )
+      }
+      const keywordizeKeys = (() => {
+        if (!opts || opts.kind !== 'map') return false
+        for (const [k, flag] of opts.entries) {
+          if (k.kind === 'keyword' && k.name === ':keywordize-keys') {
+            return flag.kind !== 'boolean' || flag.value !== false
+          }
+        }
+        return false
+      })()
+      return jsToCljDeep(val.value, { keywordizeKeys })
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Converts a JavaScript value to a Clojure value. Should be used sparingly at the boundaries of the program. Unsupported types are boxed as js-value.',
+        arglists: [['val']],
+        docGroup: DocGroups.interop,
+      }),
+    ]),
 }
 
 const moduleNativeFunctions: Record<string, CljValue> = {

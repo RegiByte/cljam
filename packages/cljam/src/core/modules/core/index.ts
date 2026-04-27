@@ -22,6 +22,7 @@ import { lazyFunctions } from './stdlib/lazy'
 import { varFunctions } from './stdlib/vars'
 import { multimethodFunctions } from './stdlib/multimethods'
 import { protocolFunctions } from './stdlib/protocols'
+import { introspectionFunctions } from './stdlib/introspection'
 import { hierarchyFunctions } from './stdlib/hierarchy'
 import { ednFunctions, ednDynamicVars } from './stdlib/edn'
 import { mathFunctions } from './stdlib/math'
@@ -73,7 +74,7 @@ import { printFunctions, printVars } from './stdlib/print'
 // explicitly as private native helpers for finite-arity range/repeat.
 // ---------------------------------------------------------------------------
 
-const nativeFunctions = {
+const coreNativeFunctions = {
   ...arithmeticFunctions,
   ...atomFunctions,
   ...seqFunctions,
@@ -90,14 +91,23 @@ const nativeFunctions = {
   ...varFunctions,
   ...multimethodFunctions,
   ...protocolFunctions,
+  ...introspectionFunctions,
   ...hierarchyFunctions,
-  ...ednFunctions,
-  ...mathFunctions,
+  // ...ednFunctions,
+  // ...mathFunctions,
   ...lazyFunctions,
   ...printFunctions,
   // --- ASYNC (experimental) ---
   ...asyncFunctions,
   // --- END ASYNC ---
+}
+
+const mathNativeFunctions = {
+  ...mathFunctions,
+}
+
+const ednNativeFunctions = {
+  ...ednFunctions,
 }
 
 const nativeDynamicVars = {
@@ -124,7 +134,7 @@ export function makeCoreModule(): RuntimeModule {
           const map = new Map<string, VarDeclaration>()
 
           // Pure stdlib functions (all have .meta via .doc())
-          for (const [name, fn] of Object.entries(nativeFunctions)) {
+          for (const [name, fn] of Object.entries(coreNativeFunctions)) {
             const meta = (fn as { meta?: CljMap }).meta
             map.set(name, { value: fn, ...(meta ? { meta } : {}) })
           }
@@ -134,6 +144,28 @@ export function makeCoreModule(): RuntimeModule {
             map.set(name, { value, dynamic: true })
           }
 
+          return map
+        },
+      },
+      {
+        name: 'clojure.math',
+        vars(_ctx: ModuleContext): VarMap {
+          const map = new Map<string, VarDeclaration>()
+          for (const [name, fn] of Object.entries(mathNativeFunctions)) {
+            const meta = (fn as { meta?: CljMap }).meta
+            map.set(name, { value: fn, ...(meta ? { meta } : {}) })
+          }
+          return map
+        },
+      },
+      {
+        name: 'clojure.edn',
+        vars(_ctx: ModuleContext): VarMap {
+          const map = new Map<string, VarDeclaration>()
+          for (const [name, fn] of Object.entries(ednNativeFunctions)) {
+            const meta = (fn as { meta?: CljMap }).meta
+            map.set(name, { value: fn, ...(meta ? { meta } : {}) })
+          }
           return map
         },
       },

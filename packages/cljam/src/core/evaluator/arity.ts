@@ -17,8 +17,10 @@ const REST_SYMBOL = '&'
 
 export class RecurSignal {
   args: CljValue[]
-  constructor(args: CljValue[]) {
+  pos?: import('../types').Pos
+  constructor(args: CljValue[], pos?: import('../types').Pos) {
     this.args = args
+    this.pos = pos
   }
 }
 

@@ -1,0 +1,37 @@
+{;; Environment 
+ :nexus.system/env #profile {:dev #include "envs/dev.edn"
+                             :prod #include "envs/prod.edn"
+                             :default {
+                                       :db-url "sqlite://default.db"
+                                       :jwt-secret "default"
+                                       :port 8080
+                             }}
+
+ ;; Database
+ :nexus.db/spec {:url #ref [:nexus.system/env :db-url]}
+ :nexus.db/connection {:spec #ig/ref :nexus.db/spec}
+ :nexus.db/migrations {:connection #ig/ref :nexus.db/connection}
+
+ ;; Security
+ :nexus.auth/jwt {:options {:jwt-secret #ref [:nexus.system/env :jwt-secret]}}
+
+ ;; Realtime
+ :nexus.router.realtime.service/service {}
+
+ ;; HTTP Server
+ :nexus.server/app {:options {:hot-reload? #profile {:dev true
+                                                     :prod false}
+                              :cors-mode #profile {:dev :dev
+                                                   :prod :prod}
+                              :show-error-stacks? #profile {:dev true
+                                                            :prod false}}
+                    :deps {:db #ig/ref :nexus.db/connection
+                           :jwt #ig/ref :nexus.auth/jwt
+                           :stream-service #ig/ref :nexus.router.realtime.service/service}}
+ :nexus.server/server {:options {:port #ref [:nexus.system/env :port]
+                                 :shutdown-timeout #profile {:dev 0
+                                                             :prod 15
+                                                             :default 10}}
+                       :deps {:app #ig/ref :nexus.server/app}}
+ ;;
+ }

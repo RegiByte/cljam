@@ -5,6 +5,7 @@ import { CljThrownSignal, EvaluationError, ReaderError } from './errors'
 import { createEvaluationContext, RecurSignal } from './evaluator'
 import { jsToClj } from './evaluator/js-interop'
 import { v } from './factories'
+import { is } from './assertions'
 import type { CljamLibrary } from './library'
 import type { RuntimeModule } from './module'
 import { extractAliasMapFromTokens, extractNsNameFromTokens } from './ns-forms'
@@ -15,6 +16,17 @@ import type { Runtime, RuntimeSnapshot } from './runtime'
 import { createRuntime, restoreRuntime } from './runtime'
 import { tokenize } from './tokenizer'
 import type { CljNamespace, CljValue, Env } from './types'
+
+// Extract the :message from an ex-info value. Only applies to maps that were
+// created via (ex-info ...) — identified by having both :message and :data keys.
+// Plain thrown maps like {:type :error/x :message "..."} are left as-is.
+function extractExMessage(val: CljValue): string | null {
+  if (!is.map(val)) return null
+  const hasData = val.entries.some(([k]) => is.keyword(k) && k.name === ':data')
+  if (!hasData) return null
+  const msgEntry = val.entries.find(([k]) => is.keyword(k) && k.name === ':message')
+  return msgEntry && is.string(msgEntry[1]) ? msgEntry[1].value : null
+}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -72,6 +84,12 @@ export type SessionOptions = {
    *   Example: ['node:path', 'node:url'] allows only those two modules.
    */
   allowedHostModules?: string[] | 'all'
+  /**
+   * Initial working directory for this session. Defaults to process.cwd() in
+   * Node/Bun environments; "/" in browser/embedded contexts. Exposed via `pwd`
+   * and mutable at runtime via `cd`.
+   */
+  workDir?: string
 }
 
 /**
@@ -100,10 +118,13 @@ export type Session = {
   /** Passthrough to runtime.registry. Used by nREPL and tooling for namespace lookup. */
   readonly registry: Runtime['registry']
   readonly currentNs: string
+  /** Current working directory — readable via `pwd`, mutable via `cd`. */
+  readonly currentDir: string
   /** Libraries installed into this session. Preserved in snapshots so cloned sessions re-apply the same setup. */
   readonly libraries: CljamLibrary[]
   setNs: (namespace: string) => void
   getNs: (namespace: string) => CljNamespace | null
+  setCurrentDir: (dir: string) => void
   loadFile: (source: string, nsName?: string, filePath?: string) => string
   /** Async variant of loadFile — handles string requires ((:require ["pkg" :as X])). */
   loadFileAsync: (
@@ -155,6 +176,7 @@ function buildSessionFacade(
   options?: SessionOptions
 ): Session {
   let currentNs = initialNs
+  let currentDir = options?.workDir ?? (typeof process !== 'undefined' ? process.cwd() : '/')
 
   // One shared evaluation context for the lifetime of this session.
   const ctx = createEvaluationContext()
@@ -177,6 +199,11 @@ function buildSessionFacade(
     runtime.ensureNamespace(name)
     currentNs = name
     runtime.syncNsVar(name)
+  }
+  ctx.currentDir = currentDir
+  ctx.setCurrentDir = (dir: string) => {
+    currentDir = dir
+    ctx.currentDir = dir
   }
 
   const capabilities: SessionCapabilities = {
@@ -204,6 +231,10 @@ function buildSessionFacade(
       return currentNs
     },
 
+    get currentDir() {
+      return currentDir
+    },
+
     get libraries() {
       return options?.libraries ?? []
     },
@@ -212,6 +243,11 @@ function buildSessionFacade(
       runtime.ensureNamespace(name)
       currentNs = name
       runtime.syncNsVar(name)
+    },
+
+    setCurrentDir(dir: string) {
+      currentDir = dir
+      ctx.currentDir = dir
     },
 
     getNs(name: string): CljNamespace | null {
@@ -273,7 +309,7 @@ function buildSessionFacade(
         env.ns?.readerAliases.forEach((nsName, alias) => {
           aliasMap.set(alias, nsName)
         })
-        const forms = readForms(tokens, currentNs, aliasMap)
+        const forms = readForms(tokens, currentNs, aliasMap, source, ctx.currentLineOffset, ctx.currentColOffset)
         runtime.processNsRequires(forms, env, ctx)
         let result: CljValue = v.nil()
         for (const form of forms) {
@@ -283,8 +319,9 @@ function buildSessionFacade(
         return result
       } catch (e) {
         if (e instanceof CljThrownSignal) {
+          const msg = extractExMessage(e.value)
           throw new EvaluationError(
-            `Unhandled throw: ${printString(e.value)}`,
+            msg ?? `Unhandled throw: ${printString(e.value)}`,
             { thrownValue: e.value }
           )
         }
@@ -294,7 +331,11 @@ function buildSessionFacade(
           })
         }
         if (e instanceof EvaluationError || e instanceof ReaderError) {
-          const pos = e.pos ?? (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
+          // e.pos carries its own source string (Option B). Use it directly when
+          // available; fall back to the length guard for synthetic/legacy positions.
+          const pos = (e.pos != null && (e.pos.source != null || e.pos.start < source.length))
+            ? e.pos
+            : (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
           if (pos) {
             e.message += formatErrorContext(source, pos, {
               lineOffset: ctx.currentLineOffset,
@@ -348,7 +389,7 @@ function buildSessionFacade(
         env.ns?.readerAliases.forEach((nsName, alias) => {
           aliasMap.set(alias, nsName)
         })
-        const forms = readForms(tokens, currentNs, aliasMap)
+        const forms = readForms(tokens, currentNs, aliasMap, source, ctx.currentLineOffset, ctx.currentColOffset)
         await runtime.processNsRequiresAsync(forms, env, ctx)
         let result: CljValue = v.nil()
         for (const form of forms) {
@@ -369,8 +410,9 @@ function buildSessionFacade(
         }
       } catch (e) {
         if (e instanceof CljThrownSignal) {
+          const msg = extractExMessage(e.value)
           throw new EvaluationError(
-            `Unhandled throw: ${printString(e.value)}`,
+            msg ?? `Unhandled throw: ${printString(e.value)}`,
             { thrownValue: e.value }
           )
         }
@@ -380,7 +422,9 @@ function buildSessionFacade(
           })
         }
         if (e instanceof EvaluationError || e instanceof ReaderError) {
-          const pos = e.pos ?? (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
+          const pos = (e.pos != null && (e.pos.source != null || e.pos.start < source.length))
+            ? e.pos
+            : (e instanceof EvaluationError ? e.frames?.[0]?.pos : undefined)
           if (pos) {
             e.message += formatErrorContext(source, pos, {
               lineOffset: ctx.currentLineOffset,
@@ -423,8 +467,9 @@ function buildSessionFacade(
         return result
       } catch (e) {
         if (e instanceof CljThrownSignal) {
+          const msg = extractExMessage(e.value)
           throw new EvaluationError(
-            `Unhandled throw: ${printString(e.value)}`,
+            msg ?? `Unhandled throw: ${printString(e.value)}`,
             { thrownValue: e.value }
           )
         }

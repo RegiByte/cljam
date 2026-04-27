@@ -2,7 +2,7 @@
 // map-indexed, identity
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { toSeq } from '../../../transformations'
 import type { CljValue, Env, EvaluationContext } from '../../../types'
@@ -83,13 +83,16 @@ export const hofFunctions: Record<string, CljValue> = {
         return acc
       }
     )
-    .doc(
-      'Reduces a collection to a single value by iteratively applying f. (reduce f coll) or (reduce f init coll).',
-      [
-        ['f', 'coll'],
-        ['f', 'val', 'coll'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Reduces a collection to a single value by iteratively applying f. (reduce f coll) or (reduce f init coll).',
+        arglists: [
+          ['f', 'coll'],
+          ['f', 'val', 'coll'],
+        ],
+        docGroup: DocGroups.collections,
+      }),
+    ]),
 
   apply: v
     .nativeFnCtx(
@@ -129,13 +132,16 @@ export const hofFunctions: Record<string, CljValue> = {
         return ctx.applyCallable(fn, args, callEnv)
       }
     )
-    .doc(
-      'Calls f with the elements of the last argument (a collection) as its arguments, optionally prepended by fixed args.',
-      [
-        ['f', 'args'],
-        ['f', '&', 'args'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Calls f with the elements of the last argument (a collection) as its arguments, optionally prepended by fixed args.',
+        arglists: [
+          ['f', 'args'],
+          ['f', '&', 'args'],
+        ],
+        docGroup: DocGroups.higher_order,
+      }),
+    ]),
 
   partial: v
     .nativeFn('partial', (fn: CljValue, ...preArgs: CljValue[]) => {
@@ -158,10 +164,13 @@ export const hofFunctions: Record<string, CljValue> = {
         }
       )
     })
-    .doc(
-      'Returns a function that calls f with pre-applied args prepended to any additional arguments.',
-      [['f', '&', 'args']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a function that calls f with pre-applied args prepended to any additional arguments.',
+        arglists: [['f', '&', 'args']],
+        docGroup: DocGroups.higher_order,
+      }),
+    ]),
 
   comp: v
     .nativeFn('comp', (...fns: CljValue[]) => {
@@ -192,10 +201,13 @@ export const hofFunctions: Record<string, CljValue> = {
         }
       )
     })
-    .doc(
-      'Returns the composition of fns, applied right-to-left. (comp f g) is equivalent to (fn [x] (f (g x))). Accepts any callable: functions, keywords, and maps.',
-      [[], ['f'], ['f', 'g'], ['f', 'g', '&', 'fns']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the composition of fns, applied right-to-left. (comp f g) is equivalent to (fn [x] (f (g x))). Accepts any callable: functions, keywords, and maps.',
+        arglists: [[], ['f'], ['f', 'g'], ['f', 'g', '&', 'fns']],
+        docGroup: DocGroups.higher_order,
+      }),
+    ]),
 
   identity: v
     .nativeFn('identity', (x: CljValue) => {
@@ -204,5 +216,11 @@ export const hofFunctions: Record<string, CljValue> = {
       }
       return x
     })
-    .doc('Returns its single argument unchanged.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns its single argument unchanged.',
+        arglists: [['x']],
+        docGroup: DocGroups.higher_order,
+      }),
+    ]),
 }

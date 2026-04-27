@@ -1,7 +1,8 @@
 // Auto-generated from src/clojure/walk.clj — do not edit directly.
 // Re-generate with: npm run gen:core-source
 export const clojure_walkSource = `\
-(ns clojure.walk)
+(ns clojure.walk
+  "Tree-walking utilities. Provides functions for traversing and transforming data structures.")
 
 (defn walk
   "Traverses form, an arbitrary data structure. inner and outer are

@@ -1,28 +1,30 @@
-(ns clojure.string)
+(ns clojure.string
+  "String operations. Provides functions for joining, splitting, trimming, and manipulating strings.")
 
 ;; Runtime-injected native helpers. Declared here so clojure-lsp can resolve
 ;; them; the interpreter treats bare (def name) as a no-op and leaves the
 ;; native binding from coreEnv intact.
-(def str-split*)
-(def str-upper-case*)
-(def str-lower-case*)
-(def str-trim*)
-(def str-triml*)
-(def str-trimr*)
-(def str-reverse*)
-(def str-starts-with*)
-(def str-ends-with*)
-(def str-includes*)
-(def str-index-of*)
-(def str-last-index-of*)
-(def str-replace*)
-(def str-replace-first*)
+(declare str-split*)
+(declare str-upper-case*)
+(declare str-lower-case*)
+(declare str-trim*)
+(declare str-triml*)
+(declare str-trimr*)
+(declare str-reverse*)
+(declare str-starts-with*)
+(declare str-ends-with*)
+(declare str-includes*)
+(declare str-index-of*)
+(declare str-last-index-of*)
+(declare str-replace*)
+(declare str-replace-first*)
 
 ;; ---------------------------------------------------------------------------
 ;; Joining / splitting
 ;; ---------------------------------------------------------------------------
 
-(defn join
+(defn
+  join
   "Returns a string of all elements in coll, as returned by (str), separated
   by an optional separator."
   ([coll] (join "" coll))

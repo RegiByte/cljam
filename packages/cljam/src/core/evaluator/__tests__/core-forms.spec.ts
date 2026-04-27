@@ -196,4 +196,35 @@ describe('macros', () => {
     const result = s.evaluate(code)
     expect(result).toMatchObject(toCljValue(expected))
   })
+
+  it('stores :arglists and :doc in var meta for user defmacro', () => {
+    const s = freshSession()
+    s.evaluate('(defmacro mm "Does stuff." [a b & rest] a)')
+    expect(s.evaluate("(:doc (meta #'mm))")).toMatchObject(v.string('Does stuff.'))
+    // :arglists is a vector of param vectors; verify count and printed form
+    expect(s.evaluate("(count (:arglists (meta #'mm)))")).toMatchObject(v.number(1))
+    expect(s.evaluate("(str (first (:arglists (meta #'mm))))")).toMatchObject(v.string('[a b & rest]'))
+  })
+
+  it('stores multi-arity :arglists in var meta', () => {
+    const s = freshSession()
+    s.evaluate('(defmacro multi-mac ([x] x) ([x y] x))')
+    expect(s.evaluate("(count (:arglists (meta #'multi-mac)))")).toMatchObject(v.number(2))
+  })
+
+  it('describe includes :arglists and :doc for user defmacro', () => {
+    const s = freshSession()
+    s.evaluate('(defmacro mm "Does stuff." [x y] x)')
+    expect(s.evaluate("(:doc (:value (describe #'mm)))")).toMatchObject(v.string('Does stuff.'))
+    expect(s.evaluate("(count (:arglists (:value (describe #'mm))))")).toMatchObject(v.number(1))
+  })
+
+  it('bootstrap macro defn has :doc and :arglists populated', () => {
+    const s = freshSession()
+    expect(s.evaluate("(string? (:doc (meta #'defn)))")).toMatchObject(v.boolean(true))
+    expect(s.evaluate("(vector? (:arglists (meta #'defn)))")).toMatchObject(v.boolean(true))
+    // describe also surfaces them
+    expect(s.evaluate("(string? (:doc (:value (describe #'defn))))")).toMatchObject(v.boolean(true))
+    expect(s.evaluate("(vector? (:arglists (:value (describe #'defn))))")).toMatchObject(v.boolean(true))
+  })
 })

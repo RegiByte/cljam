@@ -13,7 +13,7 @@ See the full [MCP Integration guide](/guide/mcp) for setup instructions and work
   "mcpServers": {
     "cljam": {
       "command": "npx",
-      "args": ["@regibyte/cljam-mcp"]
+      "args": ["@regibyte/cljam-mcp", "--root-dir", "/path/to/workspace"]
     }
   }
 }

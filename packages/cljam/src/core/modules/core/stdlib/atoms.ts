@@ -1,6 +1,6 @@
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
 import { realizeDelay } from '../../../transformations'
 import type {
@@ -9,6 +9,7 @@ import type {
   CljNativeFunction,
   CljValue,
   Env,
+  EvaluationContext,
 } from '../../../types'
 
 function validateAtom(
@@ -42,7 +43,13 @@ export const atomFunctions: Record<string, CljValue> = {
     .nativeFn('atom', function atom(value: CljValue) {
       return v.atom(value)
     })
-    .doc('Returns a new atom holding the given value.', [['value']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new atom holding the given value.',
+        arglists: [['value']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   deref: v
     .nativeFn('deref', function deref(value: CljValue) {
@@ -65,10 +72,13 @@ export const atomFunctions: Record<string, CljValue> = {
         0
       )
     })
-    .doc(
-      'Returns the wrapped value from an atom, volatile, reduced, or delay value.',
-      [['value']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the wrapped value from an atom, volatile, reduced, or delay value.',
+        arglists: [['value']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'swap!': v
     .nativeFnCtx(
@@ -103,10 +113,13 @@ export const atomFunctions: Record<string, CljValue> = {
         return newVal
       }
     )
-    .doc(
-      'Applies fn to the current value of the atom, replacing the current value with the result. Returns the new value.',
-      [['atomVal', 'fn', '&', 'extraArgs']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Applies fn to the current value of the atom, replacing the current value with the result. Returns the new value.',
+        arglists: [['atomVal', 'fn', '&', 'extraArgs']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'reset!': v
     .nativeFnCtx(
@@ -127,15 +140,25 @@ export const atomFunctions: Record<string, CljValue> = {
         return newVal
       }
     )
-    .doc('Sets the value of the atom to newVal and returns the new value.', [
-      ['atomVal', 'newVal'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Sets the value of the atom to newVal and returns the new value.',
+        arglists: [['atomVal', 'newVal']],
+        docGroup: DocGroups.atoms,
+      }),
     ]),
 
   'atom?': v
     .nativeFn('atom?', function isAtomPredicate(value: CljValue) {
       return v.boolean(is.atom(value))
     })
-    .doc('Returns true if the value is an atom, false otherwise.', [['value']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the value is an atom, false otherwise.',
+        arglists: [['value']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'swap-vals!': v
     .nativeFnCtx(
@@ -167,10 +190,13 @@ export const atomFunctions: Record<string, CljValue> = {
         return v.vector([oldVal, newVal])
       }
     )
-    .doc(
-      'Atomically swaps the value of atom to be (apply f current-value-of-atom args). Returns [old new].',
-      [['atom', 'f', '&', 'args']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Atomically swaps the value of atom to be (apply f current-value-of-atom args). Returns [old new].',
+        arglists: [['atom', 'f', '&', 'args']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'reset-vals!': v
     .nativeFn(
@@ -188,8 +214,12 @@ export const atomFunctions: Record<string, CljValue> = {
         return v.vector([oldVal, newVal])
       }
     )
-    .doc('Sets the value of atom to newVal. Returns [old new].', [
-      ['atom', 'newval'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Sets the value of atom to newVal. Returns [old new].',
+        arglists: [['atom', 'newval']],
+        docGroup: DocGroups.atoms,
+      }),
     ]),
 
   'compare-and-set!': v
@@ -214,10 +244,13 @@ export const atomFunctions: Record<string, CljValue> = {
         return v.boolean(false)
       }
     )
-    .doc(
-      'Atomically sets the value of atom to newval if and only if the current value of the atom is identical to oldval. Returns true if set happened, else false.',
-      [['atom', 'oldval', 'newval']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Atomically sets the value of atom to newval if and only if the current value of the atom is identical to oldval. Returns true if set happened, else false.',
+        arglists: [['atom', 'oldval', 'newval']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'add-watch': v
     .nativeFnCtx(
@@ -250,10 +283,13 @@ export const atomFunctions: Record<string, CljValue> = {
         return atomVal
       }
     )
-    .doc(
-      'Adds a watch function to an atom. The watch fn must be a fn of 4 args: a key, the atom, its old-state, its new-state.',
-      [['atom', 'key', 'fn']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Adds a watch function to an atom. The watch fn must be a fn of 4 args: a key, the atom, its old-state, its new-state.',
+        arglists: [['atom', 'key', 'fn']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'remove-watch': v
     .nativeFn(
@@ -271,7 +307,13 @@ export const atomFunctions: Record<string, CljValue> = {
         return atomVal
       }
     )
-    .doc('Removes a watch (set by add-watch) from an atom.', [['atom', 'key']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Removes a watch (set by add-watch) from an atom.',
+        arglists: [['atom', 'key']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 
   'set-validator!': v
     .nativeFnCtx(
@@ -304,8 +346,103 @@ export const atomFunctions: Record<string, CljValue> = {
         return v.nil()
       }
     )
-    .doc(
-      'Sets the validator-fn for an atom. fn must be nil or a side-effect-free fn of one argument.',
-      [['atom', 'fn']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Sets the validator-fn for an atom. fn must be nil or a side-effect-free fn of one argument.',
+        arglists: [['atom', 'fn']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
+
+  // ── Volatile ──────────────────────────────────────────────────────────────
+  'volatile!': v
+    .nativeFn('volatile!', function volatileImpl(value: CljValue) {
+      if (value === undefined) {
+        throw new EvaluationError('volatile! expects one argument', {})
+      }
+      return v.volatile(value)
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a volatile value with the given value as its value.',
+        arglists: [['value']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
+  'volatile?': v
+    .nativeFn('volatile?', function isVolatileImpl(value: CljValue) {
+      if (value === undefined) {
+        throw new EvaluationError('volatile? expects one argument', {})
+      }
+      return v.boolean(is.volatile(value))
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if the given value is a volatile value, false otherwise.',
+        arglists: [['value']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
+  'vreset!': v
+    .nativeFn('vreset!', function vresetImpl(vol: CljValue, newVal: CljValue) {
+      if (!is.volatile(vol)) {
+        throw new EvaluationError(
+          `vreset! expects a volatile as its first argument, got ${printString(vol)}`,
+          { vol }
+        )
+      }
+      if (newVal === undefined) {
+        throw new EvaluationError('vreset! expects two arguments', { vol })
+      }
+      vol.value = newVal
+      return newVal
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Resets the value of the given volatile to the given new value and returns the new value.',
+        arglists: [['vol', 'newVal']],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
+  'vswap!': v
+    .nativeFnCtx(
+      'vswap!',
+      function vswapImpl(
+        ctx: EvaluationContext,
+        callEnv: Env,
+        vol: CljValue,
+        fn: CljValue,
+        ...extraArgs: CljValue[]
+      ) {
+        if (!is.volatile(vol)) {
+          throw new EvaluationError(
+            `vswap! expects a volatile as its first argument, got ${printString(vol)}`,
+            { vol }
+          )
+        }
+        if (!is.aFunction(fn)) {
+          throw new EvaluationError(
+            `vswap! expects a function as its second argument, got ${printString(fn)}`,
+            { fn }
+          )
+        }
+        const newVal = ctx.applyFunction(
+          fn as CljFunction | CljNativeFunction,
+          [vol.value, ...extraArgs],
+          callEnv
+        )
+        vol.value = newVal
+        return newVal
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Applies fn to the current value of the volatile, replacing the current value with the result. Returns the new value.',
+        arglists: [
+          ['vol', 'fn'],
+          ['vol', 'fn', '&', 'extraArgs'],
+        ],
+        docGroup: DocGroups.atoms,
+      }),
+    ]),
 }

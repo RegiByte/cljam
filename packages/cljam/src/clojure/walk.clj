@@ -1,4 +1,5 @@
-(ns clojure.walk)
+(ns clojure.walk
+  "Tree-walking utilities. Provides functions for traversing and transforming data structures.")
 
 (defn walk
   "Traverses form, an arbitrary data structure. inner and outer are

@@ -6,31 +6,31 @@ export const clojure_mathSource = `\
 ;; Runtime-injected native helpers. Declared here so clojure-lsp can resolve
 ;; them; the interpreter treats bare (def name) as a no-op and leaves the
 ;; native binding from coreEnv intact.
-(def math-floor*)
-(def math-ceil*)
-(def math-round*)
-(def math-rint*)
-(def math-pow*)
-(def math-exp*)
-(def math-log*)
-(def math-log10*)
-(def math-cbrt*)
-(def math-hypot*)
-(def math-sin*)
-(def math-cos*)
-(def math-tan*)
-(def math-asin*)
-(def math-acos*)
-(def math-atan*)
-(def math-atan2*)
-(def math-sinh*)
-(def math-cosh*)
-(def math-tanh*)
-(def math-signum*)
-(def math-floor-div*)
-(def math-floor-mod*)
-(def math-to-radians*)
-(def math-to-degrees*)
+(declare floor*)
+(declare ceil*)
+(declare round*)
+(declare rint*)
+(declare pow*)
+(declare exp*)
+(declare log*)
+(declare log10*)
+(declare cbrt*)
+(declare hypot*)
+(declare sin*)
+(declare cos*)
+(declare tan*)
+(declare asin*)
+(declare acos*)
+(declare atan*)
+(declare atan2*)
+(declare sinh*)
+(declare cosh*)
+(declare tanh*)
+(declare signum*)
+(declare floor-div*)
+(declare floor-mod*)
+(declare to-radians*)
+(declare to-degrees*)
 
 ;; ---------------------------------------------------------------------------
 ;; Constants
@@ -55,23 +55,23 @@ export const clojure_mathSource = `\
 (defn floor
   "Returns the largest integer value ≤ x."
   [x]
-  (math-floor* x))
+  (floor* x))
 
 (defn ceil
   "Returns the smallest integer value ≥ x."
   [x]
-  (math-ceil* x))
+  (ceil* x))
 
 (defn round
   "Returns the closest integer to x, with ties rounding up (half-up)."
   [x]
-  (math-round* x))
+  (round* x))
 
 (defn rint
   "Returns the integer closest to x, with ties rounding to the nearest even
   integer (IEEE 754 round-half-to-even / banker's rounding)."
   [x]
-  (math-rint* x))
+  (rint* x))
 
 ;; ---------------------------------------------------------------------------
 ;; Exponents and logarithms
@@ -80,22 +80,22 @@ export const clojure_mathSource = `\
 (defn pow
   "Returns x raised to the power of y."
   [x y]
-  (math-pow* x y))
+  (pow* x y))
 
 (defn exp
   "Returns Euler's number e raised to the power of x."
   [x]
-  (math-exp* x))
+  (exp* x))
 
 (defn log
   "Returns the natural logarithm (base e) of x."
   [x]
-  (math-log* x))
+  (log* x))
 
 (defn log10
   "Returns the base-10 logarithm of x."
   [x]
-  (math-log10* x))
+  (log10* x))
 
 (defn sqrt
   "Returns the positive square root of x."
@@ -105,12 +105,12 @@ export const clojure_mathSource = `\
 (defn cbrt
   "Returns the cube root of x."
   [x]
-  (math-cbrt* x))
+  (cbrt* x))
 
 (defn hypot
   "Returns sqrt(x² + y²), avoiding intermediate overflow or underflow."
   [x y]
-  (math-hypot* x y))
+  (hypot* x y))
 
 ;; ---------------------------------------------------------------------------
 ;; Trigonometry
@@ -119,38 +119,38 @@ export const clojure_mathSource = `\
 (defn sin
   "Returns the trigonometric sine of angle x in radians."
   [x]
-  (math-sin* x))
+  (sin* x))
 
 (defn cos
   "Returns the trigonometric cosine of angle x in radians."
   [x]
-  (math-cos* x))
+  (cos* x))
 
 (defn tan
   "Returns the trigonometric tangent of angle x in radians."
   [x]
-  (math-tan* x))
+  (tan* x))
 
 (defn asin
   "Returns the arc sine of x, in the range [-π/2, π/2]."
   [x]
-  (math-asin* x))
+  (asin* x))
 
 (defn acos
   "Returns the arc cosine of x, in the range [0, π]."
   [x]
-  (math-acos* x))
+  (acos* x))
 
 (defn atan
   "Returns the arc tangent of x, in the range (-π/2, π/2)."
   [x]
-  (math-atan* x))
+  (atan* x))
 
 (defn atan2
   "Returns the angle θ from the conversion of rectangular coordinates (x, y)
   to polar (r, θ). Arguments are y first, then x."
   [y x]
-  (math-atan2* y x))
+  (atan2* y x))
 
 ;; ---------------------------------------------------------------------------
 ;; Hyperbolic
@@ -159,17 +159,17 @@ export const clojure_mathSource = `\
 (defn sinh
   "Returns the hyperbolic sine of x."
   [x]
-  (math-sinh* x))
+  (sinh* x))
 
 (defn cosh
   "Returns the hyperbolic cosine of x."
   [x]
-  (math-cosh* x))
+  (cosh* x))
 
 (defn tanh
   "Returns the hyperbolic tangent of x."
   [x]
-  (math-tanh* x))
+  (tanh* x))
 
 ;; ---------------------------------------------------------------------------
 ;; Miscellaneous
@@ -183,29 +183,29 @@ export const clojure_mathSource = `\
 (defn signum
   "Returns -1.0, 0.0, or 1.0 indicating the sign of x."
   [x]
-  (math-signum* x))
+  (signum* x))
 
 (defn floor-div
   "Returns the largest integer ≤ (/ x y). Unlike quot, floor-div rounds toward
   negative infinity rather than zero."
   [x y]
-  (math-floor-div* x y))
+  (floor-div* x y))
 
 (defn floor-mod
   "Returns x - (floor-div x y) * y. Unlike rem, the result has the same sign
   as y."
   [x y]
-  (math-floor-mod* x y))
+  (floor-mod* x y))
 
 (defn to-radians
   "Converts an angle measured in degrees to an approximately equivalent angle
   measured in radians."
   [deg]
-  (math-to-radians* deg))
+  (to-radians* deg))
 
 (defn to-degrees
   "Converts an angle measured in radians to an approximately equivalent angle
   measured in degrees."
   [rad]
-  (math-to-degrees* rad))
+  (to-degrees* rad))
 `

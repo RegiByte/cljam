@@ -11,8 +11,18 @@ import { printString, type CljamLibrary } from '@regibyte/cljam'
 import { readFileSync } from 'node:fs'
 import { resolve, isAbsolute } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { SessionManager, type Preset } from './session-manager.js'
+import { SessionManager, discoverMain, type SessionRecord } from './session-manager.js'
 import { ConnectionManager } from './nrepl-bridge.js'
+
+export type McpServerOptions = {
+  /** Default workspace root used by new_session when root_dir is omitted. */
+  defaultRootDir?: string
+  /**
+   * Default main spec used by new_session, overriding `cljam.main` from the
+   * workspace package.json. Format: "ns" or "ns:fn".
+   */
+  defaultMain?: string
+}
 
 // ---------------------------------------------------------------------------
 // Library loading helpers
@@ -143,16 +153,21 @@ const TOOL_DEFINITIONS = [
     description: [
       'Create a new cljam Clojure session. Returns a session_id used by all other tools.',
       '',
-      'preset options:',
-      '  "sandbox" (default) — safe, no I/O, no dynamic imports, no host globals beyond Math.',
-      '  "node"              — full Node.js: Math/console/process/fetch, dynamic import enabled.',
+      'Sessions use the MCP agent workspace configuration:',
+      '  - captured stdout/stderr',
+      '  - Math/console/process/fetch/Buffer/timers available in the js namespace',
+      '  - dynamic JS imports enabled for day-to-day Node.js work',
       '',
-      'root_dir: absolute path to the project root. When set:',
+      'root_dir: absolute path to the project root. If omitted, the server default root is used.',
+      'When a root directory is set:',
       '  - load_file accepts paths relative to root_dir',
-      '  - (:require [ns]) can resolve .clj files under root_dir',
+      '  - (:require [ns]) resolves .clj files from cljam.sourceRoots in package.json',
       '  - cljam.libraries in root_dir/package.json are auto-loaded:',
       '    { "cljam": { "libraries": ["@regibyte/cljam-schema"] } }',
       '    Each listed package must export a `library` CljamLibrary object.',
+      '  - cljam.main in root_dir/package.json is auto-required and the session',
+      '    enters that namespace. Format: "my.ns" or "my.ns:bootstrap-fn".',
+      '    With ":fn" the function is called with no args after the require.',
       '',
       'IMPORTANT — cljam diverges from JVM Clojure in these ways:',
       '  - No Java interop: (.method obj), (new Class), import do not exist.',
@@ -160,16 +175,10 @@ const TOOL_DEFINITIONS = [
       '  - Floating point follows JS/IEEE-754 (not JVM rounding).',
       '  - Use (async ...) instead of future/agent for async work. @ Deref within async block acts as await.',
       '  - Refs/dosync exist but STM retry semantics are simplified.',
-      '  - In sandbox preset: no I/O, no dynamic JS imports.',
     ].join('\n'),
     inputSchema: {
       type: 'object',
       properties: {
-        preset: {
-          type: 'string',
-          enum: ['sandbox', 'node'],
-          description: 'Security preset. Default: "sandbox".',
-        },
         root_dir: {
           type: 'string',
           description: 'Absolute path to the project root directory.',
@@ -215,7 +224,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: 'list_sessions',
-    description: 'List all active sessions with their current namespace, preset, and metadata.',
+    description: 'List all active sessions with their current namespace and workspace metadata.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -239,7 +248,7 @@ const TOOL_DEFINITIONS = [
       '',
       'path can be:',
       '  - An absolute path: "/Users/me/project/src/my/lib.clj"',
-      '  - A path relative to root_dir (if root_dir was set in new_session)',
+      '  - A path relative to the session root_dir',
       '',
       'Use this to load your project source files before evaluating code against them.',
     ].join('\n'),
@@ -406,17 +415,21 @@ const NREPL_TOOL_DEFINITIONS = [
 // createMcpServer
 // ---------------------------------------------------------------------------
 
-export function createMcpServer(): Server {
-  const manager = new SessionManager()
+export function createMcpServer(options: McpServerOptions = {}): Server {
+  const manager = new SessionManager(options.defaultRootDir)
   const connManager = new ConnectionManager()
 
-  // Lazy sandbox session for handbook lookups — created on first use, reused after.
+  // Lazy session for handbook lookups — built on first use because session
+  // creation became async (entrypoint bootstrap support).
+  let handbookRecord: SessionRecord | null = null
   let handbookReady = false
-  const handbookRecord = manager.create('sandbox')
-  async function ensureHandbook(): Promise<void> {
-    if (handbookReady) return
-    await handbookRecord.session.evaluateAsync("(require '[cljam.handbook :as h])")
-    handbookReady = true
+  async function ensureHandbook(): Promise<SessionRecord> {
+    if (!handbookRecord) handbookRecord = await manager.create()
+    if (!handbookReady) {
+      await handbookRecord.session.evaluateAsync("(require '[cljam.handbook :as h])")
+      handbookReady = true
+    }
+    return handbookRecord
   }
 
   const server = new Server(
@@ -434,31 +447,39 @@ export function createMcpServer(): Server {
 
     switch (name) {
       case 'new_session': {
-        const preset = (a.preset as Preset | undefined) ?? 'sandbox'
         const rootDir = a.root_dir as string | undefined
 
         // Auto-load libraries declared in root_dir/package.json under cljam.libraries
         let libraries: CljamLibrary[] = []
         const libraryErrors: string[] = []
-        if (rootDir) {
-          const specs = readPackageLibraries(rootDir)
+        const effectiveRootDir = rootDir ?? options.defaultRootDir
+        if (effectiveRootDir) {
+          const specs = readPackageLibraries(effectiveRootDir)
           if (specs.length > 0) {
-            const result = await loadLibraries(rootDir, specs)
+            const result = await loadLibraries(effectiveRootDir, specs)
             libraries = result.libs
             libraryErrors.push(...result.errors)
           }
         }
 
-        const record = manager.create(preset, rootDir, libraries)
+        // Resolve main spec: server-level CLI/env override wins, else package.json.
+        const main =
+          options.defaultMain ??
+          (effectiveRootDir ? discoverMain(effectiveRootDir) : undefined)
+
+        const record = await manager.create({ rootDir, libraries, main })
         return ok({
           session_id: record.id,
           ns: record.session.currentNs,
-          preset,
-          root_dir: rootDir ?? null,
+          preset: record.preset,
+          root_dir: record.rootDir ?? null,
+          source_roots: record.sourceRoots,
           libraries: record.libraryIds,
+          ...(record.main ? { main: record.main } : {}),
           created_at: record.createdAt.toISOString(),
           capabilities: record.session.capabilities,
           ...(libraryErrors.length > 0 ? { library_load_errors: libraryErrors } : {}),
+          ...(record.mainLoadError ? { main_load_error: record.mainLoadError } : {}),
         })
       }
 
@@ -501,8 +522,11 @@ export function createMcpServer(): Server {
             ns: r.session.currentNs,
             preset: r.preset,
             root_dir: r.rootDir ?? null,
+            source_roots: r.sourceRoots,
             libraries: r.libraryIds,
+            ...(r.main ? { main: r.main } : {}),
             created_at: r.createdAt.toISOString(),
+            ...(r.mainLoadError ? { main_load_error: r.mainLoadError } : {}),
           }))
         )
       }
@@ -632,14 +656,14 @@ export function createMcpServer(): Server {
       }
 
       case 'handbook': {
-        await ensureHandbook()
+        const record = await ensureHandbook()
         const topic = a.topic as string | undefined
 
         if (!topic) {
           // No topic given — return sorted list of all topic keys.
           // printString on a seq/vector uses EDN format (space-separated, no commas),
           // so we return it as a plain string rather than trying to JSON.parse it.
-          const result = await handbookRecord.session.evaluateAsync(
+          const result = await record.session.evaluateAsync(
             '(sort (map name (h/topics)))'
           )
           return ok({ topics: printString(result) })
@@ -647,7 +671,7 @@ export function createMcpServer(): Server {
 
         // Lookup: pass topic as a keyword (strip any leading colon the caller might include)
         const kw = topic.startsWith(':') ? topic : `:${topic}`
-        const result = await handbookRecord.session.evaluateAsync(`(h/lookup ${kw})`)
+        const result = await record.session.evaluateAsync(`(h/lookup ${kw})`)
         // printString wraps strings in EDN quotes — JSON.parse unwraps them cleanly
         const entry = JSON.parse(printString(result))
         return ok({ topic, entry })
@@ -665,8 +689,8 @@ export function createMcpServer(): Server {
 // startMcpServer — wires stdio transport and connects
 // ---------------------------------------------------------------------------
 
-export async function startMcpServer(): Promise<void> {
-  const server = createMcpServer()
+export async function startMcpServer(options: McpServerOptions = {}): Promise<void> {
+  const server = createMcpServer(options)
   const transport = new StdioServerTransport()
   await server.connect(transport)
 }

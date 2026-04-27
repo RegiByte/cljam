@@ -1,6 +1,6 @@
 import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import type { CljValue } from '../../../types'
 
 export const varFunctions: Record<string, CljValue> = {
@@ -8,7 +8,13 @@ export const varFunctions: Record<string, CljValue> = {
     .nativeFn('var?', function isVarImpl(x: CljValue) {
       return v.boolean(is.var(x))
     })
-    .doc('Returns true if x is a Var.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if x is a Var.',
+        arglists: [['x']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   'var-get': v
     .nativeFn('var-get', function varGetImpl(x: CljValue) {
@@ -17,7 +23,13 @@ export const varFunctions: Record<string, CljValue> = {
       }
       return x.value
     })
-    .doc('Returns the value in the Var object.', [['x']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the value in the Var object.',
+        arglists: [['x']],
+        docGroup: DocGroups.vars,
+      }),
+    ]),
 
   'alter-var-root': v
     .nativeFnCtx(
@@ -46,8 +58,11 @@ export const varFunctions: Record<string, CljValue> = {
         return newVal
       }
     )
-    .doc(
-      'Atomically alters the root binding of var v by applying f to its current value plus any additional args.',
-      [['v', 'f', '&', 'args']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Atomically alters the root binding of var v by applying f to its current value plus any additional args.',
+        arglists: [['v', 'f', '&', 'args']],
+        docGroup: DocGroups.vars,
+      }),
+    ]),
 }

@@ -75,12 +75,16 @@ export function internVar(
   meta?: CljMap
 ) {
   const ns = nsEnv.ns!
+  // When no explicit meta is provided, inherit from the value's .meta (if any).
+  // This ensures native functions registered via .withMeta() in bootstrap.ts
+  // have their :doc-group/:no-doc visible via (meta the-var) in the doc generator.
+  const effectiveMeta = meta ?? (value as { meta?: CljMap }).meta
   const existing = ns.vars.get(name)
   if (existing) {
     existing.value = value
-    if (meta) existing.meta = meta
+    if (effectiveMeta) existing.meta = effectiveMeta
   } else {
-    ns.vars.set(name, v.var(ns.name, name, value, meta))
+    ns.vars.set(name, v.var(ns.name, name, value, effectiveMeta))
   }
 }
 

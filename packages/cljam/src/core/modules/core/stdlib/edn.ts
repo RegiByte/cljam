@@ -3,7 +3,7 @@
 // These natives are registered in clojure.core and called from that namespace.
 
 import { EvaluationError } from '../../../errors'
-import { v } from '../../../factories'
+import { DocGroups, docMeta, v } from '../../../factories'
 import { derefValue, lookupVar } from '../../../env'
 import { tokenize } from '../../../tokenizer'
 import { readFormsEdn } from '../../../reader'
@@ -16,27 +16,24 @@ import type { CljMap, CljValue, Env, EvaluationContext } from '../../../types'
 
 function instHandler(form: CljValue): CljValue {
   if (form.kind !== 'string') {
-    throw new EvaluationError(
-      `#inst requires a string, got ${form.kind}`,
-      { form }
-    )
+    throw new EvaluationError(`#inst requires a string, got ${form.kind}`, {
+      form,
+    })
   }
   const date = new Date(form.value)
   if (isNaN(date.getTime())) {
-    throw new EvaluationError(
-      `#inst: invalid date string "${form.value}"`,
-      { form }
-    )
+    throw new EvaluationError(`#inst: invalid date string "${form.value}"`, {
+      form,
+    })
   }
   return v.jsValue(date)
 }
 
 function uuidHandler(form: CljValue): CljValue {
   if (form.kind !== 'string') {
-    throw new EvaluationError(
-      `#uuid requires a string, got ${form.kind}`,
-      { form }
-    )
+    throw new EvaluationError(`#uuid requires a string, got ${form.kind}`, {
+      form,
+    })
   }
   return form // pass through as-is; UUID is just a string in cljam
 }
@@ -137,54 +134,68 @@ export const ednFunctions = {
   // edn-read-string* — backing native for clojure.edn/read-string.
   // 1-arg form: (edn-read-string* s)
   // 2-arg form: (edn-read-string* opts s) — opts is {:readers {...} :default fn}
-  'edn-read-string*': v.nativeFnCtx(
-    'edn-read-string*',
-    (ctx: EvaluationContext, callEnv: Env, ...args: CljValue[]) => {
-      if (args.length === 0 || args.length > 2) {
-        throw new EvaluationError(
-          `edn-read-string* expects 1 or 2 arguments, got ${args.length}`,
-          {}
+  'edn-read-string*': v
+    .nativeFnCtx(
+      'edn-read-string*',
+      (ctx: EvaluationContext, callEnv: Env, ...args: CljValue[]) => {
+        if (args.length === 0 || args.length > 2) {
+          throw new EvaluationError(
+            `edn-read-string* expects 1 or 2 arguments, got ${args.length}`,
+            {}
+          )
+        }
+
+        let optsArg: CljValue | null = null
+        let sourceArg: CljValue
+
+        if (args.length === 1) {
+          sourceArg = args[0]
+        } else {
+          optsArg = args[0]
+          sourceArg = args[1]
+        }
+
+        if (sourceArg.kind !== 'string') {
+          throw new EvaluationError(
+            `edn-read-string*: expected string, got ${printString(sourceArg)}`,
+            { sourceArg }
+          )
+        }
+
+        const { readers, defaultFn } = buildDataReaders(optsArg, callEnv, ctx)
+
+        const tokens = tokenize(sourceArg.value)
+        const forms = readFormsEdn(
+          tokens,
+          {
+            dataReaders: readers,
+            defaultDataReader: defaultFn,
+          },
+          sourceArg.value
         )
+
+        if (forms.length === 0) {
+          throw new EvaluationError('edn-read-string*: empty input', {})
+        }
+
+        return forms[0]
       }
-
-      let optsArg: CljValue | null = null
-      let sourceArg: CljValue
-
-      if (args.length === 1) {
-        sourceArg = args[0]
-      } else {
-        optsArg = args[0]
-        sourceArg = args[1]
-      }
-
-      if (sourceArg.kind !== 'string') {
-        throw new EvaluationError(
-          `edn-read-string*: expected string, got ${printString(sourceArg)}`,
-          { sourceArg }
-        )
-      }
-
-      const { readers, defaultFn } = buildDataReaders(optsArg, callEnv, ctx)
-
-      const tokens = tokenize(sourceArg.value)
-      const forms = readFormsEdn(tokens, {
-        dataReaders: readers,
-        defaultDataReader: defaultFn,
-      })
-
-      if (forms.length === 0) {
-        throw new EvaluationError('edn-read-string*: empty input', {})
-      }
-
-      return forms[0]
-    }
-  ),
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Reads one EDN value from string s and returns it.',
+        arglists: [['s']],
+        docGroup: DocGroups.edn,
+        extra: {
+          'no-doc': true,
+        },
+      }),
+    ]),
 
   // edn-pr-str* — EDN-safe serialisation. Delegates to printString for now;
   // EDN output is identical to Clojure's pr-str for all standard types.
-  'edn-pr-str*': v.nativeFn(
-    'edn-pr-str*',
-    (...args: CljValue[]) => {
+  'edn-pr-str*': v
+    .nativeFn('edn-pr-str*', (...args: CljValue[]) => {
       if (args.length !== 1) {
         throw new EvaluationError(
           `edn-pr-str* expects 1 argument, got ${args.length}`,
@@ -192,8 +203,17 @@ export const ednFunctions = {
         )
       }
       return v.string(printString(args[0]))
-    }
-  ),
+    })
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a string representation of val in EDN format.',
+        arglists: [['val']],
+        docGroup: DocGroups.edn,
+        extra: {
+          'no-doc': true,
+        },
+      }),
+    ]),
 }
 
 // *data-readers* — global dynamic var; maps tag symbols → reader functions.

@@ -1,3 +1,5 @@
+import { is } from './assertions'
+import { jsToClj } from './conversions'
 import { EvaluationError } from './errors'
 import type {
   Arity,
@@ -48,6 +50,11 @@ export const cljBoolean = <T extends boolean>(value: T) =>
   ({ kind: 'boolean', value }) as const satisfies CljBoolean
 export const cljKeyword = <T extends string>(name: T) =>
   ({ kind: 'keyword', name }) as const satisfies CljKeyword
+export const cljAutoKeyword = <T extends string>(name: T) =>
+  ({
+    kind: 'keyword',
+    name: name.startsWith(':') ? name : `:${name}`,
+  }) as const satisfies CljKeyword
 export const cljNil = () =>
   ({ kind: 'nil', value: null }) as const satisfies CljNil
 export const cljSymbol = <T extends string>(name: T) =>
@@ -245,6 +252,8 @@ export const withDoc = <T extends CljNativeFunction | CljFunction>(
 export type NativeFnBuilder = CljNativeFunction & {
   /** Attach doc-string and optional arglists metadata. */
   doc(text: string, arglists?: string[][]): NativeFnBuilder
+  /** Attach metadata. */
+  withMeta(meta: [CljValue, CljValue][]): NativeFnBuilder
 }
 
 function buildDocMeta(text: string, arglists?: string[][]): CljMap {
@@ -259,6 +268,29 @@ function buildDocMeta(text: string, arglists?: string[][]): CljMap {
         ] as [CljValue, CljValue][])
       : []),
   ])
+}
+
+/**
+ * Takes an existing meta map and merges
+ */
+function mergeDocMeta(newMap: CljMap, existingMap: CljMap | undefined): CljMap {
+  let baseMap = existingMap ?? cljMap([])
+  for (const [key, value] of newMap.entries) {
+    // Only keywords are allowed in meta maps
+    if (key.kind !== 'keyword') continue
+    const existing = baseMap.entries.find(
+      ([k]) => k.kind === 'keyword' && k.name === key.name
+    )
+    if (existing) {
+      baseMap = cljMap(
+        [...baseMap.entries].filter(
+          ([k]) => k.kind !== 'keyword' || k.name !== (key as CljKeyword).name
+        )
+      )
+    }
+    baseMap = cljMap([...baseMap.entries, [key, value]])
+  }
+  return baseMap
 }
 
 function makeNativeFnBuilder(def: CljNativeFunction): NativeFnBuilder {
@@ -281,6 +313,12 @@ function makeNativeFnBuilder(def: CljNativeFunction): NativeFnBuilder {
       return makeNativeFnBuilder({
         ...plain,
         meta: buildDocMeta(text, arglists),
+      })
+    },
+    withMeta(meta: [CljValue, CljValue][]): NativeFnBuilder {
+      return makeNativeFnBuilder({
+        ...plain,
+        meta: mergeDocMeta(cljMap(meta), plain.meta),
       })
     },
   }
@@ -318,10 +356,11 @@ export const v = {
   string: cljString,
   char: cljChar,
   boolean: cljBoolean,
-  keyword: cljKeyword,
   nil: cljNil,
   symbol: cljSymbol,
+  keyword: cljKeyword,
   kw: cljKeyword,
+  autoKeyword: cljAutoKeyword,
 
   // collections
   list: cljList,
@@ -373,4 +412,73 @@ export const v = {
   jsValue: cljJsValue,
   protocol: cljProtocol,
   record: cljRecord,
+}
+
+type DocMetaOpts = {
+  doc: string
+  arglists?: string[][]
+  docGroup?: string
+  extra?: Record<string, CljValue | string | number | boolean>
+}
+
+export const docMeta = ({
+  doc,
+  arglists,
+  docGroup,
+  extra = {},
+}: DocMetaOpts): [CljValue, CljValue][] => {
+  const base = [
+    [v.keyword(':doc'), v.string(doc)],
+    ...(arglists
+      ? ([
+          [
+            cljKeyword(':arglists'),
+            cljVector(arglists.map((args) => cljVector(args.map(cljSymbol)))),
+          ],
+        ] as [CljValue, CljValue][])
+      : []),
+    ...(docGroup
+      ? ([[cljKeyword(':doc-group'), cljString(docGroup)]] as [
+          CljValue,
+          CljValue,
+        ][])
+      : []),
+  ]
+  for (const [key, value] of Object.entries(extra)) {
+    base.push([cljAutoKeyword(key), jsToClj(value)])
+  }
+
+  return base as [CljValue, CljValue][]
+}
+
+export const DocGroups = {
+  runtime: 'Dev',
+  interop: 'Interop',
+  regex: 'Strings',
+  introspection: 'Dev',
+  utilities: 'Utilities',
+  vars: 'Dev',
+  io: 'IO',
+  async: 'Async',
+  arithmetic: 'Arithmetic',
+  comparison: 'Comparison',
+  edn: 'EDN',
+  collections: 'Sequences',
+  sequences: 'Sequences',
+  transducers: 'Transducers',
+  maps: 'Maps',
+  predicates: 'Predicates',
+  strings: 'Strings',
+  control_flow: 'Control Flow',
+  threading: 'Threading',
+  higher_order: 'Higher-order',
+  lazy: 'Sequences',
+  atoms: 'State',
+  errors: 'Errors',
+  sets: 'Sequences',
+  metadata: 'Metadata',
+  hierarchy: 'Abstractions',
+  dev: 'Dev',
+  protocols: 'Abstractions',
+  multimethods: 'Abstractions',
 }

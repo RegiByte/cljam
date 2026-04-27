@@ -17,15 +17,23 @@ import { readFileSync } from 'node:fs'
 import { createSession, printString } from '@regibyte/cljam'
 import { startNreplServer } from '@regibyte/cljam/nrepl'
 import { library as dateLib } from '@regibyte/cljam-date'
+import { library as integrantLib } from '@regibyte/cljam-integrant'
 
 const session = createSession({
-  output: (text) => process.stdout.write(text),
-  importModule: (specifier) => import(specifier),
-  hostBindings: { Math, console },
+  output: (text: string) => process.stdout.write(text),
+  importModule: (specifier: string) => import(specifier),
+  hostBindings: {
+    Math,
+    console,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+  },
   sourceRoots: ['src'],
-  readFile: (filePath) => readFileSync(filePath, 'utf-8'),
-  libraries: [dateLib],
-  allowedPackages: ['cljam.date'],
+  readFile: (filePath: string) => readFileSync(filePath, 'utf-8'),
+  libraries: [dateLib, integrantLib],
+  allowedPackages: ['cljam.date', 'cljam.integrant'],
   allowedHostModules: ['node:'],
 })
 
@@ -181,9 +189,9 @@ section('9. nREPL server')
 
 startNreplServer({
   session,
-  importModule: (s) => import(s),
+  importModule: (specifier: string) => import(specifier),
   sourceRoots: ['src'],
-  onOutput: (text) => process.stdout.write(text),
+  onOutput: (text: string) => process.stdout.write(text),
 })
 
 // Process stays alive while the TCP server is running.

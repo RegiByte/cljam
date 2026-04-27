@@ -8,7 +8,7 @@
 
 import { is } from '../../../assertions.ts'
 import { EvaluationError } from '../../../errors.ts'
-import { v } from '../../../factories.ts'
+import { DocGroups, docMeta, v } from '../../../factories.ts'
 import { printString } from '../../../printer.ts'
 import { realizeLazySeq, toSeq } from '../../../transformations.ts'
 import {
@@ -30,7 +30,13 @@ export const seqFunctions: Record<string, CljValue> = {
       }
       return v.list(args)
     })
-    .doc('Returns a new list containing the given values.', [['&', 'args']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new list containing the given values.',
+        arglists: [['&', 'args']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   seq: v
     .nativeFn('seq', function seqImpl(coll: CljValue): CljValue {
@@ -51,10 +57,13 @@ export const seqFunctions: Record<string, CljValue> = {
       const items = toSeq(coll)
       return items.length === 0 ? v.nil() : v.list(items)
     })
-    .doc(
-      'Returns a sequence of the given collection or string. Strings yield a sequence of single-character strings.',
-      [['coll']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a sequence of the given collection or string. Strings yield a sequence of single-character strings.',
+        arglists: [['coll']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   first: v
     .nativeFn('first', function firstImpl(collection: CljValue): CljValue {
@@ -75,8 +84,12 @@ export const seqFunctions: Record<string, CljValue> = {
       const entries = toSeq(collection)
       return entries.length === 0 ? v.nil() : entries[0]
     })
-    .doc('Returns the first element of the given collection or string.', [
-      ['coll'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the first element of the given collection or string.',
+        arglists: [['coll']],
+        docGroup: DocGroups.sequences,
+      }),
     ]),
 
   rest: v
@@ -120,10 +133,13 @@ export const seqFunctions: Record<string, CljValue> = {
         0
       )
     })
-    .doc(
-      'Returns a sequence of the given collection or string excluding the first element.',
-      [['coll']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a sequence of the given collection or string excluding the first element.',
+        arglists: [['coll']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   // conj dispatches across all collection types — it belongs here as the primary
   // sequence construction operation (cons-cell prepend for lists, append for
@@ -209,10 +225,13 @@ export const seqFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Appends args to the given collection. Lists append in reverse order to the head, vectors append to the tail, sets add unique elements.',
-      [['collection', '&', 'args']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Appends args to the given collection. Lists append in reverse order to the head, vectors append to the tail, sets add unique elements.',
+        arglists: [['collection', '&', 'args']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   cons: v
     .nativeFn('cons', function consImpl(x: CljValue, xs: CljValue) {
@@ -243,8 +262,12 @@ export const seqFunctions: Record<string, CljValue> = {
 
       return wrap(newItems)
     })
-    .doc('Returns a new collection with x prepended to the head of xs.', [
-      ['x', 'xs'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new collection with x prepended to the head of xs.',
+        arglists: [['x', 'xs']],
+        docGroup: DocGroups.sequences,
+      }),
     ]),
 
   get: v
@@ -287,13 +310,16 @@ export const seqFunctions: Record<string, CljValue> = {
         }
       }
     )
-    .doc(
-      'Returns the value associated with key in target. If target is a map, returns the value associated with key, otherwise returns the value at index key in target. If not-found is provided, it is returned if the key is not found, otherwise nil is returned.',
-      [
-        ['target', 'key'],
-        ['target', 'key', 'not-found'],
-      ]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the value associated with key in target. If target is a map, returns the value associated with key, otherwise returns the value at index key in target. If not-found is provided, it is returned if the key is not found, otherwise nil is returned.',
+        arglists: [
+          ['target', 'key'],
+          ['target', 'key', 'not-found'],
+        ],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   nth: v
     .nativeFn(
@@ -384,10 +410,13 @@ export const seqFunctions: Record<string, CljValue> = {
         return items[index]
       }
     )
-    .doc(
-      'Returns the nth element of the given collection. If not-found is provided, it is returned if the index is out of bounds, otherwise an error is thrown.',
-      [['coll', 'n', 'not-found']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the nth element of the given collection. If not-found is provided, it is returned if the index is out of bounds, otherwise an error is thrown.',
+        arglists: [['coll', 'n', 'not-found']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   last: v
     .nativeFn('last', function lastImpl(coll: CljValue) {
@@ -400,7 +429,13 @@ export const seqFunctions: Record<string, CljValue> = {
       const items = coll.value
       return items.length === 0 ? v.nil() : items[items.length - 1]
     })
-    .doc('Returns the last element of the given collection.', [['coll']]),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the last element of the given collection.',
+        arglists: [['coll']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   reverse: v
     .nativeFn('reverse', function reverseImpl(coll: CljValue) {
@@ -413,10 +448,13 @@ export const seqFunctions: Record<string, CljValue> = {
       }
       return v.list([...coll.value].reverse())
     })
-    .doc(
-      'Returns a new sequence with the elements of the given collection in reverse order.',
-      [['coll']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a new sequence with the elements of the given collection in reverse order.',
+        arglists: [['coll']],
+        docGroup: DocGroups.sequences,
+      }),
+    ]),
 
   'empty?': v
     .nativeFn('empty?', function emptyPredImpl(coll: CljValue) {
@@ -434,10 +472,13 @@ export const seqFunctions: Record<string, CljValue> = {
       }
       return v.boolean(toSeq(coll).length === 0)
     })
-    .doc(
-      'Returns true if coll has no items. Accepts collections, strings, and nil.',
-      [['coll']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if coll has no items. Accepts collections, strings, and nil.',
+        arglists: [['coll']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   'contains?': v
     .nativeFn(
@@ -482,10 +523,13 @@ export const seqFunctions: Record<string, CljValue> = {
         )
       }
     )
-    .doc(
-      'Returns true if key is present in coll. For maps checks key existence (including keys with nil values). For vectors checks index bounds.',
-      [['coll', 'key']]
-    ),
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns true if key is present in coll. For maps checks key existence (including keys with nil values). For vectors checks index bounds.',
+        arglists: [['coll', 'key']],
+        docGroup: DocGroups.predicates,
+      }),
+    ]),
 
   'repeat*': v
     .nativeFn('repeat*', function repeatImpl(n: CljValue, x: CljValue) {
@@ -498,8 +542,15 @@ export const seqFunctions: Record<string, CljValue> = {
       }
       return v.list(Array(n.value).fill(x))
     })
-    .doc('Returns a finite sequence of n copies of x (native helper).', [
-      ['n', 'x'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a finite sequence of n copies of x (native helper).',
+        arglists: [['n', 'x']],
+        docGroup: DocGroups.sequences,
+        extra: {
+          'no-doc': true,
+        },
+      }),
     ]),
 
   // ── Range ────────────────────────────────────────────────────────────────
@@ -558,10 +609,15 @@ export const seqFunctions: Record<string, CljValue> = {
       }
       return v.list(result)
     })
-    .doc('Returns a finite sequence of numbers (native helper).', [
-      ['n'],
-      ['start', 'end'],
-      ['start', 'end', 'step'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns a finite sequence of numbers (native helper).',
+        arglists: [['n'], ['start', 'end'], ['start', 'end', 'step']],
+        docGroup: DocGroups.sequences,
+        extra: {
+          'no-doc': true,
+        },
+      }),
     ]),
 
   // ── Quasiquote bootstrap helper ──────────────────────────────────────────
@@ -589,8 +645,15 @@ export const seqFunctions: Record<string, CljValue> = {
       }
       return v.list(result)
     })
-    .doc('Eagerly concatenates seqable collections into a list (quasiquote bootstrap helper).', [
-      ['&', 'colls'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Eagerly concatenates seqable collections into a list (quasiquote bootstrap helper).',
+        arglists: [['&', 'colls']],
+        docGroup: DocGroups.sequences,
+        extra: {
+          'no-doc': true,
+        },
+      }),
     ]),
 
   count: v
@@ -638,8 +701,12 @@ export const seqFunctions: Record<string, CljValue> = {
           )
       }
     })
-    .doc('Returns the number of elements in the given countable value.', [
-      ['countable'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns the number of elements in the given countable value.',
+        arglists: [['countable']],
+        docGroup: DocGroups.sequences,
+      }),
     ]),
 
   empty: v
@@ -658,7 +725,11 @@ export const seqFunctions: Record<string, CljValue> = {
           return v.nil()
       }
     })
-    .doc('Returns an empty collection of the same category as coll, or nil.', [
-      ['coll'],
+    .withMeta([
+      ...docMeta({
+        doc: 'Returns an empty collection of the same category as coll, or nil.',
+        arglists: [['coll']],
+        docGroup: DocGroups.sequences,
+      }),
     ]),
 }
