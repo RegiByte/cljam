@@ -158,8 +158,9 @@ const TOOL_DEFINITIONS = [
       '  - Math/console/process/fetch/Buffer/timers available in the js namespace',
       '  - dynamic JS imports enabled for day-to-day Node.js work',
       '',
-      'root_dir: absolute path to the project root. If omitted, the server default root is used.',
-      'When a root directory is set:',
+      'root_dir: ESCAPE HATCH — only pass this when you explicitly want a non-default workspace.',
+      'Leave it out entirely (do NOT pass null or empty string) to use the configured default workspace.',
+      'When a root directory is set (explicitly or via server default):',
       '  - load_file accepts paths relative to root_dir',
       '  - (:require [ns]) resolves .clj files from cljam.sourceRoots in package.json',
       '  - cljam.libraries in root_dir/package.json are auto-loaded:',
@@ -175,13 +176,38 @@ const TOOL_DEFINITIONS = [
       '  - Floating point follows JS/IEEE-754 (not JVM rounding).',
       '  - Use (async ...) instead of future/agent for async work. @ Deref within async block acts as await.',
       '  - Refs/dosync exist but STM retry semantics are simplified.',
+      '',
+      'JS INTEROP SYNTAX (not ClojureScript — different dot forms):',
+      '  (. obj field)           ;; property access: (. "hello" length) → 5',
+      '  (. obj method arg...)   ;; method with args: (. "hello" indexOf "l") → 2',
+      '  ((. obj method))        ;; zero-arg method: ((. "hello" toUpperCase)) → "HELLO"',
+      '  !! (. res json) returns the fn — does NOT call it. ((. res json)) calls it.',
+      '  js/Math.floor, js/Math.PI  ;; dot-chain walk from a hostBinding',
+      '  (js/Math.floor 3.7) → 3    ;; call result of dot-chain walk',
+      '  (js/new Constructor args...)  ;; construct a JS object',
+      '  (js/get obj "key")            ;; dynamic property read (JS objects ≠ Clojure maps)',
+      '',
+      'ASYNC QUICK-REFERENCE:',
+      '  (async ...)             ;; returns CljPending immediately — NOT the value',
+      '  @expr inside async      ;; awaits a CljPending (like JS await)',
+      '  @expr outside async     ;; THROWS — always deref inside an async block',
+      '  (def x @pending)        ;; def inside async works — x gets the resolved value',
+      '  (then p f)              ;; chain: apply f to resolved value',
+      '  (catch* p f)            ;; error handling: f called on rejection',
+      '  js/fetch returns CljPending automatically — no wrapping needed',
+      '',
+      'START HERE — read these handbook entries before writing cljam code:',
+      '  handbook { topic: "js-interop" }  — full JS interop syntax + gotchas',
+      '  handbook { topic: "async" }       — async blocks, deref, then/catch*, all',
+      '  handbook { topic: "jvm-gaps" }    — what JVM Clojure features are absent',
     ].join('\n'),
     inputSchema: {
       type: 'object',
       properties: {
         root_dir: {
           type: 'string',
-          description: 'Absolute path to the project root directory.',
+          description:
+            'Absolute path to a specific project root. OMIT this parameter (do not pass null or empty string) to use the server-configured default workspace. Only provide a value to open a session in an explicit non-default location.',
         },
       },
     },
@@ -273,16 +299,23 @@ const TOOL_DEFINITIONS = [
       'Designed for LLM agents — use this to quickly understand cljam behaviour',
       'that differs from JVM Clojure, or to find the idiomatic way to do something.',
       '',
+      'NEW AGENT? Read these three topics before writing any cljam code:',
+      '  handbook { topic: "js-interop" }  — JS dot syntax, method calls, property access',
+      '  handbook { topic: "async" }       — (async ...) blocks, @deref, then/catch*/all',
+      '  handbook { topic: "jvm-gaps" }    — what JVM features are absent in cljam',
+      '',
       'If topic is omitted, returns the list of all available topic keys.',
       '',
-      'Available topics include:',
-      '  sort, char-literals, dynamic-vars, require, jvm-gaps, types,',
-      '  records, protocols, schema-primitives, schema-compound, schema-api,',
+      'All available topics:',
+      '  jvm-gaps, js-interop, async, node-io',
+      '  types, records, protocols',
+      '  sort, char-literals, dynamic-vars, require',
+      '  schema-primitives, schema-compound, schema-api, and-short-circuit',
       '  describe, sessions, pair-programming, handbook',
       '',
       'Example:',
-      '  handbook { topic: "sort" }',
-      '  → "Default comparator is `compare`, NOT `<` ..."',
+      '  handbook { topic: "js-interop" }',
+      '  → "Property access: (. obj field) ..."',
     ].join('\n'),
     inputSchema: {
       type: 'object',
@@ -447,7 +480,12 @@ export function createMcpServer(options: McpServerOptions = {}): Server {
 
     switch (name) {
       case 'new_session': {
-        const rootDir = a.root_dir as string | undefined
+        // Normalize: null and empty string both mean "use the server default" —
+        // agents sometimes pass null when they mean "no preference". Treat that as omitted.
+        const rootDir =
+          typeof a.root_dir === 'string' && a.root_dir.length > 0
+            ? a.root_dir
+            : undefined
 
         // Auto-load libraries declared in root_dir/package.json under cljam.libraries
         let libraries: CljamLibrary[] = []
@@ -472,6 +510,7 @@ export function createMcpServer(options: McpServerOptions = {}): Server {
           session_id: record.id,
           ns: record.session.currentNs,
           preset: record.preset,
+          session_preset: record.sessionPreset,
           root_dir: record.rootDir ?? null,
           source_roots: record.sourceRoots,
           libraries: record.libraryIds,
@@ -521,6 +560,7 @@ export function createMcpServer(options: McpServerOptions = {}): Server {
             session_id: r.id,
             ns: r.session.currentNs,
             preset: r.preset,
+            session_preset: r.sessionPreset,
             root_dir: r.rootDir ?? null,
             source_roots: r.sourceRoots,
             libraries: r.libraryIds,

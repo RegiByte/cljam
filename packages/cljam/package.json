@@ -1,7 +1,7 @@
 {
   "name": "@regibyte/cljam",
   "private": false,
-  "version": "0.0.20",
+  "version": "0.0.21",
   "type": "module",
   "repository": {
     "type": "git",
@@ -14,13 +14,14 @@
     "cljam": "./dist-cli/cljam.mjs"
   },
   "scripts": {
-    "repl": "bun run src/bin/cli.ts repl",
-    "run": "bun run src/bin/cli.ts run",
-    "nrepl": "bun run src/bin/cli.ts nrepl-server",
+    "repl": "bun run src/cli/cli.ts repl",
+    "run": "bun run src/cli/cli.ts run",
+    "nrepl": "bun run src/cli/cli.ts nrepl-server",
     "build-npm-bin": "node scripts/gen-version.mjs && node scripts/build-npm-bin.mjs",
     "build-nrepl": "node scripts/build-nrepl.mjs",
+    "build-npm-library": "node scripts/build-npm-library.mjs",
     "build-vite-plugin": "node scripts/build-vite-plugin.mjs",
-    "prepublishOnly": "bun run gen:core-source && node scripts/gen-version.mjs && node scripts/build-npm-bin.mjs && node scripts/build-nrepl.mjs && node scripts/build-vite-plugin.mjs",
+    "prepublishOnly": "bun run gen:core-source && node scripts/gen-version.mjs && node scripts/build-npm-library.mjs && node scripts/build-npm-bin.mjs && node scripts/build-nrepl.mjs && node scripts/build-vite-plugin.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "gen:core-source": "bun run scripts/gen-core-source.mjs",
@@ -30,9 +31,15 @@
     "./src/clojure/generated/builtin-namespace-registry.ts": "./src/clojure/generated/builtin-namespace-registry.browser.ts"
   },
   "exports": {
-    ".": "./src/core/index.ts",
+    ".": {
+      "types": "./src/core/index.ts",
+      "bun": "./src/core/index.ts",
+      "node": "./dist/index.mjs",
+      "default": "./src/core/index.ts"
+    },
     "./nrepl": {
-      "bun": "./src/bin/nrepl.ts",
+      "types": "./src/nrepl/nrepl.ts",
+      "bun": "./src/nrepl/nrepl.ts",
       "default": "./dist-nrepl/index.mjs"
     },
     "./vite-plugin": {
@@ -44,6 +51,7 @@
   "files": [
     "dist-cli/**/*",
     "dist-nrepl/**/*",
+    "dist/**/*",
     "dist-vite-plugin/**/*",
     "src/**/*.ts",
     "src/**/*.clj",
@@ -52,7 +60,7 @@
     "!src/**/*.spec.ts",
     "!src/**/*.test.ts",
     "!src/demo-entry.ts",
-    "!src/bin/__fixtures__/**",
+    "!src/cli/__fixtures__/**",
     "!src/clojure/demo/**",
     "tsconfig.json",
     "tsconfig.build.json",

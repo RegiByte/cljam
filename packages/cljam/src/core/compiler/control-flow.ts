@@ -1,5 +1,5 @@
 import { is } from '../assertions.ts'
-import { CljThrownSignal, EvaluationError } from '../errors.ts'
+import { CljThrownSignal, isEvaluationError } from '../errors.ts'
 import { v } from '../factories.ts'
 import { RecurSignal } from '../evaluator/arity.ts'
 import {
@@ -114,13 +114,15 @@ export function compileTry(
       let thrownValue: CljValue
       if (e instanceof CljThrownSignal) {
         thrownValue = e.value
-      } else if (e instanceof EvaluationError) {
+      } else if (isEvaluationError(e)) {
+        const evalErr = e
+        const typeKeyword = evalErr.code ? v.keyword(`:${evalErr.code}`) : v.keyword(':error/runtime')
         const entries: [CljValue, CljValue][] = [
-          [v.keyword(':type'), v.keyword(':error/runtime')],
+          [v.keyword(':type'), typeKeyword],
           [v.keyword(':message'), v.string(e.message)],
         ]
-        if (e.frames && e.frames.length > 0) {
-          entries.push([v.keyword(':frames'), framesToClj(e.frames)])
+        if (evalErr.frames && evalErr.frames.length > 0) {
+          entries.push([v.keyword(':frames'), framesToClj(evalErr.frames)])
         }
         thrownValue = v.map(entries)
       } else {

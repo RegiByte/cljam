@@ -7,6 +7,7 @@ import {
   type CljCons,
   type CljDelay,
   type CljLazySeq,
+  type CljMultiMethod,
   type CljValue,
 } from './types'
 
@@ -109,7 +110,30 @@ export function valueToString(value: CljValue): string {
       const entries = value.fields
         .map(([k, val]) => `${valueToString(k)} ${valueToString(val)}`)
         .join(' ')
-      return `#${value.recordType}{${entries}}`
+      return `#${value.ns}/${value.recordType}{${entries}}`
+    }
+    case valueKeywords.multiMethod:
+      return `(multi-method ${(value as CljMultiMethod).name})`
+    case valueKeywords.atom:
+      return `#<Atom ${valueToString(value.value)}>`
+    case valueKeywords.reduced:
+      return `#<Reduced ${valueToString(value.value)}>`
+    case valueKeywords.volatile:
+      return `#<Volatile ${valueToString(value.value)}>`
+    case valueKeywords.var:
+      return `#'${value.ns}/${value.name}`
+    case valueKeywords.jsValue: {
+      const raw = value.value
+      if (raw === null) return 'null'
+      if (raw === undefined) return 'undefined'
+      if (raw instanceof Date) return raw.toISOString()
+      if (typeof raw === 'function') return '#<js Function>'
+      if (Array.isArray(raw)) return '#<js Array>'
+      if (raw instanceof Promise) return '#<js Promise>'
+      const typeName =
+        (raw as { constructor?: { name?: string } }).constructor?.name ??
+        'Object'
+      return `#<js ${typeName}>`
     }
     case 'pending':
       if (value.resolved && value.resolvedValue !== undefined)

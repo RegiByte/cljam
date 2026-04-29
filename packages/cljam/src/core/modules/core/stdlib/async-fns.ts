@@ -17,6 +17,12 @@ export const asyncFunctions: Record<string, CljValue> = {
     .nativeFnCtx(
       'then',
       (ctx: EvaluationContext, callEnv: Env, val: CljValue, f: CljValue) => {
+        if (typeof f === 'undefined') {
+          throw new EvaluationError(
+            'invalid signature: expected (then value f)',
+            { fn: f, args: [] }
+          )
+        }
         if (!is.callable(f)) {
           throw new EvaluationError(
             `${printString(f)} is not a callable value`,
@@ -144,6 +150,45 @@ export const asyncFunctions: Record<string, CljValue> = {
       ...docMeta({
         doc: 'Returns a pending that resolves with a vector of all results when every input resolves.',
         arglists: [['pendings']],
+        docGroup: DocGroups.async,
+      }),
+    ]),
+
+  // (make-promise executor) — create a CljPending from an executor fn (fn [resolve reject] ...).
+  // resolve and reject are plain callables: (resolve value) / (reject error-value).
+  // Mirrors JS: new Promise((resolve, reject) => ...).
+  'make-promise': v
+    .nativeFnCtx(
+      'make-promise',
+      (ctx: EvaluationContext, callEnv: Env, executor: CljValue) => {
+        if (!is.callable(executor)) {
+          throw new EvaluationError(
+            `make-promise expects a callable executor, got ${executor.kind}`,
+            { fn: executor, args: [] }
+          )
+        }
+        const promise = new Promise<CljValue>((resolve, reject) => {
+          const resolveFn = v.nativeFn('resolve', (val: CljValue) => {
+            resolve(val ?? v.nil())
+            return v.nil()
+          })
+          const rejectFn = v.nativeFn('reject', (val: CljValue) => {
+            reject(new CljThrownSignal(val))
+            return v.nil()
+          })
+          try {
+            ctx.applyCallable(executor, [resolveFn, rejectFn], callEnv)
+          } catch (e) {
+            reject(e)
+          }
+        })
+        return v.pending(promise)
+      }
+    )
+    .withMeta([
+      ...docMeta({
+        doc: 'Creates a pending value from an executor fn (fn [resolve reject] ...). Like JS new Promise(executor).',
+        arglists: [['executor']],
         docGroup: DocGroups.async,
       }),
     ]),

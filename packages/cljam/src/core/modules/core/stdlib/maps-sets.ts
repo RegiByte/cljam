@@ -102,20 +102,24 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
           }
           return v.vector(newValues)
         }
-        // Records: treat like a plain map for assoc (returns plain map or same record)
+        // Records: assoc on a declared field returns the same record type (JVM parity).
+        // Assoc-ing any unknown key demotes the whole result to a plain map.
         if (is.record(collection)) {
           const newEntries: [CljValue, CljValue][] = [...collection.fields]
+          let hasUnknownKey = false
           for (let i = 0; i < args.length; i += 2) {
             const key = args[i]
             const value = args[i + 1]
             const entryIdx = newEntries.findIndex(([k]) => is.equal(k, key))
             if (entryIdx === -1) {
+              hasUnknownKey = true
               newEntries.push([key, value])
             } else {
               newEntries[entryIdx] = [key, value]
             }
           }
-          return v.map(newEntries)
+          if (hasUnknownKey) return v.map(newEntries)
+          return v.record(collection.recordType, collection.ns, newEntries)
         }
         if (is.map(collection)) {
           const newEntries: [CljValue, CljValue][] = [...collection.entries]

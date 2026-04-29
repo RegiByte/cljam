@@ -231,13 +231,51 @@ describe('defrecord', () => {
     expect(sess.evaluate('(contains? n :missing)')).toEqual(v.boolean(false))
   })
 
-  it('assoc on a record returns a plain map', () => {
+  it('assoc on a known field keeps the record type', () => {
     const sess = s()
     sess.evaluate('(defrecord Pt [x y])')
     sess.evaluate('(def p (->Pt 1 2))')
     const updated = sess.evaluate('(assoc p :x 99)')
-    expect(updated.kind).toBe('map')
+    expect(updated.kind).toBe('record')
+    expect((updated as { recordType: string }).recordType).toBe('Pt')
     expect(sess.evaluate('(:x (assoc p :x 99))')).toEqual(v.number(99))
+    expect(sess.evaluate('(:y (assoc p :x 99))')).toEqual(v.number(2))
+  })
+
+  it('assoc on all known fields keeps the record type', () => {
+    const sess = s()
+    sess.evaluate('(defrecord Pt [x y])')
+    sess.evaluate('(def p (->Pt 1 2))')
+    const updated = sess.evaluate('(assoc p :x 5 :y 9)')
+    expect(updated.kind).toBe('record')
+    expect(sess.evaluate('(:x (assoc p :x 5 :y 9))')).toEqual(v.number(5))
+    expect(sess.evaluate('(:y (assoc p :x 5 :y 9))')).toEqual(v.number(9))
+  })
+
+  it('assoc on an unknown key demotes to a plain map', () => {
+    const sess = s()
+    sess.evaluate('(defrecord Pt [x y])')
+    sess.evaluate('(def p (->Pt 1 2))')
+    const updated = sess.evaluate('(assoc p :z 3)')
+    expect(updated.kind).toBe('map')
+    expect(sess.evaluate('(:z (assoc p :z 3))')).toEqual(v.number(3))
+  })
+
+  it('assoc with mixed known and unknown keys demotes to a plain map', () => {
+    const sess = s()
+    sess.evaluate('(defrecord Pt [x y])')
+    sess.evaluate('(def p (->Pt 1 2))')
+    const updated = sess.evaluate('(assoc p :x 5 :z 3)')
+    expect(updated.kind).toBe('map')
+  })
+
+  it('update on a known field keeps the record type', () => {
+    const sess = s()
+    sess.evaluate('(defrecord Pt [x y])')
+    sess.evaluate('(def p (->Pt 1 2))')
+    const updated = sess.evaluate('(update p :x inc)')
+    expect(updated.kind).toBe('record')
+    expect(sess.evaluate('(:x (update p :x inc))')).toEqual(v.number(2))
   })
 
   it('dissoc on a record returns a plain map', () => {

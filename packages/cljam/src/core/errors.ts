@@ -20,7 +20,13 @@ export class ReaderError extends Error {
   }
 }
 
+// Global symbol — shared across all module instances regardless of how many
+// copies of @regibyte/cljam are loaded. Use isEvaluationError() instead of
+// instanceof when the error may cross a module boundary (e.g. from a library).
+const EVALUATION_ERROR_BRAND = Symbol.for('@regibyte/cljam/EvaluationError')
+
 export class EvaluationError extends Error {
+  readonly [EVALUATION_ERROR_BRAND] = true
   context: unknown
   pos?: Pos
   data?: Record<string, unknown>
@@ -45,6 +51,21 @@ export class EvaluationError extends Error {
     err.data = { argIndex }
     return err
   }
+}
+
+/**
+ * Cross-module-boundary check for EvaluationError.
+ * Use this instead of `instanceof EvaluationError` whenever the error may
+ * originate from a different module instance of @regibyte/cljam (e.g. a
+ * library loaded via dynamic import with its own nested node_modules copy).
+ *
+ * Primary check: Symbol.for brand (set on all instances from this version onward).
+ * Fallback: name string (covers instances from older compiled copies without the brand).
+ */
+export function isEvaluationError(e: unknown): e is EvaluationError {
+  if (!(e instanceof Error)) return false
+  const brand = (e as unknown as Record<symbol, unknown>)[EVALUATION_ERROR_BRAND]
+  return brand === true || e.name === 'EvaluationError'
 }
 
 export class CljThrownSignal {

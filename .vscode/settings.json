@@ -7,7 +7,9 @@
     {
       "name": "cljam nREPL",
       "projectType": "generic",
-      "nReplPortFile": [".nrepl-port"],
+      "nReplPortFile": [
+        ".nrepl-port"
+      ],
       "afterPrimaryReplConnectedCode": "(println \"Connected to cljam nREPL\")",
       "customJackInCommandLine": "cljam nrepl-server",
     },
@@ -15,9 +17,21 @@
       "name": "cljam nodejs interop",
       "projectType": "custom",
       "cljsType": "none",
-      "nReplPortFile": [".nrepl-port"],
+      "nReplPortFile": [
+        ".nrepl-port"
+      ],
       "afterPrimaryReplConnectedCode": "(println \"Connected to cljam nREPL\")",
       "customJackInCommandLine": "npm run start",
+    },
+    {
+      "name": "cljam mcp workspace",
+      "projectType": "custom",
+      "cljsType": "none",
+      "nReplPortFile": [
+        ".nrepl-port"
+      ],
+      "afterPrimaryReplConnectedCode": "(println \"Connected to cljam mcp workspace\")",
+      "customJackInCommandLine": "npm run jack-in",
     }
   ],
   "calva.outputDestinations": {

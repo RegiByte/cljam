@@ -182,22 +182,57 @@ export const cljam_handbookSource = `\
     ;; WRONG: @(promise-of 42) at top level → throws 'requires an (async ...) context'
     ;; RIGHT: (async @(promise-of 42))  — deref inside async block
     evaluateAsync              ;; embedding API: auto-unwraps CljPending, surfaces errors
-    No clojure.core futures, no raw JS Promise interop — use (async ...) + (then ...)."
+    JS Promises auto-become CljPending at every interop boundary — no wrapping needed:
+      (js/fetch url)                      ;; → CljPending, NOT a js-value
+      (then (js/fetch url) #((. % json))) ;; chains naturally
+      (async (let [r @(js/fetch url)] r)) ;; @ works inside async
+    Deref with timeout (JVM-style): (deref p ms) — defaults to 30 000ms.
+      (async (deref slow-pending 5000))   ;; throws after 5s if not resolved
+      (async (try (deref p 1000) (catch :default e :timed-out)))
+    Catching rejections: use (catch :default e body) — NOT (catch Exception e body).
+      (catch* p #(println \\"rejected:\\" %))  ;; monad style
+      (async (try @p (catch :default e e))) ;; async/try style"
 
    :js-interop
    "cljam JS interop — NOT ClojureScript. Different dot syntax.
     Property access:  (. obj field)            ;; e.g. (. \\"hello\\" length) → 5
     Method with args: (. obj method arg...)    ;; e.g. (. \\"hello\\" indexOf \\"l\\") → 2
     Zero-arg method:  ((. obj method))         ;; e.g. ((. \\"hello\\" toUpperCase)) → \\"HELLO\\"
+    !! GOTCHA: (. res json) returns the bound function — does NOT call it.
+               ((. res json)) with double parens CALLS the method. Silent wrong-result otherwise.
     Dot-chain symbol: js/Math.floor, js/Math.PI  ;; walk property chain from hostBinding
     Dot-chain call:   (js/Math.floor 3.7) → 3    ;; call result of dot-chain walk
     Dynamic access:   (js/get obj \\"key\\") or (js/get obj :key)
     Dynamic set:      (js/set! obj \\"key\\" value)
     Construct:        (js/new Constructor args...)  ;; Constructor must be a js-value
+                      If Constructor returns a Promise, js/new returns CljPending automatically.
+    JS objects ≠ Clojure maps: use js/get, js/keys, js/merge — NOT get/select-keys/assoc.
     Inject globals:   createSession({ hostBindings: { Math, console, fetch } })
     String requires:  (ns my.ns (:require [\\"react\\" :as React])) — needs importModule option
     Sandbox preset has Math pre-injected as js/Math.
     Caveat: JS globals are NOT available by default — inject via hostBindings explicitly."
+
+   :node-io
+   "Node.js IO functions — available in clojure.core when running in CLI, nREPL, or cljam-mcp.
+    (slurp path)               ;; read file as string; path relative to session currentDir
+    (spit path content)        ;; write string to file
+    (pwd)                      ;; current working directory as string
+    (cd path)                  ;; change working directory; returns new absolute path
+    (load path)                ;; load + eval a .clj file; sets ns to the file's ns
+    String requires for Node built-ins (needs allowDynamicImport: true):
+      (ns my.ns (:require [\\"node:path\\" :as path]
+                          [\\"node:child_process\\" :as cp]
+                          [\\"node:fs/promises\\" :as fs]))
+    Shell execution (sync):
+      (defn sh [cmd]
+        (let [cp ((. js/process getBuiltinModule) \\"child_process\\")]
+          ((. (. cp execSync cmd) toString))))
+    Directory listing (sync):
+      (defn ls [dir]
+        (let [fs ((. js/process getBuiltinModule) \\"fs\\")]
+          (vec (js/seq (. fs readdirSync dir)))))
+    NOTE: (async @(. fs readFile path \\"utf-8\\")) does NOT work — @  only deref's CljPending,
+    not raw JS Promises. Use slurp for sync reads or string-require node:fs/promises + then."
 
    :testing
    "clojure.test requires an explicit require — deftest is NOT auto-loaded.
