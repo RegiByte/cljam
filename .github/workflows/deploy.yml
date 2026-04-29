@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Build cljam package
+        run: bun run --filter '@regibyte/cljam' build-npm-library
+
       - name: Build docs (VitePress)
         working-directory: packages/docs
         run: bun run build
