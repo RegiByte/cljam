@@ -1,0 +1,49 @@
+{
+  "name": "@regibyte/cljam-ring",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Ring-style HTTP adapter for cljam — spawn and stop servers from Clojure code",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RegiByte/cljam.git"
+  },
+  "author": "RegiByte",
+  "homepage": "https://github.com/RegiByte/cljam",
+  "license": "MIT",
+  "types": "./dist/library.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/library.d.ts",
+      "import": "./dist/library.mjs",
+      "default": "./dist/library.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "library.ts",
+    "src/**/*.clj",
+    "src/generated/**",
+    "src/**/*.ts",
+    "!src/**/__tests__/**",
+    "!src/**/*.spec.ts",
+    "!src/**/*.test.ts",
+    "tsconfig.json"
+  ],
+  "peerDependencies": {
+    "@regibyte/cljam": ">=0.0.21"
+  },
+  "devDependencies": {
+    "@regibyte/cljam": "file:../cljam",
+    "vitest": "^4.0.18",
+    "typescript": "~5.9.3",
+    "@types/node": "^25.3.5"
+  },
+  "scripts": {
+    "build": "node ../cljam/scripts/build-library-package.mjs --entry library.ts",
+    "test": "vitest run",
+    "gen:sources": "node node_modules/@regibyte/cljam/scripts/gen-library-sources.mjs src/clojure src/generated/sources.ts",
+    "prepublishOnly": "npm run gen:sources && npm run build"
+  }
+}

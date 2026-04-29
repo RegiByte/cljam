@@ -244,7 +244,7 @@ npm install --save-dev @regibyte/cljam
 ```
 
 ```typescript
-// conjure.ts — the library manifest
+// library.ts — the library manifest
 import type { CljamLibrary } from '@regibyte/cljam'
 import { sources } from './src/generated/sources'
 

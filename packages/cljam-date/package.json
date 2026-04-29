@@ -1,6 +1,6 @@
 {
   "name": "@regibyte/cljam-date",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": false,
   "type": "module",
   "description": "Date handling library for cljam",
@@ -8,25 +8,31 @@
     "type": "git",
     "url": "https://github.com/RegiByte/cljam.git"
   },
-  "author": "Regibyte",
+  "author": "RegiByte",
   "homepage": "https://github.com/RegiByte/cljam",
   "license": "MIT",
+  "types": "./dist/library.d.ts",
   "exports": {
-    ".": "./conjure.ts"
+    ".": {
+      "types": "./dist/library.d.ts",
+      "import": "./dist/library.mjs",
+      "default": "./dist/library.mjs"
+    }
   },
   "files": [
-    "conjure.ts",
-    "src/**/*.ts",
+    "dist/**/*",
+    "README.md",
+    "library.ts",
     "src/**/*.clj",
     "src/generated/**",
+    "src/**/*.ts",
     "!src/**/__tests__/**",
     "!src/**/*.spec.ts",
     "!src/**/*.test.ts",
-    "tsconfig.json",
-    "README.md"
+    "tsconfig.json"
   ],
   "peerDependencies": {
-    "@regibyte/cljam": ">=0.0.20"
+    "@regibyte/cljam": ">=0.0.21"
   },
   "devDependencies": {
     "@regibyte/cljam": "file:../cljam",
@@ -35,8 +41,9 @@
     "@types/node": "^25.3.5"
   },
   "scripts": {
+    "build": "node ../cljam/scripts/build-library-package.mjs --entry library.ts",
     "test": "vitest run",
     "gen:sources": "node node_modules/@regibyte/cljam/scripts/gen-library-sources.mjs src/clojure src/generated/sources.ts",
-    "prepublishOnly": "npm run gen:sources"
+    "prepublishOnly": "npm run gen:sources && npm run build"
   }
 }

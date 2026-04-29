@@ -4,8 +4,26 @@
   "type": "module",
   "description": "Temporary workspace for exercising @regibyte/cljam-mcp sessions.",
   "cljam": {
-    "sourceRoots": ["src/clojure"],
-    "libraries": [],
+    "sourceRoots": [
+      "src/clojure"
+    ],
+    "preset": "node-agent",
+    "libraries": [
+      "@regibyte/cljam-integrant",
+      "@regibyte/cljam-schema",
+      "@regibyte/cljam-date",
+      "@regibyte/cljam-ring"
+    ],
     "main": "workspace.demo"
+  },
+  "devDependencies": {
+    "@regibyte/cljam": "file:../../packages/cljam",
+    "@regibyte/cljam-integrant": "file:../../packages/cljam-integrant",
+    "@regibyte/cljam-schema": "file:../../packages/cljam-schema",
+    "@regibyte/cljam-date": "file:../../packages/cljam-date",
+    "@regibyte/cljam-ring": "file:../../packages/cljam-ring"
+  },
+  "scripts": {
+    "jack-in": "cljam nrepl-server --port 7889"
   }
 }

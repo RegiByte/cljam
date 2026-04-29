@@ -855,6 +855,57 @@ describe('evaluateAsync — session boundary', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// def inside (async ...) blocks
+// ---------------------------------------------------------------------------
+
+describe('def inside async', () => {
+  test('def with a sync value inside async — var is visible after resolution', async () => {
+    const session = freshSession()
+    await session.evaluateAsync('(async (def my-val 42))')
+    expect(session.evaluate('my-val')).toEqual(v.number(42))
+  })
+
+  test('def with an awaited value — resolves and binds correctly', async () => {
+    const session = freshSession()
+    await session.evaluateAsync('(async (def fetched @(promise-of 99)))')
+    expect(session.evaluate('fetched')).toEqual(v.number(99))
+  })
+
+  test('def with docstring inside async — installs var with doc', async () => {
+    const session = freshSession()
+    await session.evaluateAsync('(async (def annotated "the answer" @(promise-of 42)))')
+    expect(session.evaluate('annotated')).toEqual(v.number(42))
+    const meta = session.evaluate('(meta #\'annotated)')
+    expect(meta.kind).toBe('map')
+  })
+
+  test('bare (def name) declaration inside async — no-op, does not throw', async () => {
+    const session = freshSession()
+    await expect(session.evaluateAsync('(async (def declared-only))')).resolves.toBeDefined()
+  })
+
+  test('def inside async + subsequent use in same block', async () => {
+    const session = freshSession()
+    const result = await session.evaluateAsync(`
+      (async
+        (def base @(promise-of 10))
+        (* base 3))
+    `)
+    expect(result).toEqual(v.number(30))
+  })
+
+  test('multiple defs inside one async block', async () => {
+    const session = freshSession()
+    await session.evaluateAsync(`
+      (async
+        (def a @(promise-of 5))
+        (def b @(promise-of 7)))
+    `)
+    expect(session.evaluate('(+ a b)')).toEqual(v.number(12))
+  })
+})
+
 describe('(all ...) — fan-out async combinator', () => {
   test('resolves with vector of all results', async () => {
     const session = freshSession()
@@ -900,6 +951,175 @@ describe('(all ...) — fan-out async combinator', () => {
     )
     expect(result).toEqual(
       v.vector([v.number(1), v.number(4), v.number(9), v.number(16)])
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// @ as await-or-identity inside (async ...) — middleware composition semantics
+// ---------------------------------------------------------------------------
+//
+// Inside an async block, @ means "await if pending, return as-is otherwise."
+// This matches JS `await` semantics and makes middleware composition uniform:
+// a middleware that uses async+@ works identically whether the handler below
+// it returns a plain map (sync) or a CljPending (async).
+
+describe('@ await-or-identity inside async', () => {
+  test('@map inside async returns the map unchanged', async () => {
+    const result = evalPending('(async @{:a 1 :b 2})')
+    expect(await result.promise).toEqual(
+      v.map([[v.keyword(':a'), v.number(1)], [v.keyword(':b'), v.number(2)]])
+    )
+  })
+
+  test('@number inside async returns the number unchanged', async () => {
+    const result = evalPending('(async @42)')
+    expect(await result.promise).toEqual(v.number(42))
+  })
+
+  test('@nil inside async returns nil unchanged', async () => {
+    const result = evalPending('(async @nil)')
+    expect(await result.promise).toEqual(v.nil())
+  })
+
+  test('@string inside async returns string unchanged', async () => {
+    const result = evalPending('(async @"hello")')
+    expect(await result.promise).toEqual(v.string('hello'))
+  })
+
+  test('@vector inside async returns vector unchanged', async () => {
+    const result = evalPending('(async @[1 2 3])')
+    expect(await result.promise).toEqual(
+      v.vector([v.number(1), v.number(2), v.number(3)])
+    )
+  })
+
+  test('@keyword inside async returns keyword unchanged', async () => {
+    const result = evalPending('(async @:some-kw)')
+    expect(await result.promise).toEqual(v.keyword(':some-kw'))
+  })
+
+  test('@atom inside async still dereferences the atom', async () => {
+    const session = freshSession()
+    session.evaluate('(def a (atom 99))')
+    const result = session.evaluate('(async @a)') as CljPending
+    expect(await result.promise).toEqual(v.number(99))
+  })
+
+  test('@delay inside async still realizes the delay', async () => {
+    const result = evalPending('(async @(delay 77))')
+    expect(await result.promise).toEqual(v.number(77))
+  })
+
+  test('@pending inside async still awaits the promise', async () => {
+    const result = evalPending('(async @(promise-of 55))')
+    expect(await result.promise).toEqual(v.number(55))
+  })
+
+  test('let-binding @plain-value works (sync handler pattern)', async () => {
+    const session = freshSession()
+    session.evaluate('(defn sync-handler [_req] {:status 200 :body "ok"})')
+    const result = session.evaluate(
+      '(async (let [resp @(sync-handler {:uri "/"})] (:status resp)))'
+    ) as CljPending
+    expect(await result.promise).toEqual(v.number(200))
+  })
+
+  test('let-binding @pending works (async handler pattern)', async () => {
+    const session = freshSession()
+    session.evaluate('(defn async-handler [_req] (async {:status 201 :body "created"}))')
+    const result = session.evaluate(
+      '(async (let [resp @(async-handler {:uri "/"})] (:status resp)))'
+    ) as CljPending
+    expect(await result.promise).toEqual(v.number(201))
+  })
+
+  test('middleware wrapping sync handler: async+@ adds a key to response', async () => {
+    const session = freshSession()
+    session.evaluate('(defn sync-handler [_req] {:status 200 :body "hello"})')
+    session.evaluate(`
+      (defn wrap-add-key [handler]
+        (fn [req]
+          (async
+            (assoc @(handler req) :x-added "yes"))))
+    `)
+    const result = session.evaluate(
+      '(then ((wrap-add-key sync-handler) {:uri "/"}) #(:x-added %))'
+    ) as CljPending
+    expect(await result.promise).toEqual(v.string('yes'))
+  })
+
+  test('middleware wrapping async handler: async+@ adds a key to response', async () => {
+    const session = freshSession()
+    session.evaluate('(defn async-handler [_req] (async {:status 201 :body "async"}))')
+    session.evaluate(`
+      (defn wrap-add-key [handler]
+        (fn [req]
+          (async
+            (assoc @(handler req) :x-added "yes"))))
+    `)
+    const result = session.evaluate(
+      '(then ((wrap-add-key async-handler) {:uri "/"}) #(:x-added %))'
+    ) as CljPending
+    expect(await result.promise).toEqual(v.string('yes'))
+  })
+
+  test('middleware with async pre-processing and sync handler', async () => {
+    const session = freshSession()
+    session.evaluate('(defn fetch-prefix [] (async "pre"))')
+    session.evaluate('(defn handler [_req] {:status 200 :body "base"})')
+    session.evaluate(`
+      (defn wrap-prefix [handler]
+        (fn [req]
+          (async
+            (let [prefix @(fetch-prefix)
+                  resp   @(handler req)]
+              (assoc resp :body (str prefix "-" (:body resp)))))))
+    `)
+    const result = session.evaluate(
+      '(then ((wrap-prefix handler) {:uri "/"}) #(:body %))'
+    ) as CljPending
+    expect(await result.promise).toEqual(v.string('pre-base'))
+  })
+
+  test('stacked middlewares: two async wrappers around a sync handler', async () => {
+    const session = freshSession()
+    session.evaluate('(defn handler [_req] {:status 200 :body "base"})')
+    session.evaluate(`
+      (defn wrap-a [h]
+        (fn [req]
+          (async (assoc @(h req) :x-a "from-a"))))
+      (defn wrap-b [h]
+        (fn [req]
+          (async (assoc @(h req) :x-b "from-b"))))
+    `)
+    const checkA = session.evaluate(
+      '(then ((wrap-b (wrap-a handler)) {:uri "/"}) #(:x-a %))'
+    ) as CljPending
+    const checkB = session.evaluate(
+      '(then ((wrap-b (wrap-a handler)) {:uri "/"}) #(:x-b %))'
+    ) as CljPending
+    expect(await checkA.promise).toEqual(v.string('from-a'))
+    expect(await checkB.promise).toEqual(v.string('from-b'))
+  })
+
+  test('request-only middleware stays pure sync (no async block needed)', () => {
+    // Pure request transforms need no async overhead — just pass a modified request.
+    const session = freshSession()
+    session.evaluate('(defn handler [req] {:status 200 :body (:client-id req)})')
+    session.evaluate(`
+      (defn wrap-client-id [handler]
+        (fn [req]
+          (handler (assoc req :client-id "ABC"))))
+    `)
+    // Returns synchronously — no pending
+    const result = session.evaluate('((wrap-client-id handler) {:uri "/"})')
+    expect(result.kind).not.toBe('pending')
+    expect(result).toEqual(
+      v.map([
+        [v.keyword(':status'), v.number(200)],
+        [v.keyword(':body'), v.string('ABC')],
+      ])
     )
   })
 })

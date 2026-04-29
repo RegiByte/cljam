@@ -15,7 +15,8 @@ export type {
 export type { CljamLibrary } from './library'
 
 // Preset functions — plain SessionOptions objects for common environments
-export { nodePreset, browserPreset, sandboxPreset } from '../presets'
+export { nodePreset, browserPreset, sandboxPreset, resolveSessionProfile } from '../presets'
+export type { SessionPresetName, SessionProfile } from '../presets'
 
 // Runtime API (advanced embedding)
 export { createRuntime, restoreRuntime } from './runtime'
@@ -43,7 +44,7 @@ export {
 } from './evaluator'
 
 // Errors
-export { EvaluationError, ReaderError, TokenizerError } from './errors'
+export { EvaluationError, ReaderError, TokenizerError, isEvaluationError } from './errors'
 
 // Factories
 export {
@@ -97,7 +98,7 @@ export { define, derefValue, internVar, lookupVar, makeNamespace } from './env'
 export { valueToString } from './transformations'
 
 // Printer
-export { printString } from './printer'
+export { printString, withPrintContext } from './printer'
 
 // Tokenizer + Reader (public for tooling consumers and EDN parsing)
 export { tokenize } from './tokenizer'
@@ -132,6 +133,7 @@ export type {
   CljList,
   CljVector,
   CljMap,
+  CljRecord,
   CljFunction,
   CljNativeFunction,
   CljMacro,

@@ -28,7 +28,9 @@
  *   - `.`, `js/new` — JS interop is sync; args are NOT awaited before the
  *     call (V1 limitation: deref @ pending values explicitly before the form).
  *   - `async` — nested async blocks create a new CljPending via the sync path.
- *   - `def` — throws with a helpful message; define vars outside async blocks.
+ *   - `def` — async-aware: evaluates the value expression async, then delegates
+ *     var installation to the sync evaluator via the quote-wrap trick (same
+ *     pattern as `set!`). `(def name)` bare declarations delegate directly.
  *
  * ## Revert instructions
  *
@@ -42,7 +44,7 @@
 
 import { is } from '../assertions'
 import { extend } from '../env'
-import { CljThrownSignal, EvaluationError } from '../errors'
+import { CljThrownSignal, EvaluationError, isEvaluationError } from '../errors'
 import { v } from '../factories'
 import { specialFormKeywords, valueKeywords } from '../keywords'
 import type { CljList, CljValue, Env, EvaluationContext } from '../types'
@@ -168,6 +170,13 @@ async function evaluateFormsAsync(
 // If a new special form is added to the sync dispatcher and omitted here,
 // (async ...) blocks will silently treat it as a function call at runtime.
 // Add new forms here and delegate to syncCtx if no async-aware handling needed.
+// Kinds handled by the sync `deref` function in stdlib/atoms.ts.
+// When @ is used inside (async ...) on a non-pending value, we delegate to
+// sync deref for these kinds. Everything else gets the await-or-identity
+// treatment: return the value as-is (matches JS `await` semantics).
+// If a new derefable type is added to atoms.ts, add its kind here too.
+const SYNC_DEREFABLE_KINDS = new Set(['atom', 'volatile', 'reduced', 'delay'])
+
 const ASYNC_SPECIAL_FORMS = new Set([
   'quote',
   'def',
@@ -213,15 +222,44 @@ async function evaluateListAsync(
   // Evaluate the head (function position)
   const fn = await evaluateFormAsync(head, env, asyncCtx)
 
-  // Deref interception: @x expands to (deref x).
-  // If the dereffed value is CljPending, await it here — this is the heart of async @.
-  if (is.aFunction(fn) && fn.name === 'deref' && list.value.length === 2) {
+  // Deref interception: @x expands to (deref x), (deref x ms) adds a timeout.
+  // Semantics inside (async ...): await-or-identity, matching JS `await`.
+  //   CljPending        → await the promise (with optional timeout)
+  //   atom/volatile/... → delegate to sync deref (SYNC_DEREFABLE_KINDS)
+  //   anything else     → return the value as-is
+  // This makes @ safe to use on any value in async middleware — no need to
+  // know whether the handler below is sync or async.
+  // Default timeout: 30 000 ms (matches JVM Clojure deref timeout-ms convention).
+  if (is.aFunction(fn) && fn.name === 'deref' && (list.value.length === 2 || list.value.length === 3)) {
     const val = await evaluateFormAsync(list.value[1], env, asyncCtx)
     if (is.pending(val)) {
-      return val.promise // await the pending value
+      let timeoutMs = 30_000
+      if (list.value.length === 3) {
+        const t = await evaluateFormAsync(list.value[2], env, asyncCtx)
+        if (!is.number(t)) throw new EvaluationError('deref timeout must be a number (milliseconds)', { t })
+        timeoutMs = t.value
+      }
+      let timerId: ReturnType<typeof setTimeout> | null = null
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(
+          () => reject(new EvaluationError(`deref timed out after ${timeoutMs}ms`, {})),
+          timeoutMs
+        )
+      })
+      // Cancel the timer when val.promise settles so the orphaned timeoutPromise
+      // never fires as an unhandled rejection (which would crash Node/Bun).
+      val.promise.then(
+        () => { if (timerId !== null) clearTimeout(timerId) },
+        () => { if (timerId !== null) clearTimeout(timerId) }
+      )
+      return Promise.race([val.promise, timeoutPromise])
     }
-    // Not pending: normal sync deref
-    return asyncCtx.syncCtx.applyCallable(fn, [val], env)
+    // Not pending: delegate to sync deref for natively derefable kinds (atom/volatile/reduced/delay).
+    // Anything else returns as-is — await-or-identity semantics, matching JS `await`.
+    if (SYNC_DEREFABLE_KINDS.has(val.kind)) {
+      return asyncCtx.syncCtx.applyCallable(fn, [val], env)
+    }
+    return val
   }
 
   // Evaluate args sequentially (left-to-right, preserving side-effect order)
@@ -265,12 +303,18 @@ async function evaluateSpecialFormAsync(
     case specialFormKeywords.do:
       return evaluateFormsAsync(list.value.slice(1), env, asyncCtx)
 
-    // def: V1 does not support def inside (async ...) — unusual use case
-    case specialFormKeywords.def:
-      throw new EvaluationError(
-        'def inside (async ...) is not supported. Define vars outside the async block.',
-        { list, env }
-      )
+    // def: evaluate the value expression async, then delegate to sync def.
+    // (def name) bare declaration has no value to await — go straight to sync.
+    case specialFormKeywords.def: {
+      if (list.value[2] === undefined) return asyncCtx.syncCtx.evaluate(list, env)
+      // 3-arg docstring form: (def name "doc" value) — value is at index 3
+      const hasDocstring = list.value.length === 4 && list.value[2].kind === 'string'
+      const valueIdx = hasDocstring ? 3 : 2
+      const newVal = await evaluateFormAsync(list.value[valueIdx], env, asyncCtx)
+      const quotedVal = v.list([v.symbol(specialFormKeywords.quote), newVal])
+      const newElems = [...list.value.slice(0, valueIdx), quotedVal]
+      return asyncCtx.syncCtx.evaluate(v.list(newElems), env)
+    }
 
     // if: evaluate condition, then selected branch
     case specialFormKeywords.if: {
@@ -470,12 +514,14 @@ async function evaluateTryAsync(
     let thrownValue: CljValue
     if (e instanceof CljThrownSignal) {
       thrownValue = e.value
-    } else if (e instanceof EvaluationError) {
+    } else if (isEvaluationError(e)) {
+      const evalErr = e
+      const typeKeyword = evalErr.code ? v.keyword(`:${evalErr.code}`) : v.keyword(':error/runtime')
       thrownValue = {
         kind: valueKeywords.map,
         entries: [
-          [v.keyword(':type'), v.keyword(':error/runtime')],
-          [v.keyword(':message'), v.string((e as Error).message)],
+          [v.keyword(':type'), typeKeyword],
+          [v.keyword(':message'), v.string(e.message)],
         ],
       }
     } else {

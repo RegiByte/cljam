@@ -20,6 +20,10 @@ export function jsToClj(raw: unknown): CljValue {
   if (typeof raw === 'number') return v.number(raw)
   if (typeof raw === 'string') return v.string(raw)
   if (typeof raw === 'boolean') return v.boolean(raw)
+  // Auto-wrap JS Promises (thenables) as CljPending so they compose with then/catch*/@ natively.
+  if (raw !== null && typeof (raw as Record<string, unknown>)?.then === 'function') {
+    return v.pending(Promise.resolve(raw as Promise<unknown>).then(jsToClj))
+  }
   return v.jsValue(raw)
 }
 
@@ -204,5 +208,5 @@ export function evaluateNew(
   const cljArgs = list.value.slice(2).map((a) => ctx.evaluate(a, env))
   const jsArgs = cljArgs.map((a) => cljToJs(a, ctx, env))
   const ctor = cls.value as new (...args: unknown[]) => unknown
-  return v.jsValue(new ctor(...jsArgs))
+  return jsToClj(new ctor(...jsArgs))
 }

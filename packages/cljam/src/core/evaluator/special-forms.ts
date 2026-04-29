@@ -6,7 +6,7 @@ import {
   lookupVar,
   makeEnv,
 } from '../env'
-import { CljThrownSignal, EvaluationError } from '../errors'
+import { CljThrownSignal, EvaluationError, isEvaluationError } from '../errors'
 import { v } from '../factories'
 // --- ASYNC (experimental) ---
 import { createAsyncEvalCtx } from './async-evaluator'
@@ -67,13 +67,15 @@ function evaluateTry(
     let thrownValue: CljValue
     if (e instanceof CljThrownSignal) {
       thrownValue = e.value
-    } else if (e instanceof EvaluationError) {
+    } else if (isEvaluationError(e)) {
+      const evalErr = e
+      const typeKeyword = evalErr.code ? v.keyword(`:${evalErr.code}`) : v.keyword(':error/runtime')
       const entries: [CljValue, CljValue][] = [
-        [v.keyword(':type'), v.keyword(':error/runtime')],
+        [v.keyword(':type'), typeKeyword],
         [v.keyword(':message'), v.string(e.message)],
       ]
-      if (e.frames && e.frames.length > 0) {
-        entries.push([v.keyword(':frames'), framesToClj(e.frames, ctx.currentSource)])
+      if (evalErr.frames && evalErr.frames.length > 0) {
+        entries.push([v.keyword(':frames'), framesToClj(evalErr.frames, ctx.currentSource)])
       }
       thrownValue = v.map(entries)
     } else {

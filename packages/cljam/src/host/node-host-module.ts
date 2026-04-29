@@ -7,9 +7,9 @@ import {
   valueToString,
   type Session,
   type CljValue,
-} from '../core'
-import type { RuntimeModule } from '../core/module'
-import { inferSourceRoot } from '../bin/nrepl-utils'
+  type RuntimeModule,
+} from '@regibyte/cljam'
+import { inferSourceRoot } from '../nrepl/nrepl-utils'
 
 /**
  * Returns a RuntimeModule that installs Node.js host functions into clojure.core.
@@ -17,7 +17,7 @@ import { inferSourceRoot } from '../bin/nrepl-utils'
  */
 export function makeNodeHostModule(session: Session): RuntimeModule {
   return {
-    id: 'conjure/host-node',
+    id: 'cljam/host-node',
     dependsOn: ['clojure.core'],
     declareNs: [
       {

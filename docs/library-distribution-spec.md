@@ -55,15 +55,15 @@ export type CljamLibrary = {
 
 ### Library manifest convention (npm packages)
 
-A cljam library published to npm exports its library from a `conjure.ts` entry:
+A cljam library published to npm exports its library from a `library.ts` entry:
 
 ```typescript
-// my-conjure-lib/conjure.ts
+// my-cljam-lib/library.ts
 import type { CljamLibrary } from '@regibyte/cljam'
 import { makeNativeModule } from './native'
 
 export const library: CljamLibrary = {
-  id: 'my-conjure-lib',
+  id: 'my-cljam-lib',
   sources: {
     'my-lib.core': /* the .clj source as a string, typically inlined at build time */,
     'my-lib.utils': /* ... */,
@@ -74,11 +74,11 @@ export const library: CljamLibrary = {
 
 Users import and use it:
 ```typescript
-import { library as myLib } from 'my-conjure-lib/conjure'
+import { library as myLib } from 'my-cljam-lib'
 createSession({ ...nodePreset(), libraries: [myLib] })
 ```
 
-The `conjure.ts` entry is a convention, not enforced by the runtime. It makes library authoring feel natural and is IDE-friendly.
+The `library.ts` entry is a convention, not enforced by the runtime. It makes library authoring explicit and IDE-friendly.
 
 ---
 

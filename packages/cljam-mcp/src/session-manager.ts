@@ -1,8 +1,11 @@
 import {
   createSession,
+  resolveSessionProfile,
   type Session,
   type CljamLibrary,
+  type SessionProfile,
 } from '@regibyte/cljam'
+import { makeNodeHostModule, discoverSessionProfile } from '@regibyte/cljam/nrepl'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve, isAbsolute } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -28,6 +31,7 @@ export type SessionRecord = {
   id: string
   session: Session
   preset: Preset
+  sessionPreset: SessionProfile['preset']
   rootDir?: string
   sourceRoots: string[]
   /** IDs of libraries installed into this session (for display). */
@@ -135,25 +139,16 @@ function makeSessionOptions(
   rootDir: string | undefined,
   sourceRoots: string[],
   outputBuffer: string[],
+  profile: SessionProfile,
   libraries?: CljamLibrary[]
 ) {
   return {
     output: (text: string) => outputBuffer.push(text),
     stderr: (text: string) => outputBuffer.push(`[stderr] ${text}`),
     importModule: (specifier: string) => import(specifier),
-    hostBindings: {
-      Math,
-      console,
-      process,
-      Buffer,
-      setTimeout,
-      clearTimeout,
-      setInterval,
-      clearInterval,
-      fetch: globalThis.fetch,
-    },
-    allowedPackages: 'all' as const,
-    allowedHostModules: 'all' as const,
+    hostBindings: profile.hostBindings,
+    allowedPackages: profile.allowedPackages,
+    allowedHostModules: profile.allowedHostModules,
     ...(rootDir
       ? {
           readFile: makeReadFile(rootDir),
@@ -195,16 +190,28 @@ export class SessionManager {
     const { rootDir, libraries, main } = opts
     const id = randomUUID()
     const effectiveRootDir = rootDir ? resolve(rootDir) : this.defaultRootDir
+
+    // Resolve profile from workspace package.json, falling back to 'node-agent'
+    // when no root dir is configured (classic MCP agent use case: fetch + process available).
+    const profile = effectiveRootDir
+      ? discoverSessionProfile(effectiveRootDir)
+      : resolveSessionProfile('node-agent')
+
     const sourceRoots = effectiveRootDir ? discoverSourceRoots(effectiveRootDir) : []
     const outputBuffer: string[] = []
     const session = createSession(
-      makeSessionOptions(effectiveRootDir, sourceRoots, outputBuffer, libraries)
+      makeSessionOptions(effectiveRootDir, sourceRoots, outputBuffer, profile, libraries)
     )
+    session.runtime.installModules([makeNodeHostModule(session)])
+    if (effectiveRootDir) {
+      session.setCurrentDir(effectiveRootDir)
+    }
 
     const record: SessionRecord = {
       id,
       session,
       preset: 'agent',
+      sessionPreset: profile.preset,
       rootDir: effectiveRootDir,
       sourceRoots,
       libraryIds: (libraries ?? []).map((l) => l.id),

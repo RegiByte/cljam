@@ -28,7 +28,7 @@
     "README.md"
   ],
   "peerDependencies": {
-    "@regibyte/cljam": ">=0.0.20"
+    "@regibyte/cljam": ">=0.0.21"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"

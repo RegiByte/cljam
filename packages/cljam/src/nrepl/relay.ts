@@ -1,11 +1,11 @@
 import * as net from 'node:net'
 import { writeFileSync, unlinkSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { BDecoderStream, BEncoderStream } from '../bin/bencode'
+import { BDecoderStream, BEncoderStream } from './bencode'
 import type { Session } from '../core'
 import type { WebSocketServer } from 'vite'
-import { VERSION } from '../bin/version'
-import { resolveSymbol, extractMeta } from '../bin/nrepl-symbol'
+import { VERSION } from '../cli/version'
+import { resolveSymbol, extractMeta } from './nrepl-symbol'
 
 // ---------------------------------------------------------------------------
 // Types

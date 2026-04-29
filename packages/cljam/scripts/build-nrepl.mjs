@@ -15,7 +15,7 @@ import { mkdirSync } from 'node:fs'
 mkdirSync('dist-nrepl', { recursive: true })
 
 await build({
-  entryPoints: ['src/bin/nrepl.ts'],
+  entryPoints: ['src/nrepl/nrepl.ts'],
   bundle: true,
   outfile: 'dist-nrepl/index.mjs',
   platform: 'node',

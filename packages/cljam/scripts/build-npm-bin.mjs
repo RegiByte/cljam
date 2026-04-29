@@ -14,13 +14,18 @@ import { mkdirSync, chmodSync } from 'node:fs'
 mkdirSync('dist-cli', { recursive: true })
 
 await build({
-  entryPoints: ['src/bin/cli.ts'],
+  entryPoints: ['src/cli/cli.ts'],
   bundle: true,
   outfile: 'dist-cli/cljam.mjs',
   platform: 'node',
   format: 'esm',
   target: ['node18'],
   minify: true,
+  // Keep @regibyte/cljam as an external dep so the CLI uses the same module
+  // instance as any installed library (e.g. cljam-integrant). This prevents
+  // the dual-module problem where instanceof EvaluationError fails across the
+  // bundle boundary.
+  external: ['@regibyte/cljam'],
   // #!/usr/bin/env node shebang so npm/npx can execute the file directly
   banner: { js: '#!/usr/bin/env node' },
 })
