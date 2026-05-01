@@ -1,6 +1,8 @@
 (ns workspace.demo
   (:require
-   [js :as js]))
+   [js :as js]
+   [clojure.string :as str]
+   [workspace.harvest :as harvest]))
 
 (declare js->clj)
 
@@ -21,12 +23,27 @@
    :last (last xs)})
 
 
+(defn- workspace-banner []
+  (let [workspace-ns (->> (all-ns)
+                          (map ns-name)
+                          (map str)
+                          (filter #(str/starts-with? % "workspace."))
+                          sort)]
+    (println "\n=== MCP Workspace Ready ===")
+    (println "Loaded namespaces:")
+    (doseq [n workspace-ns]
+      (println (str "  " n)))
+    (println "\nExplore any namespace:")
+    (println "  (describe (find-ns 'workspace.harvest))")
+    (println "  (all-ns)")))
+
+(workspace-banner)
+
 (comment
+  (harvest/list-projects)
 
+  (describe (find-ns 'workspace.harvest))
 
-  (-> (js/fetch "https://api.github.com/users/amandamachadodev" {})
-      (then #((. % json)))
-      (then js->clj)
-      (then pprint))
+  (all-ns)
   ;
   )

@@ -506,6 +506,7 @@ export function createMcpServer(options: McpServerOptions = {}): Server {
           (effectiveRootDir ? discoverMain(effectiveRootDir) : undefined)
 
         const record = await manager.create({ rootDir, libraries, main })
+        const startupOutput = record.outputBuffer.join('\n')
         return ok({
           session_id: record.id,
           ns: record.session.currentNs,
@@ -519,6 +520,14 @@ export function createMcpServer(options: McpServerOptions = {}): Server {
           capabilities: record.session.capabilities,
           ...(libraryErrors.length > 0 ? { library_load_errors: libraryErrors } : {}),
           ...(record.mainLoadError ? { main_load_error: record.mainLoadError } : {}),
+          ...(startupOutput ? { startup_output: startupOutput } : {}),
+          agent_hints: [
+            'WORKSPACE INTROSPECTION — do this before writing any code:',
+            '  (all-ns)                        — list all loaded namespaces',
+            '  (describe (find-ns \'some.ns))   — explore a namespace\'s full API',
+            'Check existing namespaces before reimplementing functionality.',
+            'If a workspace was loaded, it may already have utilities for your task.',
+          ].join('\n'),
         })
       }
 

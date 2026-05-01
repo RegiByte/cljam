@@ -41,6 +41,7 @@ const NODE_BASE_BINDINGS: Record<string, unknown> = {
   Math,
   JSON: globalThis.JSON,
   Promise: globalThis.Promise,
+  Object: globalThis.Object,
   console,
   Buffer,
   setTimeout,
