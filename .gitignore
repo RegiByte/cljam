@@ -46,3 +46,6 @@ packages/cljam/src/bin/version.ts
 .calva/
 .claude/
 CLAUDE.md
+
+## Experiments
+experiments/mcp-workspace/
