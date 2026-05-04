@@ -1,5 +1,13 @@
 import { defineConfig } from 'vitepress'
 import { monaco } from '@bithero/monaco-editor-vite-plugin'
+import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
+
+// Resolve the cljam TypeScript entry relative to this config file.
+// Using an alias bypasses package.json `exports` resolution entirely,
+// which avoids [commonjs--resolver] failures in CI where Rollup's CJS
+// plugin can't match any condition before the file is built.
+const cljamEntry = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../cljam/src/core/index.ts')
 
 export default defineConfig({
   title: 'cljam',
@@ -100,12 +108,20 @@ export default defineConfig({
         globalAPI: false,
       }),
     ],
+    resolve: {
+      // Alias @regibyte/cljam to its TypeScript source directly.
+      // This runs before any Rollup/Vite resolver plugin (including the
+      // [commonjs--resolver] that was failing in CI), so package.json
+      // exports and dist/ file existence are never consulted.
+      alias: {
+        '@regibyte/cljam': cljamEntry,
+      },
+    },
     ssr: {
-      // @regibyte/cljam is now externalised for SSR — the package exports
-      // `node: ./dist/index.mjs` which Node.js loads fine via import().
-      // noExternal caused [commonjs--resolver] failures when Rollup tried
-      // to bundle it, because the CJS plugin couldn't handle the exports.
-      external: ['@regibyte/cljam'],
+      // Bundle the aliased source into the SSR bundle instead of
+      // externalising it — the alias resolves to TypeScript which Vite
+      // transforms, so no pre-built dist/ is needed here either.
+      noExternal: ['@regibyte/cljam'],
     },
     optimizeDeps: {
       // Exclude Monaco from pre-bundling — it's only ever loaded dynamically
