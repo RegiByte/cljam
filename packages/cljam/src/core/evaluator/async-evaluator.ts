@@ -308,7 +308,7 @@ async function evaluateSpecialFormAsync(
     case specialFormKeywords.def: {
       if (list.value[2] === undefined) return asyncCtx.syncCtx.evaluate(list, env)
       // 3-arg docstring form: (def name "doc" value) — value is at index 3
-      const hasDocstring = list.value.length === 4 && list.value[2].kind === 'string'
+      const hasDocstring = list.value.length === 4 && is.string(list.value[2])
       const valueIdx = hasDocstring ? 3 : 2
       const newVal = await evaluateFormAsync(list.value[valueIdx], env, asyncCtx)
       const quotedVal = v.list([v.symbol(specialFormKeywords.quote), newVal])

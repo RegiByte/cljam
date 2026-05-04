@@ -31,7 +31,7 @@ function notifyWatches(a: CljAtom, oldVal: CljValue, newVal: CljValue) {
     for (const [, { key, fn, ctx, callEnv }] of a.watches) {
       ctx.applyFunction(
         fn as CljFunction | CljNativeFunction,
-        [key, { kind: 'atom', value: newVal } as CljValue, oldVal, newVal],
+        [key, v.atom(newVal), oldVal, newVal],
         callEnv
       )
     }
@@ -58,7 +58,7 @@ export const atomFunctions: Record<string, CljValue> = {
       if (is.reduced(value)) return value.value
       if (is.delay(value)) return realizeDelay(value)
       // --- ASYNC (experimental) ---
-      if (value.kind === 'pending') {
+      if (is.pending(value)) {
         throw EvaluationError.atArg(
           '@ on a pending value requires an (async ...) context. Use (async @x) or compose with then/catch.',
           { value },
@@ -331,7 +331,7 @@ export const atomFunctions: Record<string, CljValue> = {
             0
           )
         }
-        if (fn.kind === 'nil') {
+        if (is.nil(fn)) {
           ;(atomVal as CljAtom).validator = undefined
           return v.nil()
         }

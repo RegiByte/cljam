@@ -16,7 +16,7 @@
 //   - Multimethod definitions (init-key, halt-key!, etc.)
 //   - Error message construction for user-facing throws
 
-import { v, EvaluationError, printString, isEqual } from '@regibyte/cljam'
+import { v, is, EvaluationError, printString, isEqual } from '@regibyte/cljam'
 import type {
   CljValue,
   CljMap,
@@ -61,9 +61,9 @@ type RefKind = 'ref' | 'refset'
 function getRefInfo(
   val: CljValue
 ): { kind: RefKind; refKey: CljValue } | null {
-  if (val.kind !== 'map') return null
+  if (!is.map(val)) return null
   for (const [k, mapVal] of val.entries) {
-    if (k.kind === 'keyword') {
+    if (is.keyword(k)) {
       if (k.name === REF_KEY_NAME) return { kind: 'ref', refKey: mapVal }
       if (k.name === REFSET_KEY_NAME) return { kind: 'refset', refKey: mapVal }
     }
@@ -105,7 +105,7 @@ function collectRefKeys(val: CljValue): CljValue[] {
 }
 
 function collectRefKeysInto(val: CljValue, acc: CljValue[]): void {
-  if (val.kind === 'map') {
+  if (is.map(val)) {
     const ref = getRefInfo(val)
     if (ref !== null) {
       acc.push(ref.refKey)
@@ -114,7 +114,7 @@ function collectRefKeysInto(val: CljValue, acc: CljValue[]): void {
     for (const [, v] of val.entries) {
       collectRefKeysInto(v, acc)
     }
-  } else if (val.kind === 'vector' || val.kind === 'list') {
+  } else if (is.vector(val) || is.list(val)) {
     for (const item of val.value) {
       collectRefKeysInto(item, acc)
     }
@@ -142,7 +142,7 @@ function resolveValue(
   ctx: EvaluationContext,
   callEnv: Env
 ): CljValue {
-  if (val.kind === 'map') {
+  if (is.map(val)) {
     const refInfo = getRefInfo(val)
 
     if (refInfo !== null && refInfo.kind === 'ref') {
@@ -162,7 +162,7 @@ function resolveValue(
         [entry.key, entry.rawValue],
         callEnv
       )
-      if (resolved.kind === 'pending') {
+      if (is.pending(resolved)) {
         // resolve-key should be synchronous; if it returns pending, unwrap it
         // synchronously is impossible. Throw a clear error.
         throw new EvaluationError(
@@ -184,7 +184,7 @@ function resolveValue(
             [entry.key, entry.rawValue],
             callEnv
           )
-          if (resolved.kind !== 'pending') {
+          if (!is.pending(resolved)) {
             matching.push(resolved)
           }
         }
@@ -197,12 +197,12 @@ function resolveValue(
       k,
       resolveValue(mapVal, system, resolveFn, ctx, callEnv),
     ])
-    const result: CljMap = { kind: 'map', entries: newEntries }
+    const result: CljMap = v.map(newEntries)
     if (val.meta) result.meta = val.meta
     return result
   }
 
-  if (val.kind === 'vector') {
+  if (is.vector(val)) {
     return v.vector(
       val.value.map((item) =>
         resolveValue(item, system, resolveFn, ctx, callEnv)
@@ -210,7 +210,7 @@ function resolveValue(
     )
   }
 
-  if (val.kind === 'list') {
+  if (is.list(val)) {
     return v.list(
       val.value.map((item) =>
         resolveValue(item, system, resolveFn, ctx, callEnv)
@@ -236,8 +236,8 @@ function mapGet(map: CljMap, key: CljValue): CljValue | null {
 
 /** Convert a CljValue collection to a JS array of CljValues. nil → []. */
 function cljCollToArray(val: CljValue): CljValue[] {
-  if (val.kind === 'nil') return []
-  if (val.kind === 'vector' || val.kind === 'list') return val.value
+  if (is.nil(val)) return []
+  if (is.vector(val) || is.list(val)) return val.value
   throw new EvaluationError(
     `expected a collection of keys, got ${val.kind}`,
     { val }
@@ -246,7 +246,7 @@ function cljCollToArray(val: CljValue): CljValue[] {
 
 /** Await a CljValue if it is pending; otherwise return it directly. */
 async function awaitIfPending(val: CljValue): Promise<CljValue> {
-  if (val.kind === 'pending') return await val.promise
+  if (is.pending(val)) return await val.promise
   return val
 }
 
@@ -256,20 +256,11 @@ function buildSystemMap(
   originConfig: CljMap,
   buildEntries: [CljValue, CljValue][]
 ): CljMap {
-  const systemMap: CljMap = {
-    kind: 'map',
-    entries: systemEntries,
-    meta: {
-      kind: 'map',
-      entries: [
-        [{ kind: 'keyword', name: ORIGIN_META_NAME }, originConfig],
-        [
-          { kind: 'keyword', name: BUILD_META_NAME },
-          { kind: 'map', entries: buildEntries },
-        ],
-      ],
-    },
-  }
+  const systemMap: CljMap = v.map(systemEntries)
+  systemMap.meta = v.map([
+    [v.keyword(ORIGIN_META_NAME), originConfig],
+    [v.keyword(BUILD_META_NAME), v.map(buildEntries)],
+  ])
   return systemMap
 }
 
@@ -429,7 +420,7 @@ const nativeFns: Record<string, CljValue> = {
   'config->ordered-keys*': v.nativeFnCtx(
     'cljam.integrant.native/config->ordered-keys*',
     (_ctx, _callEnv, config: CljValue, keysOrNil: CljValue) => {
-      if (config.kind !== 'map') {
+      if (!is.map(config)) {
         throw new EvaluationError(
           `config->ordered-keys*: expected a map, got ${config.kind}`,
           { config }
@@ -439,7 +430,7 @@ const nativeFns: Record<string, CljValue> = {
       const g = buildDepGraph(config.entries)
       const fullOrder = topoSort(g)
 
-      if (keysOrNil.kind === 'nil') {
+      if (is.nil(keysOrNil)) {
         return v.vector(fullOrder)
       }
 
@@ -468,13 +459,13 @@ const nativeFns: Record<string, CljValue> = {
       assertFn: CljValue,
       resolveFn: CljValue
     ) => {
-      if (config.kind !== 'map') {
+      if (!is.map(config)) {
         throw new EvaluationError(
           `build-async*: expected a map for config, got ${config.kind}`,
           { config }
         )
       }
-      if (orderedKeys.kind !== 'vector' && orderedKeys.kind !== 'list') {
+      if (!is.vector(orderedKeys) && !is.list(orderedKeys)) {
         throw new EvaluationError(
           `build-async*: expected a vector of keys, got ${orderedKeys.kind}`,
           { orderedKeys }
@@ -507,13 +498,13 @@ const nativeFns: Record<string, CljValue> = {
       orderedKeys: CljValue,
       lifecycleFn: CljValue
     ) => {
-      if (system.kind !== 'map') {
+      if (!is.map(system)) {
         throw new EvaluationError(
           `run-async*: expected a map for system, got ${system.kind}`,
           { system }
         )
       }
-      if (orderedKeys.kind !== 'vector' && orderedKeys.kind !== 'list') {
+      if (!is.vector(orderedKeys) && !is.list(orderedKeys)) {
         throw new EvaluationError(
           `run-async*: expected a vector of keys, got ${orderedKeys.kind}`,
           { orderedKeys }
@@ -544,19 +535,19 @@ const nativeFns: Record<string, CljValue> = {
       assertFn: CljValue,
       resolveFn: CljValue
     ) => {
-      if (config.kind !== 'map') {
+      if (!is.map(config)) {
         throw new EvaluationError(
           `resume-async*: expected a map for config, got ${config.kind}`,
           { config }
         )
       }
-      if (oldSystem.kind !== 'map') {
+      if (!is.map(oldSystem)) {
         throw new EvaluationError(
           `resume-async*: expected a map for old-system, got ${oldSystem.kind}`,
           { oldSystem }
         )
       }
-      if (orderedKeys.kind !== 'vector' && orderedKeys.kind !== 'list') {
+      if (!is.vector(orderedKeys) && !is.list(orderedKeys)) {
         throw new EvaluationError(
           `resume-async*: expected a vector of keys, got ${orderedKeys.kind}`,
           { orderedKeys }
@@ -564,7 +555,7 @@ const nativeFns: Record<string, CljValue> = {
       }
 
       const oldBuildMap =
-        oldBuildOrNil.kind === 'map' ? oldBuildOrNil : null
+        is.map(oldBuildOrNil) ? oldBuildOrNil : null
 
       const promise = resumeAsync(
         config,

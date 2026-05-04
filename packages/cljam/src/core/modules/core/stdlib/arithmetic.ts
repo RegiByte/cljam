@@ -26,7 +26,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       let result = 0
       for (let i = 0; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '+ expects all arguments to be numbers',
             { args: nums },
@@ -67,7 +67,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw new EvaluationError('- expects at least one argument', {
           args: nums,
         })
-      if (nums[0].kind !== 'number')
+      if (!is.number(nums[0]))
         throw EvaluationError.atArg(
           '- expects all arguments to be numbers',
           { args: nums },
@@ -75,7 +75,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       if (nums.length === 1) return v.number(-(nums[0] as CljNumber).value)
       if (nums.length === 2) {
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '- expects all arguments to be numbers',
             { args: nums },
@@ -87,7 +87,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       let result = (nums[0] as CljNumber).value
       for (let i = 1; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '- expects all arguments to be numbers',
             { args: nums },
@@ -109,13 +109,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
     .nativeFn('*', function multiply(...nums: CljValue[]) {
       if (nums.length === 0) return v.number(1)
       if (nums.length === 2) {
-        if (nums[0].kind !== 'number')
+        if (!is.number(nums[0]))
           throw EvaluationError.atArg(
             '* expects all arguments to be numbers',
             { args: nums },
             0
           )
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '* expects all arguments to be numbers',
             { args: nums },
@@ -127,7 +127,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       let result = 1
       for (let i = 0; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '* expects all arguments to be numbers',
             { args: nums },
@@ -151,14 +151,14 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw new EvaluationError('/ expects at least one argument', {
           args: nums,
         })
-      if (nums[0].kind !== 'number')
+      if (!is.number(nums[0]))
         throw EvaluationError.atArg(
           '/ expects all arguments to be numbers',
           { args: nums },
           0
         )
       if (nums.length === 2) {
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '/ expects all arguments to be numbers',
             { args: nums },
@@ -172,7 +172,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       }
       let result = (nums[0] as CljNumber).value
       for (let i = 1; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '/ expects all arguments to be numbers',
             { args: nums },
@@ -202,13 +202,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
           args: nums,
         })
       if (nums.length === 2) {
-        if (nums[0].kind !== 'number')
+        if (!is.number(nums[0]))
           throw EvaluationError.atArg(
             '> expects all arguments to be numbers',
             { args: nums },
             0
           )
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '> expects all arguments to be numbers',
             { args: nums },
@@ -218,14 +218,14 @@ export const arithmeticFunctions: Record<string, CljValue> = {
           (nums[0] as CljNumber).value > (nums[1] as CljNumber).value
         )
       }
-      if (nums[0].kind !== 'number')
+      if (!is.number(nums[0]))
         throw EvaluationError.atArg(
           '> expects all arguments to be numbers',
           { args: nums },
           0
         )
       for (let i = 1; i < nums.length; i++) {
-        if (nums[i].kind !== 'number') {
+        if (!is.number(nums[i])) {
           throw EvaluationError.atArg(
             '> expects all arguments to be numbers',
             { args: nums },
@@ -253,13 +253,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
           args: nums,
         })
       if (nums.length === 2) {
-        if (nums[0].kind !== 'number')
+        if (!is.number(nums[0]))
           throw EvaluationError.atArg(
             '< expects all arguments to be numbers',
             { args: nums },
             0
           )
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '< expects all arguments to be numbers',
             { args: nums },
@@ -270,7 +270,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       }
       for (let i = 0; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '< expects all arguments to be numbers',
             { args: nums },
@@ -298,13 +298,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
           args: nums,
         })
       if (nums.length === 2) {
-        if (nums[0].kind !== 'number')
+        if (!is.number(nums[0]))
           throw EvaluationError.atArg(
             '>= expects all arguments to be numbers',
             { args: nums },
             0
           )
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '>= expects all arguments to be numbers',
             { args: nums },
@@ -315,7 +315,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       }
       for (let i = 0; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '>= expects all arguments to be numbers',
             { args: nums },
@@ -343,13 +343,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
           args: nums,
         })
       if (nums.length === 2) {
-        if (nums[0].kind !== 'number')
+        if (!is.number(nums[0]))
           throw EvaluationError.atArg(
             '<= expects all arguments to be numbers',
             { args: nums },
             0
           )
-        if (nums[1].kind !== 'number')
+        if (!is.number(nums[1]))
           throw EvaluationError.atArg(
             '<= expects all arguments to be numbers',
             { args: nums },
@@ -360,7 +360,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       }
       for (let i = 0; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             '<= expects all arguments to be numbers',
             { args: nums },
@@ -405,7 +405,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   inc: v
     .nativeFn('inc', function increment(x: CljValue) {
-      if (x === undefined || x.kind !== 'number') {
+      if (x === undefined || !is.number(x)) {
         throw EvaluationError.atArg(
           `inc expects a number${x !== undefined ? `, got ${printString(x)}` : ''}`,
           { x },
@@ -424,7 +424,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   dec: v
     .nativeFn('dec', function decrement(x: CljValue) {
-      if (x === undefined || x.kind !== 'number') {
+      if (x === undefined || !is.number(x)) {
         throw EvaluationError.atArg(
           `dec expects a number${x !== undefined ? `, got ${printString(x)}` : ''}`,
           { x },
@@ -447,7 +447,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw new EvaluationError('max expects at least one argument', {
           args: nums,
         })
-      if (nums[0].kind !== 'number')
+      if (!is.number(nums[0]))
         throw EvaluationError.atArg(
           'max expects all arguments to be numbers',
           { args: nums },
@@ -455,7 +455,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       let best = (nums[0] as CljNumber).value
       for (let i = 1; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             'max expects all arguments to be numbers',
             { args: nums },
@@ -480,7 +480,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         throw new EvaluationError('min expects at least one argument', {
           args: nums,
         })
-      if (nums[0].kind !== 'number')
+      if (!is.number(nums[0]))
         throw EvaluationError.atArg(
           'min expects all arguments to be numbers',
           { args: nums },
@@ -488,7 +488,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
         )
       let best = (nums[0] as CljNumber).value
       for (let i = 1; i < nums.length; i++) {
-        if (nums[i].kind !== 'number')
+        if (!is.number(nums[i]))
           throw EvaluationError.atArg(
             'min expects all arguments to be numbers',
             { args: nums },
@@ -509,14 +509,14 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   mod: v
     .nativeFn('mod', function modulo(n: CljValue, d: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `mod expects a number as first argument${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
           0
         )
       }
-      if (d === undefined || d.kind !== 'number') {
+      if (d === undefined || !is.number(d)) {
         throw EvaluationError.atArg(
           `mod expects a number as second argument${d !== undefined ? `, got ${printString(d)}` : ''}`,
           { d },
@@ -544,7 +544,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'even?': v
     .nativeFn('even?', function isEven(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `even? expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -563,7 +563,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'odd?': v
     .nativeFn('odd?', function isOdd(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `odd? expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -582,7 +582,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'pos?': v
     .nativeFn('pos?', function isPositive(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `pos? expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -601,7 +601,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'neg?': v
     .nativeFn('neg?', function isNegative(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `neg? expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -620,7 +620,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'zero?': v
     .nativeFn('zero?', function isZero(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `zero? expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -639,7 +639,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   abs: v
     .nativeFn('abs', function absImpl(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `abs expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -658,7 +658,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   sqrt: v
     .nativeFn('sqrt', function sqrtImpl(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `sqrt expects a number${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -677,14 +677,14 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   quot: v
     .nativeFn('quot', function quotImpl(num: CljValue, div: CljValue) {
-      if (num === undefined || num.kind !== 'number') {
+      if (num === undefined || !is.number(num)) {
         throw EvaluationError.atArg(
           `quot expects a number as first argument`,
           { num },
           0
         )
       }
-      if (div === undefined || div.kind !== 'number') {
+      if (div === undefined || !is.number(div)) {
         throw EvaluationError.atArg(
           `quot expects a number as second argument`,
           { div },
@@ -708,14 +708,14 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   rem: v
     .nativeFn('rem', function remImpl(num: CljValue, div: CljValue) {
-      if (num === undefined || num.kind !== 'number') {
+      if (num === undefined || !is.number(num)) {
         throw EvaluationError.atArg(
           `rem expects a number as first argument`,
           { num },
           0
         )
       }
-      if (div === undefined || div.kind !== 'number') {
+      if (div === undefined || !is.number(div)) {
         throw EvaluationError.atArg(
           `rem expects a number as second argument`,
           { div },
@@ -738,7 +738,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
   rand: v
     .nativeFn('rand', function randImpl(...args: CljValue[]) {
       if (args.length === 0) return v.number(Math.random())
-      if (args[0].kind !== 'number') {
+      if (!is.number(args[0])) {
         throw EvaluationError.atArg(`rand expects a number`, { n: args[0] }, 0)
       }
       return v.number(Math.random() * (args[0] as CljNumber).value)
@@ -753,7 +753,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'rand-int': v
     .nativeFn('rand-int', function randIntImpl(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(`rand-int expects a number`, { n }, 0)
       }
       return v.number(Math.floor(Math.random() * (n as CljNumber).value))
@@ -795,7 +795,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   shuffle: v
     .nativeFn('shuffle', function shuffleImpl(coll: CljValue) {
-      if (coll === undefined || coll.kind === 'nil') return v.vector([])
+      if (coll === undefined || is.nil(coll)) return v.vector([])
       if (!is.seqable(coll)) {
         throw EvaluationError.atArg(
           `shuffle expects a collection, got ${printString(coll)}`,
@@ -820,9 +820,9 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'bit-and': v
     .nativeFn('bit-and', function bitAndImpl(x: CljValue, y: CljValue) {
-      if (x?.kind !== 'number')
+      if (!x || !is.number(x))
         throw EvaluationError.atArg('bit-and expects numbers', { x }, 0)
-      if (y?.kind !== 'number')
+      if (!y || !is.number(y))
         throw EvaluationError.atArg('bit-and expects numbers', { y }, 1)
       return v.number((x as CljNumber).value & (y as CljNumber).value)
     })
@@ -836,9 +836,9 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'bit-or': v
     .nativeFn('bit-or', function bitOrImpl(x: CljValue, y: CljValue) {
-      if (x?.kind !== 'number')
+      if (!x || !is.number(x))
         throw EvaluationError.atArg('bit-or expects numbers', { x }, 0)
-      if (y?.kind !== 'number')
+      if (!y || !is.number(y))
         throw EvaluationError.atArg('bit-or expects numbers', { y }, 1)
       return v.number((x as CljNumber).value | (y as CljNumber).value)
     })
@@ -852,9 +852,9 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'bit-xor': v
     .nativeFn('bit-xor', function bitXorImpl(x: CljValue, y: CljValue) {
-      if (x?.kind !== 'number')
+      if (!x || !is.number(x))
         throw EvaluationError.atArg('bit-xor expects numbers', { x }, 0)
-      if (y?.kind !== 'number')
+      if (!y || !is.number(y))
         throw EvaluationError.atArg('bit-xor expects numbers', { y }, 1)
       return v.number((x as CljNumber).value ^ (y as CljNumber).value)
     })
@@ -868,7 +868,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
 
   'bit-not': v
     .nativeFn('bit-not', function bitNotImpl(x: CljValue) {
-      if (x?.kind !== 'number')
+      if (!x || !is.number(x))
         throw EvaluationError.atArg('bit-not expects a number', { x }, 0)
       return v.number(~(x as CljNumber).value)
     })
@@ -884,13 +884,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
     .nativeFn(
       'bit-shift-left',
       function bitShiftLeftImpl(x: CljValue, n: CljValue) {
-        if (x?.kind !== 'number')
+        if (!x || !is.number(x))
           throw EvaluationError.atArg(
             'bit-shift-left expects numbers',
             { x },
             0
           )
-        if (n?.kind !== 'number')
+        if (!n || !is.number(n))
           throw EvaluationError.atArg(
             'bit-shift-left expects numbers',
             { n },
@@ -911,13 +911,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
     .nativeFn(
       'bit-shift-right',
       function bitShiftRightImpl(x: CljValue, n: CljValue) {
-        if (x?.kind !== 'number')
+        if (!x || !is.number(x))
           throw EvaluationError.atArg(
             'bit-shift-right expects numbers',
             { x },
             0
           )
-        if (n?.kind !== 'number')
+        if (!n || !is.number(n))
           throw EvaluationError.atArg(
             'bit-shift-right expects numbers',
             { n },
@@ -938,13 +938,13 @@ export const arithmeticFunctions: Record<string, CljValue> = {
     .nativeFn(
       'unsigned-bit-shift-right',
       function unsignedBitShiftRightImpl(x: CljValue, n: CljValue) {
-        if (x?.kind !== 'number')
+        if (!x || !is.number(x))
           throw EvaluationError.atArg(
             'unsigned-bit-shift-right expects numbers',
             { x },
             0
           )
-        if (n?.kind !== 'number')
+        if (!n || !is.number(n))
           throw EvaluationError.atArg(
             'unsigned-bit-shift-right expects numbers',
             { n },
@@ -964,7 +964,7 @@ export const arithmeticFunctions: Record<string, CljValue> = {
   // ── Char / int coercions ──────────────────────────────────────────────────
   char: v
     .nativeFn('char', function charImpl(n: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw new EvaluationError(
           `char expects a number, got ${n !== undefined ? printString(n) : 'nothing'}`,
           { n }
@@ -991,10 +991,10 @@ export const arithmeticFunctions: Record<string, CljValue> = {
       if (x === undefined) {
         throw new EvaluationError('int expects one argument', {})
       }
-      if (x.kind === 'character') {
+      if (is.char(x)) {
         return v.number(x.value.codePointAt(0)!)
       }
-      if (x.kind === 'number') {
+      if (is.number(x)) {
         return v.number(Math.trunc(x.value))
       }
       throw new EvaluationError(

@@ -4,6 +4,7 @@
 
 import { EvaluationError } from '../../../errors'
 import { DocGroups, docMeta, v } from '../../../factories'
+import { is } from '../../../assertions'
 import { derefValue, lookupVar } from '../../../env'
 import { tokenize } from '../../../tokenizer'
 import { readFormsEdn } from '../../../reader'
@@ -15,7 +16,7 @@ import type { CljMap, CljValue, Env, EvaluationContext } from '../../../types'
 // ---------------------------------------------------------------------------
 
 function instHandler(form: CljValue): CljValue {
-  if (form.kind !== 'string') {
+  if (!is.string(form)) {
     throw new EvaluationError(`#inst requires a string, got ${form.kind}`, {
       form,
     })
@@ -30,7 +31,7 @@ function instHandler(form: CljValue): CljValue {
 }
 
 function uuidHandler(form: CljValue): CljValue {
-  if (form.kind !== 'string') {
+  if (!is.string(form)) {
     throw new EvaluationError(`#uuid requires a string, got ${form.kind}`, {
       form,
     })
@@ -64,7 +65,7 @@ function buildDataReaders(
   const dataReadersVar = lookupVar('*data-readers*', callEnv)
   if (dataReadersVar) {
     const effective = derefValue(dataReadersVar)
-    if (effective.kind === 'map') {
+    if (is.map(effective)) {
       mergeReaderMap(effective, readers, ctx, callEnv)
     }
   }
@@ -72,25 +73,25 @@ function buildDataReaders(
   let defaultFn: ((tagName: string, form: CljValue) => CljValue) | undefined
 
   // Merge opts map if provided
-  if (optsArg && optsArg.kind === 'map') {
+  if (optsArg && is.map(optsArg)) {
     const readersEntry = optsArg.entries.find(
-      ([k]) => k.kind === 'keyword' && k.name === ':readers'
+      ([k]) => is.keyword(k) && k.name === ':readers'
     )
     if (readersEntry) {
       const readersMap = readersEntry[1]
-      if (readersMap.kind === 'map') {
+      if (is.map(readersMap)) {
         mergeReaderMap(readersMap, readers, ctx, callEnv)
       }
     }
 
     const defaultEntry = optsArg.entries.find(
-      ([k]) => k.kind === 'keyword' && k.name === ':default'
+      ([k]) => is.keyword(k) && k.name === ':default'
     )
     if (defaultEntry) {
       const defaultFnVal = defaultEntry[1]
       if (
-        defaultFnVal.kind === 'function' ||
-        defaultFnVal.kind === 'native-function'
+        is.function(defaultFnVal) ||
+        is.nativeFunction(defaultFnVal)
       ) {
         const captured = defaultFnVal
         defaultFn = (tagName, form) =>
@@ -112,12 +113,12 @@ function mergeReaderMap(
 ): void {
   for (const [k, fn] of map.entries) {
     if (
-      (k.kind === 'symbol' || k.kind === 'keyword') &&
-      (fn.kind === 'function' ||
-        fn.kind === 'native-function' ||
-        fn.kind === 'multi-method')
+      (is.symbol(k) || is.keyword(k)) &&
+      (is.function(fn) ||
+        is.nativeFunction(fn) ||
+        is.multiMethod(fn))
     ) {
-      const tagName = k.kind === 'symbol' ? k.name : k.name.slice(1)
+      const tagName = is.symbol(k) ? k.name : k.name.slice(1)
       const captured = fn
       readers.set(tagName, (form) =>
         ctx.applyCallable(captured, [form], callEnv)
@@ -155,7 +156,7 @@ export const ednFunctions = {
           sourceArg = args[1]
         }
 
-        if (sourceArg.kind !== 'string') {
+        if (!is.string(sourceArg)) {
           throw new EvaluationError(
             `edn-read-string*: expected string, got ${printString(sourceArg)}`,
             { sourceArg }

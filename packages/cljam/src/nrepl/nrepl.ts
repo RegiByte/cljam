@@ -11,6 +11,7 @@ import {
   snapshotSession,
   withPrintContext,
   derefValue,
+  is,
   resolveSessionProfile,
   type CljValue,
   type Session,
@@ -217,14 +218,14 @@ async function handleEval(
     try {
       const first = readString(code.trim())
       // Direct symbol read: mesh/*eval-target*
-      if (first.kind === 'symbol') {
+      if (is.symbol(first)) {
         const resolved = resolveSymbol(first.name, managed)
         return resolved?.resolvedNs === 'mesh' && MESH_LOCAL_ONLY.has(resolved.localName)
       }
       // Function call: (set-target! ...) or (mesh/set-target! ...)
-      if (first.kind !== 'list' || first.value.length === 0) return false
+      if (!is.list(first) || first.value.length === 0) return false
       const head = first.value[0]
-      if (head.kind !== 'symbol') return false
+      if (!is.symbol(head)) return false
       const resolved = resolveSymbol(head.name, managed)
       return resolved?.resolvedNs === 'mesh' && MESH_LOCAL_ONLY.has(resolved?.localName ?? '')
     } catch {
@@ -236,7 +237,7 @@ async function handleEval(
     const meshNs = managed.session.getNs('mesh')
     const evalTargetVar = meshNs?.vars.get('*eval-target*')
     const targetVal = evalTargetVar?.value
-    if (targetVal?.kind === 'string' && targetVal.value) {
+    if (targetVal && is.string(targetVal) && targetVal.value) {
       const targetId = targetVal.value
       try {
         const result = await meshNode.evalAt(
@@ -316,8 +317,8 @@ async function handleEval(
     const printLvl = lvlVar ? derefValue(lvlVar) : undefined
     const resultStr = withPrintContext(
       {
-        printLength: printLen?.kind === 'number' ? printLen.value : null,
-        printLevel: printLvl?.kind === 'number' ? printLvl.value : null,
+        printLength: printLen && is.number(printLen) ? printLen.value : null,
+        printLevel: printLvl && is.number(printLvl) ? printLvl.value : null,
       },
       () => printString(result)
     )
@@ -480,10 +481,10 @@ function handleInfo(
   let varFile: string | undefined
   const varMetaEntries = resolved.varObj?.meta?.entries ?? []
   for (const [k, v] of varMetaEntries) {
-    if (k.kind !== 'keyword') continue
-    if (k.name === ':line' && v.kind === 'number') varLine = v.value
-    if (k.name === ':column' && v.kind === 'number') varColumn = v.value
-    if (k.name === ':file' && v.kind === 'string') varFile = v.value
+    if (!is.keyword(k)) continue
+    if (k.name === ':line' && is.number(v)) varLine = v.value
+    if (k.name === ':column' && is.number(v)) varColumn = v.value
+    if (k.name === ':file' && is.string(v)) varFile = v.value
   }
 
   done(encoder, id, managed.id, {

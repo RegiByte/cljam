@@ -147,16 +147,9 @@ export const protocolFunctions: Record<string, CljValue> = {
         // Each dispatch fn closes over the protocol and its own method name.
         for (const methodDef of fns) {
           const methodName = methodDef.name
-          const dispatchFn: CljNativeFunction = {
-            kind: 'native-function',
-            name: methodName,
-            fn: () => {
-              throw new EvaluationError(
-                `Protocol dispatch function '${methodName}' called without context`,
-                {}
-              )
-            },
-            fnWithContext: (
+          const dispatchFn = v.nativeFnCtx(
+            methodName,
+            (
               innerCtx: EvaluationContext,
               innerCallEnv: Env,
               ...args: CljValue[]
@@ -181,12 +174,11 @@ export const protocolFunctions: Record<string, CljValue> = {
                 args,
                 innerCallEnv
               )
-            },
-            meta: v.map([
-              [v.kw(':protocol'), v.string(`${nsName}/${protocolName}`)],
-              [v.kw(':name'), v.string(methodName)],
-            ]),
-          }
+            }
+          ).withMeta([
+            [v.kw(':protocol'), v.string(`${nsName}/${protocolName}`)],
+            [v.kw(':name'), v.string(methodName)],
+          ])
           // Warn if the method name shadows an existing non-protocol var.
           const existing = nsEnv.ns!.vars.get(methodName)
           if (existing && !is.protocol(existing.value)) {

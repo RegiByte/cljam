@@ -1,3 +1,4 @@
+import { is } from './assertions'
 import { EvaluationError } from './errors'
 import type { CljNamespace, CljMap, CljValue, CljVar, Env } from './types'
 import { v } from './factories'
@@ -12,7 +13,7 @@ class EnvError extends Error {
 }
 
 export function derefValue(val: CljValue): CljValue {
-  if (val.kind !== 'var') return val
+  if (!is.var(val)) return val
   if (val.dynamic && val.bindingStack && val.bindingStack.length > 0) {
     return val.bindingStack[val.bindingStack.length - 1]
   }
@@ -20,13 +21,7 @@ export function derefValue(val: CljValue): CljValue {
 }
 
 export function makeNamespace(name: string): CljNamespace {
-  return {
-    kind: 'namespace',
-    name,
-    vars: new Map(),
-    aliases: new Map(),
-    readerAliases: new Map(),
-  }
+  return v.namespace(name)
 }
 
 export function makeEnv(outer?: Env): Env {
@@ -92,7 +87,7 @@ export function lookupVar(name: string, env: Env): CljVar | undefined {
   let current: Env | null = env
   while (current) {
     const raw = current.bindings.get(name)
-    if (raw !== undefined && raw.kind === 'var') return raw
+    if (raw !== undefined && is.var(raw)) return raw
     const v = current.ns?.vars.get(name)
     if (v !== undefined) return v
     current = current.outer

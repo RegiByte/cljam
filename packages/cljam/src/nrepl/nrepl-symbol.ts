@@ -4,6 +4,7 @@
  * (nrepl-relay.ts) so info/eldoc/lookup work identically in both transports.
  */
 import { tryLookup, lookupVar, getNamespaceEnv } from '../core/env'
+import { is } from '../core/assertions'
 import { printString } from '../core/printer'
 import type { CljMap, CljValue, CljVar, Session } from '../core'
 
@@ -73,9 +74,9 @@ export function resolveSymbol(
   let resolvedNs: string
   if (varObj) {
     resolvedNs = varObj.ns
-  } else if (value.kind === 'function' || value.kind === 'macro') {
+  } else if (is.function(value) || is.macro(value)) {
     resolvedNs = getNamespaceEnv(value.env).ns?.name ?? ns
-  } else if (value.kind === 'native-function') {
+  } else if (is.nativeFunction(value)) {
     const i = value.name.indexOf('/')
     resolvedNs = i > 0 ? value.name.slice(0, i) : ns
   } else {
@@ -92,9 +93,9 @@ export function resolveSymbol(
  */
 export function extractMeta(value: CljValue, varMeta?: CljMap): ExtractedMeta {
   const type =
-    value.kind === 'macro'
+    is.macro(value)
       ? 'macro'
-      : value.kind === 'function' || value.kind === 'native-function'
+      : is.function(value) || is.nativeFunction(value)
         ? 'function'
         : 'var'
 
@@ -102,9 +103,9 @@ export function extractMeta(value: CljValue, varMeta?: CljMap): ExtractedMeta {
   // metadata-on-vars refactor). Fall back to value-level meta for backward compat.
   const meta: CljMap | undefined =
     varMeta ??
-    (value.kind === 'function'
+    (is.function(value)
       ? value.meta
-      : value.kind === 'native-function'
+      : is.nativeFunction(value)
         ? value.meta
         : undefined)
 
@@ -114,25 +115,25 @@ export function extractMeta(value: CljValue, varMeta?: CljMap): ExtractedMeta {
 
   if (meta) {
     const docEntry = meta.entries.find(
-      ([k]) => k.kind === 'keyword' && k.name === ':doc'
+      ([k]) => is.keyword(k) && k.name === ':doc'
     )
-    if (docEntry && docEntry[1].kind === 'string') doc = docEntry[1].value
+    if (docEntry && is.string(docEntry[1])) doc = docEntry[1].value
 
     const argsEntry = meta.entries.find(
-      ([k]) => k.kind === 'keyword' && k.name === ':arglists'
+      ([k]) => is.keyword(k) && k.name === ':arglists'
     )
-    if (argsEntry && argsEntry[1].kind === 'vector') {
+    if (argsEntry && is.vector(argsEntry[1])) {
       const arglists = argsEntry[1]
       arglistsStr = '(' + arglists.value.map((al) => printString(al)).join(' ') + ')'
       eldocArgs = arglists.value.map((al) => {
-        if (al.kind !== 'vector') return [printString(al)]
-        return al.value.map((p) => (p.kind === 'symbol' ? p.name : printString(p)))
+        if (!is.vector(al)) return [printString(al)]
+        return al.value.map((p) => (is.symbol(p) ? p.name : printString(p)))
       })
     }
   }
 
   // Fallback: derive arglists from structural arities (fn/macro without meta)
-  if (arglistsStr === '' && (value.kind === 'function' || value.kind === 'macro')) {
+  if (arglistsStr === '' && (is.function(value) || is.macro(value))) {
     const arityStrs = value.arities.map((arity) => {
       const params = arity.params.map((p) => printString(p))
       if (arity.restParam) params.push('&', printString(arity.restParam))

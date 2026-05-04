@@ -1,5 +1,6 @@
 // Native math helpers used by clojure.math.
 // All public API lives in src/clojure/math.clj; these are private helpers.
+import { is } from '../../../assertions'
 import { EvaluationError } from '../../../errors'
 import { DocGroups, docMeta, v } from '../../../factories'
 import { printString } from '../../../printer'
@@ -10,7 +11,7 @@ import type { CljNumber, CljValue } from '../../../types'
 // ---------------------------------------------------------------------------
 
 function assertNum(val: CljValue | undefined, fnName: string): number {
-  if (val === undefined || val.kind !== 'number') {
+  if (val === undefined || !is.number(val)) {
     throw new EvaluationError(
       `${fnName} expects a number${val !== undefined ? `, got ${printString(val)}` : ''}`,
       { val }

@@ -1,4 +1,3 @@
-import { is } from './assertions'
 import { jsToClj } from './conversions'
 import { EvaluationError } from './errors'
 import type {

@@ -49,7 +49,7 @@ function assertRegex(val: CljValue, fnName: string): CljRegex {
 }
 
 function assertStringArg(val: CljValue, fnName: string): string {
-  if (val.kind !== 'string') {
+  if (!is.string(val)) {
     throw new EvaluationError(
       `${fnName} expects a string as second argument, got ${printString(val)}`,
       { val }
@@ -89,7 +89,7 @@ export const regexFunctions: Record<string, CljValue> = {
 
   're-pattern': v
     .nativeFn('re-pattern', function rePatternImpl(s: CljValue) {
-      if (s === undefined || s.kind !== 'string') {
+      if (s === undefined || !is.string(s)) {
         throw new EvaluationError(
           `re-pattern expects a string argument${s !== undefined ? `, got ${printString(s)}` : ''}`,
           { s }
@@ -162,7 +162,7 @@ export const regexFunctions: Record<string, CljValue> = {
         results.push(matchToClj(match))
       }
       if (results.length === 0) return v.nil()
-      return { kind: 'list' as const, value: results }
+      return v.list(results)
     })
     .withMeta([
       ...docMeta({
@@ -184,21 +184,21 @@ export const regexFunctions: Record<string, CljValue> = {
         sepVal: CljValue,
         limitVal?: CljValue
       ) {
-        if (sVal === undefined || sVal.kind !== 'string') {
+        if (sVal === undefined || !is.string(sVal)) {
           throw new EvaluationError(
             `str-split* expects a string as first argument${sVal !== undefined ? `, got ${printString(sVal)}` : ''}`,
             { sVal }
           )
         }
         const s = sVal.value
-        const hasLimit = limitVal !== undefined && limitVal.kind !== 'nil'
+        const hasLimit = limitVal !== undefined && !is.nil(limitVal)
         const limit: number | undefined =
-          hasLimit && limitVal!.kind === 'number' ? limitVal!.value : undefined
+          hasLimit && is.number(limitVal!) ? limitVal!.value : undefined
 
         let jsPattern: string
         let jsFlags: string
 
-        if (sepVal.kind !== 'regex') {
+        if (!is.regex(sepVal)) {
           throw new EvaluationError(
             `str-split* expects a regex pattern as second argument, got ${printString(sepVal)}`,
             { sepVal }

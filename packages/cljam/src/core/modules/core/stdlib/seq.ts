@@ -40,7 +40,7 @@ export const seqFunctions: Record<string, CljValue> = {
 
   seq: v
     .nativeFn('seq', function seqImpl(coll: CljValue): CljValue {
-      if (coll.kind === 'nil') return v.nil()
+      if (is.nil(coll)) return v.nil()
       if (is.lazySeq(coll)) {
         const realized = realizeLazySeq(coll)
         if (is.nil(realized)) return v.nil()
@@ -67,7 +67,7 @@ export const seqFunctions: Record<string, CljValue> = {
 
   first: v
     .nativeFn('first', function firstImpl(collection: CljValue): CljValue {
-      if (collection.kind === 'nil') return v.nil()
+      if (is.nil(collection)) return v.nil()
       if (is.lazySeq(collection)) {
         const realized = realizeLazySeq(collection)
         if (is.nil(realized)) return v.nil()
@@ -94,7 +94,7 @@ export const seqFunctions: Record<string, CljValue> = {
 
   rest: v
     .nativeFn('rest', function restImpl(collection: CljValue): CljValue {
-      if (collection.kind === 'nil') return v.list([])
+      if (is.nil(collection)) return v.list([])
       if (is.lazySeq(collection)) {
         const realized = realizeLazySeq(collection)
         if (is.nil(realized)) return v.list([])
@@ -123,7 +123,7 @@ export const seqFunctions: Record<string, CljValue> = {
         }
         return v.map(collection.entries.slice(1))
       }
-      if (collection.kind === 'string') {
+      if (is.string(collection)) {
         const chars = toSeq(collection)
         return v.list(chars.slice(1))
       }
@@ -182,7 +182,7 @@ export const seqFunctions: Record<string, CljValue> = {
             // pair args start at index 1 in the call (collection is index 0)
             const pairArgIndex = i + 1
 
-            if (pair.kind !== 'vector') {
+            if (!is.vector(pair)) {
               throw EvaluationError.atArg(
                 `conj on maps expects each argument to be a vector key-pair for maps, got ${printString(pair)}`,
                 { pair },
@@ -294,7 +294,7 @@ export const seqFunctions: Record<string, CljValue> = {
           }
           case valueKeywords.vector: {
             const values = target.value
-            if (key.kind !== 'number') {
+            if (!is.number(key)) {
               throw new EvaluationError(
                 'get on vectors expects a 0-based index as parameter',
                 { key }
@@ -325,7 +325,7 @@ export const seqFunctions: Record<string, CljValue> = {
     .nativeFn(
       'nth',
       function nthImpl(coll: CljValue, n: CljValue, notFound?: CljValue) {
-        if (n === undefined || n.kind !== 'number') {
+        if (n === undefined || !is.number(n)) {
           throw new EvaluationError(
             `nth expects a number index${n !== undefined ? `, got ${printString(n)}` : ''}`,
             { n }
@@ -462,7 +462,7 @@ export const seqFunctions: Record<string, CljValue> = {
         throw EvaluationError.atArg('empty? expects one argument', {}, 0)
       }
       // nil and empty string count as empty, matching Clojure semantics
-      if (coll.kind === 'nil') return v.boolean(true)
+      if (is.nil(coll)) return v.boolean(true)
       if (!is.seqable(coll)) {
         throw EvaluationError.atArg(
           `empty? expects a collection, string, or nil, got ${printString(coll)}`,
@@ -498,7 +498,7 @@ export const seqFunctions: Record<string, CljValue> = {
             1
           )
         }
-        if (coll.kind === 'nil') return v.boolean(false)
+        if (is.nil(coll)) return v.boolean(false)
         if (is.map(coll)) {
           return v.boolean(
             coll.entries.some(function checkKeyMatch([k]) {
@@ -510,7 +510,7 @@ export const seqFunctions: Record<string, CljValue> = {
           return v.boolean(coll.fields.some(([k]) => is.equal(k, key)))
         }
         if (is.vector(coll)) {
-          if (key.kind !== 'number') return v.boolean(false)
+          if (!is.number(key)) return v.boolean(false)
           return v.boolean(key.value >= 0 && key.value < coll.value.length)
         }
         if (is.set(coll)) {
@@ -533,7 +533,7 @@ export const seqFunctions: Record<string, CljValue> = {
 
   'repeat*': v
     .nativeFn('repeat*', function repeatImpl(n: CljValue, x: CljValue) {
-      if (n === undefined || n.kind !== 'number') {
+      if (n === undefined || !is.number(n)) {
         throw EvaluationError.atArg(
           `repeat expects a number as first argument${n !== undefined ? `, got ${printString(n)}` : ''}`,
           { n },
@@ -564,7 +564,7 @@ export const seqFunctions: Record<string, CljValue> = {
         )
       }
       const badIdx = args.findIndex(function checkIsNumber(a) {
-        return a.kind !== 'number'
+        return !is.number(a)
       })
       if (badIdx !== -1) {
         throw EvaluationError.atArg(
@@ -658,7 +658,7 @@ export const seqFunctions: Record<string, CljValue> = {
 
   count: v
     .nativeFn('count', function countImpl(countable: CljValue) {
-      if (countable.kind === 'nil') return v.number(0)
+      if (is.nil(countable)) return v.number(0)
       if (is.lazySeq(countable) || is.cons(countable)) {
         return v.number(toSeq(countable).length)
       }
@@ -711,7 +711,7 @@ export const seqFunctions: Record<string, CljValue> = {
 
   empty: v
     .nativeFn('empty', function emptyImpl(coll: CljValue) {
-      if (coll === undefined || coll.kind === 'nil') return v.nil()
+      if (coll === undefined || is.nil(coll)) return v.nil()
       switch (coll.kind) {
         case 'list':
           return v.list([])

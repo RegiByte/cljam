@@ -29,14 +29,14 @@ export const asyncFunctions: Record<string, CljValue> = {
             { fn: f, args: [] }
           )
         }
-        if (val.kind !== 'pending') {
+        if (!is.pending(val)) {
           return ctx.applyCallable(f, [val], callEnv)
         }
         const promise = val.promise.then((resolved) => {
           try {
             const result = ctx.applyCallable(f, [resolved], callEnv)
             // Unwrap nested CljPending for transparent chaining
-            return result.kind === 'pending' ? result.promise : result
+            return is.pending(result) ? result.promise : result
           } catch (e) {
             return Promise.reject(e)
           }
@@ -63,7 +63,7 @@ export const asyncFunctions: Record<string, CljValue> = {
             { fn: f, args: [] }
           )
         }
-        if (val.kind !== 'pending') return val // not pending — no rejection possible
+        if (!is.pending(val)) return val // not pending — no rejection possible
         const promise = val.promise.catch((err) => {
           // Normalize the thrown value to a CljValue map
           let errVal: CljValue
@@ -71,26 +71,17 @@ export const asyncFunctions: Record<string, CljValue> = {
             // (throw ...) inside async: pass the thrown value directly
             errVal = err.value
           } else {
-            errVal = {
-              kind: 'map',
-              entries: [
-                [
-                  { kind: 'keyword', name: ':type' },
-                  { kind: 'keyword', name: ':error/js' },
-                ],
-                [
-                  { kind: 'keyword', name: ':message' },
-                  {
-                    kind: 'string',
-                    value: err instanceof Error ? err.message : String(err),
-                  },
-                ],
+            errVal = v.map([
+              [v.keyword(':type'), v.keyword(':error/js')],
+              [
+                v.keyword(':message'),
+                v.string(err instanceof Error ? err.message : String(err)),
               ],
-            }
+            ])
           }
           try {
             const result = ctx.applyCallable(f, [errVal], callEnv)
-            return result.kind === 'pending' ? result.promise : result
+            return is.pending(result) ? result.promise : result
           } catch (e) {
             return Promise.reject(e)
           }
@@ -109,7 +100,7 @@ export const asyncFunctions: Record<string, CljValue> = {
   // (pending? x) → boolean
   'pending?': v
     .nativeFn('pending?', (val: CljValue) => {
-      return v.boolean(val.kind === 'pending')
+      return v.boolean(is.pending(val))
     })
     .withMeta([
       ...docMeta({
@@ -138,9 +129,9 @@ export const asyncFunctions: Record<string, CljValue> = {
   // If any input rejects, the result pending rejects with that error.
   all: v
     .nativeFn('all', (val: CljValue) => {
-      const items: CljValue[] = val.kind === 'nil' ? [] : toSeq(val)
+      const items: CljValue[] = is.nil(val) ? [] : toSeq(val)
       const promises = items.map((item) =>
-        item.kind === 'pending' ? item.promise : Promise.resolve(item)
+        is.pending(item) ? item.promise : Promise.resolve(item)
       )
       return v.pending(
         Promise.all(promises).then((results) => v.vector(results))

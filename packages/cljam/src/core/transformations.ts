@@ -63,13 +63,13 @@ export function valueToString(value: CljValue): string {
       if (value.arities.length === 1) {
         const a = value.arities[0]
         const params = a.restParam
-          ? [...a.params, { kind: 'symbol' as const, name: '&' }, a.restParam]
+          ? [...a.params, v.symbol('&'), a.restParam]
           : a.params
         return `(fn [${params.map(valueToString).join(' ')}] ${a.body.map(valueToString).join(' ')})`
       }
       const clauses = value.arities.map((a) => {
         const params = a.restParam
-          ? [...a.params, { kind: 'symbol' as const, name: '&' }, a.restParam]
+          ? [...a.params, v.symbol('&'), a.restParam]
           : a.params
         return `([${params.map(valueToString).join(' ')}] ${a.body.map(valueToString).join(' ')})`
       })
@@ -169,7 +169,7 @@ export function realizeLazySeq(ls: CljLazySeq): CljValue {
       lazy.realized = true
       current = lazy.value!
     } else {
-      return { kind: 'nil', value: null }
+      return v.nil()
     }
   }
   return current
@@ -191,7 +191,7 @@ export const toSeq = (collection: CljValue): CljValue[] => {
   if (is.set(collection)) {
     return collection.values
   }
-  if (collection.kind === 'string') {
+  if (is.string(collection)) {
     return [...collection.value].map(v.string)
   }
   if (is.lazySeq(collection)) {

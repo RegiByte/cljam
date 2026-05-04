@@ -84,7 +84,7 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
           const newValues = [...collection.value]
           for (let i = 0; i < args.length; i += 2) {
             const index = args[i]
-            if (index.kind !== 'number') {
+            if (!is.number(index)) {
               throw EvaluationError.atArg(
                 `assoc on vectors expects each key argument to be a index (number), got ${printString(index)}`,
                 { index },
@@ -185,7 +185,7 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
           const newValues = [...collection.value]
           for (let i = 0; i < args.length; i += 1) {
             const index = args[i]
-            if (index.kind !== 'number') {
+            if (!is.number(index)) {
               throw EvaluationError.atArg(
                 `dissoc on vectors expects each key argument to be a index (number), got ${printString(index)}`,
                 { index },
@@ -345,7 +345,7 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
 
   set: v
     .nativeFn('set', function setImpl(coll: CljValue) {
-      if (coll === undefined || coll.kind === 'nil') return v.set([])
+      if (coll === undefined || is.nil(coll)) return v.set([])
       const items = toSeq(coll)
       const deduped: CljValue[] = []
       for (const v of items) {
@@ -365,7 +365,7 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
 
   'set?': v
     .nativeFn('set?', function setPredicateImpl(x: CljValue) {
-      return v.boolean(x !== undefined && x.kind === 'set')
+      return v.boolean(x !== undefined && is.set(x))
     })
     .withMeta([
       ...docMeta({
@@ -377,8 +377,8 @@ export const mapsSetsFunctions: Record<string, CljValue> = {
 
   disj: v
     .nativeFn('disj', function disjImpl(s: CljValue, ...items: CljValue[]) {
-      if (s === undefined || s.kind === 'nil') return v.set([])
-      if (s.kind !== 'set') {
+      if (s === undefined || is.nil(s)) return v.set([])
+      if (!is.set(s)) {
         throw EvaluationError.atArg(
           `disj expects a set, got ${printString(s)}`,
           { s },

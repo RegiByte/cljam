@@ -18,7 +18,7 @@ const DocGroup = 'Predicates'
 export const predicateFunctions: Record<string, CljValue> = {
   'nil?': v
     .nativeFn('nil?', function nilPredImpl(arg: CljValue) {
-      return v.boolean(arg.kind === 'nil')
+      return v.boolean(is.nil(arg))
     })
     .withMeta([
       ...docMeta({
@@ -29,7 +29,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     ]),
   'true?': v
     .nativeFn('true?', function truePredImpl(arg: CljValue) {
-      if (arg.kind !== 'boolean') {
+      if (!is.boolean(arg)) {
         return v.boolean(false)
       }
       return v.boolean(arg.value === true)
@@ -43,7 +43,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     ]),
   'false?': v
     .nativeFn('false?', function falsePredImpl(arg: CljValue) {
-      if (arg.kind !== 'boolean') {
+      if (!is.boolean(arg)) {
         return v.boolean(false)
       }
       return v.boolean(arg.value === false)
@@ -111,7 +111,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     ]),
   'number?': v
     .nativeFn('number?', function numberPredImpl(x: CljValue) {
-      return v.boolean(x !== undefined && x.kind === 'number')
+      return v.boolean(x !== undefined && is.number(x))
     })
     .withMeta([
       ...docMeta({
@@ -133,7 +133,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     ]),
   'boolean?': v
     .nativeFn('boolean?', function booleanPredImpl(x: CljValue) {
-      return v.boolean(x !== undefined && x.kind === 'boolean')
+      return v.boolean(x !== undefined && is.boolean(x))
     })
     .withMeta([
       ...docMeta({
@@ -215,7 +215,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     ]),
   'namespace?': v
     .nativeFn('namespace?', function namespaceQImpl(x: CljValue) {
-      return v.boolean(x !== undefined && x.kind === 'namespace')
+      return v.boolean(x !== undefined && is.namespace(x))
     })
     .withMeta([
       ...docMeta({
@@ -464,7 +464,7 @@ export const predicateFunctions: Record<string, CljValue> = {
           (is.list(x) ||
             is.vector(x) ||
             is.map(x) ||
-            x.kind === 'set' ||
+            is.set(x) ||
             is.string(x))
       )
     })
@@ -479,7 +479,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     .nativeFn('int?', function intPredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined &&
-          x.kind === 'number' &&
+          is.number(x) &&
           Number.isInteger((x as import('../../../types').CljNumber).value)
       )
     })
@@ -494,7 +494,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     .nativeFn('pos-int?', function posIntPredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined &&
-          x.kind === 'number' &&
+          is.number(x) &&
           Number.isInteger((x as CljNumber).value) &&
           (x as CljNumber).value > 0
       )
@@ -510,7 +510,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     .nativeFn('neg-int?', function negIntPredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined &&
-          x.kind === 'number' &&
+          is.number(x) &&
           Number.isInteger((x as CljNumber).value) &&
           (x as CljNumber).value < 0
       )
@@ -526,7 +526,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     .nativeFn('nat-int?', function natIntPredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined &&
-          x.kind === 'number' &&
+          is.number(x) &&
           Number.isInteger((x as CljNumber).value) &&
           (x as CljNumber).value >= 0
       )
@@ -540,7 +540,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     ]),
   'double?': v
     .nativeFn('double?', function doublePredImpl(x: CljValue) {
-      return v.boolean(x !== undefined && x.kind === 'number')
+      return v.boolean(x !== undefined && is.number(x))
     })
     .withMeta([
       ...docMeta({
@@ -552,7 +552,7 @@ export const predicateFunctions: Record<string, CljValue> = {
   'NaN?': v
     .nativeFn('NaN?', function nanPredImpl(x: CljValue) {
       return v.boolean(
-        x !== undefined && x.kind === 'number' && isNaN((x as CljNumber).value)
+        x !== undefined && is.number(x) && isNaN((x as CljNumber).value)
       )
     })
     .withMeta([
@@ -566,7 +566,7 @@ export const predicateFunctions: Record<string, CljValue> = {
     .nativeFn('infinite?', function infinitePredImpl(x: CljValue) {
       return v.boolean(
         x !== undefined &&
-          x.kind === 'number' &&
+          is.number(x) &&
           !isFinite((x as CljNumber).value) &&
           !isNaN((x as CljNumber).value)
       )

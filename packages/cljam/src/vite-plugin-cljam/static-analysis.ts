@@ -1,4 +1,4 @@
-import { isList, isSymbol, isVector } from '../core/assertions'
+import { is, isList, isSymbol, isVector } from '../core/assertions'
 import { readForms } from '../core/reader'
 import { tokenize } from '../core/tokenizer'
 import type { Arity, CljList, CljMap, CljValue, DestructurePattern } from '../core/types'
@@ -53,8 +53,8 @@ export function readNamespaceVars(source: string): VarDescriptor[] {
 function hasPrivateMeta(meta: CljMap | undefined): boolean {
   return (meta?.entries ?? []).some(
     ([k, val]) =>
-      k.kind === 'keyword' && k.name === ':private' &&
-      val.kind === 'boolean' && val.value === true
+      is.keyword(k) && k.name === ':private' &&
+      is.boolean(val) && val.value === true
   )
 }
 
@@ -93,7 +93,7 @@ function parseDefn(form: CljList, isPrivate: boolean, isMacro: boolean): VarDesc
   // Elements after the name: optional docstring, then params or arity clauses
   const rest = form.value.slice(2)
   // Skip optional docstring
-  const start = rest.length > 0 && rest[0].kind === 'string' ? 1 : 0
+  const start = rest.length > 0 && is.string(rest[0]) ? 1 : 0
   const bodyForms = rest.slice(start)
 
   if (bodyForms.length === 0) {

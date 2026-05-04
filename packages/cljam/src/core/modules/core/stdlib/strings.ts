@@ -21,7 +21,7 @@ import type {
 const DocGroup = 'Strings'
 
 function assertStr(val: CljValue | undefined, fnName: string): string {
-  if (val === undefined || val.kind !== 'string') {
+  if (val === undefined || !is.string(val)) {
     throw new EvaluationError(
       `${fnName} expects a string as first argument${val !== undefined ? `, got ${printString(val)}` : ''}`,
       { val }
@@ -35,7 +35,7 @@ function assertStrArg(
   pos: string,
   fnName: string
 ): string {
-  if (val === undefined || val.kind !== 'string') {
+  if (val === undefined || !is.string(val)) {
     throw new EvaluationError(
       `${fnName} expects a string as ${pos} argument${val !== undefined ? `, got ${printString(val)}` : ''}`,
       { val }
@@ -94,8 +94,8 @@ function doReplace(
   }
 
   // --- string / string ---
-  if (matchVal.kind === 'string') {
-    if (replVal.kind !== 'string') {
+  if (is.string(matchVal)) {
+    if (!is.string(replVal)) {
       throw new EvaluationError(
         `${fnName}: when match is a string, replacement must also be a string, got ${printString(replVal)}`,
         { replVal }
@@ -106,13 +106,13 @@ function doReplace(
   }
 
   // --- regex / * ---
-  if (matchVal.kind === 'regex') {
+  if (is.regex(matchVal)) {
     const re = matchVal as CljRegex
     const flags = global ? re.flags + 'g' : re.flags
     const jsRe = new RegExp(re.pattern, flags)
 
     // regex / string
-    if (replVal.kind === 'string') {
+    if (is.string(replVal)) {
       return v.string(s.replace(jsRe, replVal.value))
     }
 
@@ -291,8 +291,8 @@ export const stringFunctions: Record<string, CljValue> = {
         const s = assertStr(sVal, 'str-index-of*')
         const needle = assertStrArg(valVal, 'second', 'str-index-of*')
         let idx: number
-        if (fromVal !== undefined && fromVal.kind !== 'nil') {
-          if (fromVal.kind !== 'number') {
+        if (fromVal !== undefined && !is.nil(fromVal)) {
+          if (!is.number(fromVal)) {
             throw new EvaluationError(
               `str-index-of* expects a number as third argument, got ${printString(fromVal)}`,
               { fromVal }
@@ -328,8 +328,8 @@ export const stringFunctions: Record<string, CljValue> = {
         const s = assertStr(sVal, 'str-last-index-of*')
         const needle = assertStrArg(valVal, 'second', 'str-last-index-of*')
         let idx: number
-        if (fromVal !== undefined && fromVal.kind !== 'nil') {
-          if (fromVal.kind !== 'number') {
+        if (fromVal !== undefined && !is.nil(fromVal)) {
+          if (!is.number(fromVal)) {
             throw new EvaluationError(
               `str-last-index-of* expects a number as third argument, got ${printString(fromVal)}`,
               { fromVal }

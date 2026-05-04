@@ -147,7 +147,7 @@ function buildVarMeta(
   // Preserve all existing symMeta entries except the three we're stamping.
   const POS_KEYS = new Set([':line', ':column', ':file'])
   const baseEntries = (symMeta?.entries ?? []).filter(
-    ([k]) => !(k.kind === 'keyword' && POS_KEYS.has(k.name))
+    ([k]) => !(is.keyword(k) && POS_KEYS.has(k.name))
   )
 
   const allEntries = [...baseEntries, ...posEntries]
@@ -160,7 +160,7 @@ function evaluateDef(
   ctx: EvaluationContext
 ): CljValue {
   const name = list.value[1]
-  if (name.kind !== 'symbol') {
+  if (!is.symbol(name)) {
     throw new EvaluationError('First element of list must be a symbol', {
       name,
       list,
@@ -173,8 +173,9 @@ function evaluateDef(
   if (list.value[2] === undefined) return v.nil()
 
   // 3-arg form: (def name "docstring" val) — middle string is a doc annotation.
-  const hasDocstring = list.value.length === 4 && list.value[2].kind === 'string'
-  const docstring = hasDocstring ? (list.value[2] as { kind: 'string'; value: string }).value : undefined
+  const maybeDocstring = list.value[2]
+  const hasDocstring = list.value.length === 4 && is.string(maybeDocstring)
+  const docstring = is.string(maybeDocstring) ? maybeDocstring.value : undefined
   const valueIdx = hasDocstring ? 3 : 2
 
   const nsEnv = getNamespaceEnv(env)
@@ -188,7 +189,7 @@ function evaluateDef(
   // Propagate :doc from var meta to the function value's meta so that
   // (describe fn) and (describe ns) can find the docstring without needing
   // the var. The var owns the canonical doc; the function gets a copy.
-  if (finalMeta && newValue.kind === 'function') {
+  if (finalMeta && is.function(newValue)) {
     const docEntry = finalMeta.entries.find(([k]) => is.keyword(k) && k.name === ':doc')
     if (docEntry) {
       const prevEntries = newValue.meta?.entries ?? []
@@ -220,7 +221,7 @@ const evaluateNs = (
   // The ns form is pre-processed at the token level (alias map, require clauses).
   // The only runtime work here is capturing the optional docstring at position 2.
   const maybeDoc = list.value[2]
-  if (maybeDoc?.kind === 'string') {
+  if (maybeDoc && is.string(maybeDoc)) {
     const nsEnv = getNamespaceEnv(env)
     if (nsEnv.ns) nsEnv.ns.doc = maybeDoc.value
   }
@@ -437,9 +438,9 @@ function mergeDocIntoMeta(base: CljMap | undefined, docstring: string): CljMap {
     v.string(docstring),
   ]
   const existing = (base?.entries ?? []).filter(
-    ([k]) => !(k.kind === 'keyword' && k.name === ':doc')
+    ([k]) => !(is.keyword(k) && k.name === ':doc')
   )
-  return { kind: 'map', entries: [...existing, docEntry] }
+  return v.map([...existing, docEntry])
 }
 
 function evaluateDefmacro(
@@ -456,7 +457,7 @@ function evaluateDefmacro(
     }, getPos(list))
   }
   const rest = list.value.slice(2)
-  const docstring = rest[0]?.kind === 'string' ? rest[0].value : undefined
+  const docstring = rest[0] && is.string(rest[0]) ? rest[0].value : undefined
   const arityForms = docstring ? rest.slice(1) : rest
   const arities = parseArities(arityForms, env)
   const macro = v.multiArityMacro(arities, env)
@@ -474,19 +475,19 @@ function evaluateDefmacro(
   let finalMeta = docstring ? mergeDocIntoMeta(varMeta, docstring) : varMeta
   if (arglistVecs.length > 0) {
     const arglistsKv: [CljValue, CljValue] = [v.keyword(':arglists'), v.vector(arglistVecs)]
-    const base = (finalMeta?.entries ?? []).filter(([k]) => !(k.kind === 'keyword' && k.name === ':arglists'))
-    finalMeta = { kind: 'map', entries: [...base, arglistsKv] }
+    const base = (finalMeta?.entries ?? []).filter(([k]) => !(is.keyword(k) && k.name === ':arglists'))
+    finalMeta = v.map([...base, arglistsKv])
   }
 
   // Propagate :doc and :arglists to the macro value itself so describe can
   // read them without needing the var (mirrors how evaluateDef handles functions).
   const macroMetaEntries: [CljValue, CljValue][] = []
   for (const key of [':doc', ':arglists']) {
-    const entry = finalMeta?.entries.find(([k]) => k.kind === 'keyword' && k.name === key)
+    const entry = finalMeta?.entries.find(([k]) => is.keyword(k) && k.name === key)
     if (entry) macroMetaEntries.push(entry)
   }
   if (macroMetaEntries.length > 0) {
-    macro.meta = { kind: 'map', entries: macroMetaEntries }
+    macro.meta = v.map(macroMetaEntries)
   }
 
   internVar(name.name, macro, getNamespaceEnv(env), finalMeta)
