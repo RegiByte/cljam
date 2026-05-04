@@ -35,7 +35,8 @@
       "types": "./src/core/index.ts",
       "bun": "./src/core/index.ts",
       "node": "./dist/index.mjs",
-      "default": "./src/core/index.ts"
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     },
     "./nrepl": {
       "types": "./src/nrepl/nrepl.ts",
