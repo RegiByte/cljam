@@ -101,9 +101,11 @@ export default defineConfig({
       }),
     ],
     ssr: {
-      // Bundle @regibyte/cljam in SSR rather than externalising it — the
-      // workspace package may not be resolvable via Node require() in SSR mode.
-      noExternal: ['@regibyte/cljam'],
+      // @regibyte/cljam is now externalised for SSR — the package exports
+      // `node: ./dist/index.mjs` which Node.js loads fine via import().
+      // noExternal caused [commonjs--resolver] failures when Rollup tried
+      // to bundle it, because the CJS plugin couldn't handle the exports.
+      external: ['@regibyte/cljam'],
     },
     optimizeDeps: {
       // Exclude Monaco from pre-bundling — it's only ever loaded dynamically
