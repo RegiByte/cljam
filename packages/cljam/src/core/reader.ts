@@ -904,7 +904,7 @@ const readNsMap = (ctx: ReaderCtx): CljValue => {
 
   // Read the following form — must be a map literal {}.
   const mapForm = readForm(ctx)
-  if (mapForm.kind !== 'map') {
+  if (!is.map(mapForm)) {
     throw new ReaderError(
       `#:${ns}{...} requires a map literal, got ${mapForm.kind}`,
       prefixToken,
@@ -915,7 +915,7 @@ const readNsMap = (ctx: ReaderCtx): CljValue => {
   // Qualify all unqualified keyword keys with the resolved namespace.
   const qualifiedEntries: [CljValue, CljValue][] = mapForm.entries.map(
     ([key, val]) => {
-      if (key.kind === 'keyword') {
+      if (is.keyword(key)) {
         const localName = key.name.slice(1) // strip ':'
         if (!localName.includes('/')) {
           return [v.keyword(`:${ns}/${localName}`), val] as [CljValue, CljValue]

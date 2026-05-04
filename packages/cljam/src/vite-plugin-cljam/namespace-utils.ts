@@ -1,5 +1,5 @@
 import { resolve, dirname } from 'node:path'
-import { isKeyword, isList, isSymbol, isVector } from '../core/assertions'
+import { isKeyword, isList, isString, isSymbol, isVector } from '../core/assertions'
 import { readForms } from '../core/reader'
 import { tokenize } from '../core/tokenizer'
 import type { CljValue } from '../core/types'
@@ -90,7 +90,7 @@ export function extractStringRequires(source: string, filePath?: string): string
       for (let j = 1; j < clause.value.length; j++) {
         const spec = clause.value[j]
         const first = isVector(spec) && spec.value.length > 0 ? spec.value[0] : null
-        if (!first || first.kind !== 'string') continue
+        if (!first || !isString(first)) continue
         let specifier = first.value
         if (filePath && (specifier.startsWith('./') || specifier.startsWith('../'))) {
           specifier = resolve(dirname(filePath), specifier)

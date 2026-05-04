@@ -43,7 +43,8 @@ const NODE_BASE_BINDINGS: Record<string, unknown> = {
   Promise: globalThis.Promise,
   Object: globalThis.Object,
   console,
-  Buffer,
+  // Buffer is Node-only; guard so this module-level const is safe to evaluate in browsers
+  ...(typeof Buffer !== 'undefined' ? { Buffer } : {}),
   setTimeout,
   clearTimeout,
   setInterval,

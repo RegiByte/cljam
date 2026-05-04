@@ -1,5 +1,6 @@
 import { derefValue } from '../../../env'
 import { DocGroups, docMeta, v } from '../../../factories'
+import { is } from '../../../assertions'
 import {
   buildPrintContext,
   prettyPrintString,
@@ -23,7 +24,7 @@ import type { CljValue, Env, EvaluationContext } from '../../../types'
 function emitToOut(ctx: EvaluationContext, callEnv: Env, text: string): void {
   const outVar = ctx.resolveNs('clojure.core')?.vars.get('*out*')
   const out = outVar ? derefValue(outVar) : undefined
-  if (out && (out.kind === 'function' || out.kind === 'native-function')) {
+  if (out && is.aFunction(out)) {
     ctx.applyCallable(out, [v.string(text)], callEnv)
   } else {
     ctx.io.stdout(text)
@@ -39,7 +40,7 @@ function emitToOut(ctx: EvaluationContext, callEnv: Env, text: string): void {
 function emitToErr(ctx: EvaluationContext, callEnv: Env, text: string): void {
   const errVar = ctx.resolveNs('clojure.core')?.vars.get('*err*')
   const err = errVar ? derefValue(errVar) : undefined
-  if (err && (err.kind === 'function' || err.kind === 'native-function')) {
+  if (err && is.aFunction(err)) {
     ctx.applyCallable(err, [v.string(text)], callEnv)
   } else {
     ctx.io.stderr(text)
@@ -124,7 +125,7 @@ export const printFunctions: Record<string, CljValue> = {
       'pprint',
       (ctx, callEnv, form: CljValue, widthArg?: CljValue) => {
         if (form === undefined) return v.nil()
-        const maxWidth = widthArg?.kind === 'number' ? widthArg.value : 80
+        const maxWidth = widthArg && is.number(widthArg) ? widthArg.value : 80
         withPrintContext(buildPrintContext(ctx), () => {
           emitToOut(ctx, callEnv, prettyPrintString(form, maxWidth) + '\n')
         })

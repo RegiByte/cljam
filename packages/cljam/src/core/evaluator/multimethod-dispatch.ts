@@ -44,7 +44,7 @@ function getCurrentHierarchy(ctx: EvaluationContext): CljMap | null {
 function isAInHierarchy(h: CljMap, child: CljValue, parent: CljValue): boolean {
   if (is.equal(child, parent)) return true
   for (const [k, subMap] of h.entries) {
-    if (k.kind !== 'keyword' || k.name !== ':ancestors') continue
+    if (!is.keyword(k) || k.name !== ':ancestors') continue
     if (!is.map(subMap)) return false
     for (const [ck, cv] of (subMap as CljMap).entries) {
       if (!is.equal(ck, child)) continue

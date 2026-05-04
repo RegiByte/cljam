@@ -17,7 +17,7 @@
 
 import { createServer } from 'node:http'
 import type { Server, IncomingMessage, ServerResponse } from 'node:http'
-import { v, EvaluationError } from '@regibyte/cljam'
+import { v, is, EvaluationError } from '@regibyte/cljam'
 import type {
   CljValue,
   CljMap,
@@ -35,24 +35,24 @@ import { writeCljResponse, writeErrorResponse } from './response.ts'
 // ---------------------------------------------------------------------------
 
 function handleEntries(val: CljMap | CljRecord): [CljValue, CljValue][] {
-  return val.kind === 'record' ? val.fields : val.entries
+  return is.record(val) ? val.fields : val.entries
 }
 
 function mapGet(m: CljMap | CljRecord, keyName: string): CljValue | null {
   for (const [k, val] of handleEntries(m)) {
-    if (k.kind === 'keyword' && k.name === keyName) return val
+    if (is.keyword(k) && k.name === keyName) return val
   }
   return null
 }
 
 function extractServer(handleVal: CljValue): Server {
-  if (handleVal.kind !== 'map' && handleVal.kind !== 'record') {
+  if (!is.map(handleVal) && !is.record(handleVal)) {
     throw new EvaluationError('expected a server handle map', {
       val: handleVal,
     })
   }
   const handleEntry = mapGet(handleVal, ':_handle')
-  if (handleEntry?.kind === 'js-value' && isNodeServer(handleEntry.value)) {
+  if (handleEntry && is.jsValue(handleEntry) && isNodeServer(handleEntry.value)) {
     return handleEntry.value as Server
   }
   throw new EvaluationError('server handle is missing or invalid :_handle', {
@@ -71,16 +71,16 @@ function isNodeServer(val: unknown): boolean {
 }
 
 function withActualPort(handleVal: CljValue, server: Server): CljValue {
-  if (handleVal.kind !== 'map' && handleVal.kind !== 'record') return handleVal
+  if (!is.map(handleVal) && !is.record(handleVal)) return handleVal
   const addr = server.address() as { port: number } | null
   const actualPort = addr?.port ?? 0
   const updatedEntries = handleEntries(handleVal).map(
     ([k, val]: [CljValue, CljValue]): [CljValue, CljValue] =>
-      k.kind === 'keyword' && k.name === ':port'
+      is.keyword(k) && k.name === ':port'
         ? [k, v.number(actualPort)]
         : [k, val]
   )
-  if (handleVal.kind === 'record') {
+  if (is.record(handleVal)) {
     return v.record(handleVal.recordType, handleVal.ns, updatedEntries)
   }
   return v.map(updatedEntries)
@@ -108,7 +108,7 @@ const nativeFns: Record<string, CljValue> = {
   'start-server*': v.nativeFnCtx(
     'ring.adapter.native/start-server*',
     (ctx: EvaluationContext, callEnv: Env, optsVal: CljValue) => {
-      if (optsVal.kind !== 'map') {
+      if (!is.map(optsVal)) {
         throw new EvaluationError(
           `start-server*: expected a map, got ${optsVal.kind}`,
           { opts: optsVal }
@@ -125,8 +125,8 @@ const nativeFns: Record<string, CljValue> = {
       const portVal = mapGet(optsVal, ':port')
       const hostVal = mapGet(optsVal, ':host')
       const onErrorFn = mapGet(optsVal, ':on-error')
-      const port = portVal?.kind === 'number' ? portVal.value : 3000
-      const host = hostVal?.kind === 'string' ? hostVal.value : 'localhost'
+      const port = portVal && is.number(portVal) ? portVal.value : 3000
+      const host = hostVal && is.string(hostVal) ? hostVal.value : 'localhost'
 
       const requestHandler = async (
         req: IncomingMessage,
@@ -135,7 +135,7 @@ const nativeFns: Record<string, CljValue> = {
         try {
           const cljReq = await requestToClj(req)
           let result = ctx.applyCallable(handlerFn, [cljReq], callEnv)
-          if (result.kind === 'pending') result = await result.promise
+          if (is.pending(result)) result = await result.promise
           writeCljResponse(result, res)
         } catch (e) {
           writeErrorResponse(res, e instanceof Error ? e.message : String(e))
@@ -222,9 +222,9 @@ const nativeFns: Record<string, CljValue> = {
       const server = extractServer(handleVal)
 
       let drainTimeoutMs: number | null = null
-      if (optsVal?.kind === 'map') {
+      if (optsVal && is.map(optsVal)) {
         const t = mapGet(optsVal, ':drain-timeout-ms')
-        if (t?.kind === 'number') drainTimeoutMs = t.value
+        if (t && is.number(t)) drainTimeoutMs = t.value
       }
 
       const promise = new Promise<CljValue>((resolve, reject) => {

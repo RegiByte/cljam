@@ -45,7 +45,7 @@ export const utilFunctions: Record<string, CljValue> = {
   str: v
     .nativeFn('str', function strImpl(...args: CljValue[]) {
       return v.string(
-        args.map((v) => (v.kind === 'nil' ? '' : valueToString(v))).join('')
+        args.map((v) => (is.nil(v) ? '' : valueToString(v))).join('')
       )
     })
     .withMeta([
@@ -61,21 +61,21 @@ export const utilFunctions: Record<string, CljValue> = {
     .nativeFn(
       'subs',
       function subsImpl(s: CljValue, start: CljValue, end?: CljValue) {
-        if (s === undefined || s.kind !== 'string') {
+        if (s === undefined || !is.string(s)) {
           throw EvaluationError.atArg(
             `subs expects a string as first argument${s !== undefined ? `, got ${printString(s)}` : ''}`,
             { s },
             0
           )
         }
-        if (start === undefined || start.kind !== 'number') {
+        if (start === undefined || !is.number(start)) {
           throw EvaluationError.atArg(
             `subs expects a number as second argument${start !== undefined ? `, got ${printString(start)}` : ''}`,
             { start },
             1
           )
         }
-        if (end !== undefined && end.kind !== 'number') {
+        if (end !== undefined && !is.number(end)) {
           throw EvaluationError.atArg(
             `subs expects a number as optional third argument${end !== undefined ? `, got ${printString(end)}` : ''}`,
             { end },
@@ -108,7 +108,7 @@ export const utilFunctions: Record<string, CljValue> = {
       }
       // Records return a namespaced keyword :ns/RecordType — the same keyword
       // you pass to extend-protocol/:protocols for this type.
-      if (x.kind === 'record') {
+      if (is.record(x)) {
         return v.keyword(`:${x.ns}/${x.recordType}`)
       }
       const kindToKeyword: Record<string, string> = {
@@ -157,14 +157,14 @@ export const utilFunctions: Record<string, CljValue> = {
         throw new EvaluationError('gensym takes 0 or 1 arguments', { args })
       }
       const prefix = args[0]
-      if (prefix !== undefined && prefix.kind !== 'string') {
+      if (prefix !== undefined && !is.string(prefix)) {
         throw EvaluationError.atArg(
           `gensym prefix must be a string${prefix !== undefined ? `, got ${printString(prefix)}` : ''}`,
           { prefix },
           0
         )
       }
-      const p = prefix?.kind === 'string' ? prefix.value : 'G'
+      const p = prefix && is.string(prefix) ? prefix.value : 'G'
       return v.symbol(makeGensym(p))
     })
     .doc(
@@ -332,7 +332,7 @@ export const utilFunctions: Record<string, CljValue> = {
         raw = x.name.slice(1) // strip leading ":"
       } else if (is.symbol(x)) {
         raw = x.name
-      } else if (x.kind === 'string') {
+      } else if (is.string(x)) {
         return x
       } else {
         throw EvaluationError.atArg(
@@ -362,7 +362,7 @@ export const utilFunctions: Record<string, CljValue> = {
           args,
         })
       }
-      if (args[0].kind !== 'string') {
+      if (!is.string(args[0])) {
         throw EvaluationError.atArg(
           `keyword expects a string, got ${printString(args[0])}`,
           { args },
@@ -372,7 +372,7 @@ export const utilFunctions: Record<string, CljValue> = {
       if (args.length === 1) {
         return v.keyword(`:${args[0].value}`)
       }
-      if (args[1].kind !== 'string') {
+      if (!is.string(args[1])) {
         throw EvaluationError.atArg(
           `keyword second argument must be a string, got ${printString(args[1])}`,
           { args },
@@ -452,7 +452,7 @@ export const utilFunctions: Record<string, CljValue> = {
         const form = args[0]
         const widthArg = args[1]
         const maxWidth =
-          widthArg !== undefined && widthArg.kind === 'number'
+          widthArg !== undefined && is.number(widthArg)
             ? widthArg.value
             : 80
         return withPrintContext(buildPrintContext(ctx), () =>
@@ -470,7 +470,7 @@ export const utilFunctions: Record<string, CljValue> = {
 
   'read-string': v
     .nativeFn('read-string', function readStringImpl(s: CljValue) {
-      if (s === undefined || s.kind !== 'string') {
+      if (s === undefined || !is.string(s)) {
         throw EvaluationError.atArg(
           `read-string expects a string${s !== undefined ? `, got ${printString(s)}` : ''}`,
           { s },
@@ -553,7 +553,7 @@ export const utilFunctions: Record<string, CljValue> = {
       }
       if (args.length === 1) {
         if (is.symbol(args[0])) return args[0]
-        if (args[0].kind !== 'string') {
+        if (!is.string(args[0])) {
           throw EvaluationError.atArg(
             `symbol expects a string, got ${printString(args[0])}`,
             { args },
@@ -562,7 +562,7 @@ export const utilFunctions: Record<string, CljValue> = {
         }
         return v.symbol(args[0].value)
       }
-      if (args[0].kind !== 'string' || args[1].kind !== 'string') {
+      if (!is.string(args[0]) || !is.string(args[1])) {
         throw new EvaluationError('symbol expects string arguments', { args })
       }
       return v.symbol(`${args[0].value}/${args[1].value}`)
@@ -579,7 +579,7 @@ export const utilFunctions: Record<string, CljValue> = {
 
   'parse-long': v
     .nativeFn('parse-long', function parseLongImpl(s: CljValue) {
-      if (s === undefined || s.kind !== 'string') {
+      if (s === undefined || !is.string(s)) {
         throw EvaluationError.atArg(
           `parse-long expects a string${s !== undefined ? `, got ${printString(s)}` : ''}`,
           { s },
@@ -600,7 +600,7 @@ export const utilFunctions: Record<string, CljValue> = {
 
   'parse-double': v
     .nativeFn('parse-double', function parseDoubleImpl(s: CljValue) {
-      if (s === undefined || s.kind !== 'string') {
+      if (s === undefined || !is.string(s)) {
         throw EvaluationError.atArg(
           `parse-double expects a string${s !== undefined ? `, got ${printString(s)}` : ''}`,
           { s },
@@ -624,7 +624,7 @@ export const utilFunctions: Record<string, CljValue> = {
 
   'parse-boolean': v
     .nativeFn('parse-boolean', function parseBooleanImpl(s: CljValue) {
-      if (s === undefined || s.kind !== 'string') {
+      if (s === undefined || !is.string(s)) {
         throw EvaluationError.atArg(
           `parse-boolean expects a string${s !== undefined ? `, got ${printString(s)}` : ''}`,
           { s },

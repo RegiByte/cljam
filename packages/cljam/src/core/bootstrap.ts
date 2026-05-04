@@ -1,4 +1,4 @@
-import { isNamespace, isSymbol } from './assertions'
+import { is, isNamespace, isSymbol } from './assertions'
 import { internVar, makeNamespace, tryLookup } from './env'
 import { EvaluationError } from './errors'
 import { DocGroups, docMeta, v } from './factories'
@@ -39,9 +39,9 @@ export function wireNsCore(
     v
       .nativeFn('ns-name', (x: CljValue) => {
         if (x === undefined) return v.nil()
-        if (x.kind === 'namespace') return v.symbol(x.name)
-        if (x.kind === 'symbol') return x
-        if (x.kind === 'string') return v.symbol(x.value)
+        if (is.namespace(x)) return v.symbol(x.name)
+        if (is.symbol(x)) return x
+        if (is.string(x)) return v.symbol(x.value)
         return v.nil()
       })
       .withMeta([
@@ -162,9 +162,9 @@ export function wireNsCore(
           if (theVar.ns !== ns.name) return
           const isPrivate = (theVar.meta?.entries ?? []).some(
             ([k, val]) =>
-              k.kind === 'keyword' &&
+              is.keyword(k) &&
               k.name === ':private' &&
-              val.kind === 'boolean' &&
+              is.boolean(val) &&
               val.value === true
           )
           if (!isPrivate) entries.push([v.symbol(name), theVar])

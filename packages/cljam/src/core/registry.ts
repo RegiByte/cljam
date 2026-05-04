@@ -2,6 +2,7 @@ import { is } from './assertions'
 import { makeEnv, makeNamespace } from './env'
 import { EvaluationError } from './errors'
 import type { CljValue, Env } from './types'
+import { v } from './factories'
 
 // ---------------------------------------------------------------------------
 // allowedPackages helpers
@@ -41,7 +42,7 @@ export type NamespaceRegistry = Map<string, Env>
 function cloneBindings(bindings: Map<string, CljValue>): Map<string, CljValue> {
   const out = new Map<string, CljValue>()
   for (const [k, v] of bindings) {
-    out.set(k, v.kind === 'var' ? { ...v } : v)
+    out.set(k, is.var(v) ? { ...v } : v)
   }
   return out
 }
@@ -53,13 +54,10 @@ function cloneEnv(env: Env, memo: Map<Env, Env>): Env {
     outer: null,
   }
   if (env.ns) {
-    cloned.ns = {
-      kind: 'namespace',
-      name: env.ns.name,
-      vars: new Map([...env.ns.vars].map(([k, v]) => [k, { ...v }])),
-      aliases: new Map(), // wired in cloneRegistry pass 2
-      readerAliases: new Map(env.ns.readerAliases),
-    }
+    cloned.ns = v.namespace(env.ns.name)
+    cloned.ns.vars = new Map([...env.ns.vars].map(([k, v]) => [k, { ...v }]))
+    cloned.ns.aliases = new Map() // wired in cloneRegistry pass 2
+    cloned.ns.readerAliases = new Map(env.ns.readerAliases)
   }
   memo.set(env, cloned)
   if (env.outer) cloned.outer = cloneEnv(env.outer, memo)

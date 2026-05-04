@@ -1,7 +1,7 @@
 import { is } from '../assertions'
 import { extend } from '../env'
 import { EvaluationError } from '../errors'
-import { cljList, cljNil } from '../factories'
+import { v } from '../factories'
 import { getPos } from '../positions'
 import type {
   Arity,
@@ -154,11 +154,11 @@ export function bindParams(
     if (is.map(restParam) && restArgs.length > 0) {
       const entries: [CljValue, CljValue][] = []
       for (let i = 0; i < restArgs.length; i += 2) {
-        entries.push([restArgs[i], restArgs[i + 1] ?? cljNil()])
+        entries.push([restArgs[i], restArgs[i + 1] ?? v.nil()])
       }
-      restValue = { kind: 'map', entries }
+      restValue = v.map(entries)
     } else {
-      restValue = restArgs.length > 0 ? cljList(restArgs) : cljNil()
+      restValue = restArgs.length > 0 ? v.list(restArgs) : v.nil()
     }
     allPairs.push(...destructureBindings(restParam, restValue, ctx, bindEnv))
   }

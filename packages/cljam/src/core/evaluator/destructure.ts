@@ -128,7 +128,7 @@ function destructureVector(
         pairs.push(
           ...destructureBindings(
             restPattern,
-            { kind: 'map', entries },
+            v.map(entries),
             ctx,
             env
           )
@@ -157,7 +157,7 @@ function destructureVector(
         for (let i = 0; i < restArgs.length; i += 2) {
           entries.push([restArgs[i], restArgs[i + 1] ?? v.nil()])
         }
-        restValue = { kind: 'map', entries }
+        restValue = v.map(entries)
       } else {
         restValue = restArgs.length > 0 ? v.list(restArgs) : v.nil()
       }

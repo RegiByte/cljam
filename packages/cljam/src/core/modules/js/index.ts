@@ -10,7 +10,6 @@ import {
 import { EvaluationError } from '../../errors'
 import { cljToJs, jsToClj } from '../../evaluator/js-interop'
 import { DocGroups, docMeta, v } from '../../factories'
-import { valueKeywords } from '../../keywords'
 import type { RuntimeModule, VarDeclaration, VarMap } from '../../module'
 import type { CljValue, Env, EvaluationContext } from '../../types'
 
@@ -39,23 +38,18 @@ function resolveJsKey(key: CljValue, fnName: string): string {
  * Nil and other Clojure types are rejected.
  */
 function extractJsTarget(val: CljValue, fnName: string): unknown {
-  switch (val.kind) {
-    case valueKeywords.jsValue:
-      return val.value
-    case valueKeywords.string:
-    case valueKeywords.number:
-    case valueKeywords.boolean:
-      return val.value
-    case valueKeywords.nil:
-      throw new EvaluationError(`${fnName}: cannot access properties on nil`, {
-        val,
-      })
-    default:
-      throw new EvaluationError(
-        `${fnName}: expected a js-value or primitive, got ${val.kind}`,
-        { val }
-      )
+  if (is.jsValue(val) || is.string(val) || is.number(val) || is.boolean(val)) {
+    return val.value
   }
+  if (is.nil(val)) {
+    throw new EvaluationError(`${fnName}: cannot access properties on nil`, {
+      val,
+    })
+  }
+  throw new EvaluationError(
+    `${fnName}: expected a js-value or primitive, got ${val.kind}`,
+    { val }
+  )
 }
 
 /**
@@ -86,7 +80,7 @@ const coreNativeFunctions: Record<string, CljValue> = {
     ]),
   'js->clj': v
     .nativeFn('js->clj', (val: CljValue, opts?: CljValue) => {
-      if (val.kind === 'nil') return val
+      if (is.nil(val)) return val
       if (!is.jsValue(val)) {
         throw new EvaluationError(
           `js->clj expects a js-value, got ${val.kind}`,
@@ -96,10 +90,10 @@ const coreNativeFunctions: Record<string, CljValue> = {
         )
       }
       const keywordizeKeys = (() => {
-        if (!opts || opts.kind !== 'map') return false
+        if (!opts || !is.map(opts)) return false
         for (const [k, flag] of opts.entries) {
-          if (k.kind === 'keyword' && k.name === ':keywordize-keys') {
-            return flag.kind !== 'boolean' || flag.value !== false
+          if (is.keyword(k) && k.name === ':keywordize-keys') {
+            return !is.boolean(flag) || flag.value !== false
           }
         }
         return false
@@ -155,7 +149,7 @@ const moduleNativeFunctions: Record<string, CljValue> = {
       fn: CljValue,
       ...args: CljValue[]
     ) => {
-      const rawFn = fn.kind === 'js-value' ? fn.value : undefined
+      const rawFn = is.jsValue(fn) ? fn.value : undefined
       if (typeof rawFn !== 'function') {
         throw new EvaluationError(
           `js/call: expected a js-value wrapping a function, got ${fn.kind}`,
@@ -171,35 +165,27 @@ const moduleNativeFunctions: Record<string, CljValue> = {
   // the raw typeof. Functions and other Clojure types throw — they're not at the
   // JS boundary.
   typeof: v.nativeFn('js/typeof', (x: CljValue) => {
-    switch (x.kind) {
-      case 'nil':
-        return v.string('object') // typeof null === 'object'
-      case 'number':
-        return v.string('number')
-      case 'string':
-        return v.string('string')
-      case 'boolean':
-        return v.string('boolean')
-      case 'js-value':
-        return v.string(typeof x.value)
-      default:
-        throw new EvaluationError(
-          `js/typeof: cannot determine JS type of Clojure ${x.kind}`,
-          { x }
-        )
-    }
+    if (is.nil(x)) return v.string('object') // typeof null === 'object'
+    if (is.number(x)) return v.string('number')
+    if (is.string(x)) return v.string('string')
+    if (is.boolean(x)) return v.string('boolean')
+    if (is.jsValue(x)) return v.string(typeof x.value)
+    throw new EvaluationError(
+      `js/typeof: cannot determine JS type of Clojure ${x.kind}`,
+      { x }
+    )
   }),
   // (js/instanceof? obj cls) — obj instanceof cls
   'instanceof?': v.nativeFn(
     'js/instanceof?',
     (obj: CljValue, cls: CljValue) => {
-      if (obj.kind !== 'js-value') {
+      if (!is.jsValue(obj)) {
         throw new EvaluationError(
           `js/instanceof?: expected js-value, got ${obj.kind}`,
           { obj }
         )
       }
-      if (cls.kind !== 'js-value') {
+      if (!is.jsValue(cls)) {
         throw new EvaluationError(
           `js/instanceof?: expected js-value constructor, got ${cls.kind}`,
           { cls }
@@ -212,21 +198,21 @@ const moduleNativeFunctions: Record<string, CljValue> = {
   ),
   // (js/array? x) — Array.isArray on the raw value
   'array?': v.nativeFn('js/array?', (x: CljValue) => {
-    if (x.kind !== 'js-value') return v.boolean(false)
+    if (!is.jsValue(x)) return v.boolean(false)
     return v.boolean(Array.isArray(x.value))
   }),
   // (js/null? x) — true if x is nil (JS null comes in as CljNil)
   'null?': v.nativeFn('js/null?', (x: CljValue) => {
-    return v.boolean(x.kind === 'nil')
+    return v.boolean(is.nil(x))
   }),
   // (js/undefined? x) — true if x is CljJsValue wrapping undefined
   'undefined?': v.nativeFn('js/undefined?', (x: CljValue) => {
-    return v.boolean(x.kind === 'js-value' && x.value === undefined)
+    return v.boolean(is.jsValue(x) && x.value === undefined)
   }),
   // (js/some? x) — true if x is neither null (nil) nor undefined
   'some?': v.nativeFn('js/some?', (x: CljValue) => {
-    if (x.kind === 'nil') return v.boolean(false)
-    if (x.kind === 'js-value' && x.value === undefined) return v.boolean(false)
+    if (is.nil(x)) return v.boolean(false)
+    if (is.jsValue(x) && x.value === undefined) return v.boolean(false)
     return v.boolean(true)
   }),
   // (js/get-in obj path) / (js/get-in obj path not-found)
@@ -234,14 +220,14 @@ const moduleNativeFunctions: Record<string, CljValue> = {
   'get-in': v.nativeFn(
     'js/get-in',
     (obj: CljValue, path: CljValue, ...rest: CljValue[]) => {
-      if (path.kind !== 'vector') {
+      if (!is.vector(path)) {
         throw new EvaluationError(
           `js/get-in: path must be a vector, got ${path.kind}`,
           { path }
         )
       }
       // Validate root eagerly — nil root is always an error
-      if (obj.kind === 'nil') {
+      if (is.nil(obj)) {
         throw new EvaluationError(
           'js/get-in: cannot access properties on nil',
           { obj }
@@ -250,8 +236,8 @@ const moduleNativeFunctions: Record<string, CljValue> = {
       const notFound = rest.length > 0 ? rest[0] : v.jsValue(undefined)
       let current: CljValue = obj
       for (const key of path.value) {
-        if (current.kind === 'nil') return notFound
-        if (current.kind === 'js-value' && current.value === undefined)
+        if (is.nil(current)) return notFound
+        if (is.jsValue(current) && current.value === undefined)
           return notFound
         const raw = extractJsTarget(current, 'js/get-in') as Record<
           string,
@@ -261,7 +247,7 @@ const moduleNativeFunctions: Record<string, CljValue> = {
         current = jsToClj((raw as Record<string, unknown>)[jsKey])
       }
       if (
-        current.kind === 'js-value' &&
+        is.jsValue(current) &&
         current.value === undefined &&
         rest.length > 0
       ) {
@@ -333,7 +319,7 @@ const moduleNativeFunctions: Record<string, CljValue> = {
   ),
   // (js/seq arr) — JS array → Clojure vector with elements converted via jsToClj
   seq: v.nativeFn('js/seq', (arr: CljValue) => {
-    if (arr.kind !== 'js-value' || !Array.isArray(arr.value)) {
+    if (!is.jsValue(arr) || !Array.isArray(arr.value)) {
       throw new EvaluationError(
         `js/seq: expected a js-value wrapping an array, got ${arr.kind}`,
         { arr }

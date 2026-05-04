@@ -18,14 +18,14 @@ export const metaFunctions: Record<string, CljValue> = {
         throw EvaluationError.atArg('meta expects one argument', {}, 0)
       }
       if (
-        val.kind === 'function' ||
-        val.kind === 'native-function' ||
-        val.kind === 'var' ||
-        val.kind === 'list' ||
-        val.kind === 'vector' ||
-        val.kind === 'map' ||
-        val.kind === 'symbol' ||
-        val.kind === 'atom'
+        is.function(val) ||
+        is.nativeFunction(val) ||
+        is.var(val) ||
+        is.list(val) ||
+        is.vector(val) ||
+        is.map(val) ||
+        is.symbol(val) ||
+        is.atom(val)
       ) {
         return val.meta ?? v.nil()
       }
@@ -47,7 +47,7 @@ export const metaFunctions: Record<string, CljValue> = {
       if (m === undefined) {
         throw EvaluationError.atArg('with-meta expects two arguments', {}, 1)
       }
-      if (m.kind !== 'map' && m.kind !== 'nil') {
+      if (!is.map(m) && !is.nil(m)) {
         throw EvaluationError.atArg(
           `with-meta expects a map as second argument, got ${printString(m)}`,
           { m },
@@ -55,12 +55,12 @@ export const metaFunctions: Record<string, CljValue> = {
         )
       }
       const metaSupported =
-        val.kind === 'function' ||
-        val.kind === 'native-function' ||
-        val.kind === 'list' ||
-        val.kind === 'vector' ||
-        val.kind === 'map' ||
-        val.kind === 'symbol'
+        is.function(val) ||
+        is.nativeFunction(val) ||
+        is.list(val) ||
+        is.vector(val) ||
+        is.map(val) ||
+        is.symbol(val)
       if (!metaSupported) {
         throw EvaluationError.atArg(
           `with-meta does not support ${val.kind}, got ${printString(val)}`,
@@ -68,7 +68,7 @@ export const metaFunctions: Record<string, CljValue> = {
           0
         )
       }
-      const meta = m.kind === 'nil' ? undefined : (m as CljMap)
+      const meta = is.nil(m) ? undefined : (m as CljMap)
       return { ...val, meta }
     })
     .withMeta([
@@ -103,7 +103,7 @@ export const metaFunctions: Record<string, CljValue> = {
             1
           )
         }
-        if (ref.kind !== 'var' && ref.kind !== 'atom') {
+        if (!is.var(ref) && !is.atom(ref)) {
           throw EvaluationError.atArg(
             `alter-meta! expects a Var or Atom as first argument, got ${ref.kind}`,
             {},
@@ -119,14 +119,14 @@ export const metaFunctions: Record<string, CljValue> = {
         }
         const currentMeta: CljValue = ref.meta ?? v.nil()
         const newMeta = ctx.applyCallable(f, [currentMeta, ...args], callEnv)
-        if (newMeta.kind !== 'map' && newMeta.kind !== 'nil') {
+        if (!is.map(newMeta) && !is.nil(newMeta)) {
           throw new EvaluationError(
             `alter-meta! function must return a map or nil, got ${newMeta.kind}`,
             {}
           )
         }
         ;(ref as CljAtom).meta =
-          newMeta.kind === 'nil' ? undefined : (newMeta as CljMap)
+          is.nil(newMeta) ? undefined : (newMeta as CljMap)
         return newMeta
       }
     )

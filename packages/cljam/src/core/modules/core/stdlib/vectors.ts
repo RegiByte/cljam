@@ -28,7 +28,7 @@ export const vectorFunctions: Record<string, CljValue> = {
 
   vec: v
     .nativeFn('vec', function vecImpl(coll: CljValue) {
-      if (coll === undefined || coll.kind === 'nil') return v.vector([])
+      if (coll === undefined || is.nil(coll)) return v.vector([])
       if (is.vector(coll)) return coll
       if (!is.seqable(coll)) {
         throw EvaluationError.atArg(
@@ -58,7 +58,7 @@ export const vectorFunctions: Record<string, CljValue> = {
             0
           )
         }
-        if (start === undefined || start.kind !== 'number') {
+        if (start === undefined || !is.number(start)) {
           throw EvaluationError.atArg(
             `subvec expects a number start index`,
             { start },
@@ -67,7 +67,7 @@ export const vectorFunctions: Record<string, CljValue> = {
         }
         const s = start.value
         const e =
-          end !== undefined && end.kind === 'number'
+          end !== undefined && is.number(end)
             ? end.value
             : vector.value.length
         if (s < 0 || e > vector.value.length || s > e) {
@@ -92,7 +92,7 @@ export const vectorFunctions: Record<string, CljValue> = {
 
   peek: v
     .nativeFn('peek', function peekImpl(coll: CljValue) {
-      if (coll === undefined || coll.kind === 'nil') return v.nil()
+      if (coll === undefined || is.nil(coll)) return v.nil()
       if (is.vector(coll)) {
         return coll.value.length === 0
           ? v.nil()
@@ -117,7 +117,7 @@ export const vectorFunctions: Record<string, CljValue> = {
 
   pop: v
     .nativeFn('pop', function popImpl(coll: CljValue) {
-      if (coll === undefined || coll.kind === 'nil') {
+      if (coll === undefined || is.nil(coll)) {
         throw EvaluationError.atArg("Can't pop empty list", { coll }, 0)
       }
       if (is.vector(coll)) {

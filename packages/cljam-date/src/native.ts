@@ -7,7 +7,7 @@
 //   - month* is 1-indexed (unlike JS getMonth() which is 0-indexed).
 //   - format* delegates to Intl.DateTimeFormat; options map uses keyword keys.
 
-import { v, EvaluationError } from '@regibyte/cljam'
+import { v, is, EvaluationError } from '@regibyte/cljam'
 import type { CljValue, RuntimeModule, VarMap } from '@regibyte/cljam'
 
 // ---------------------------------------------------------------------------
@@ -15,9 +15,9 @@ import type { CljValue, RuntimeModule, VarMap } from '@regibyte/cljam'
 // ---------------------------------------------------------------------------
 
 function assertDate(val: CljValue, fnName: string): Date {
-  if (val.kind !== 'js-value' || !(val.value instanceof Date)) {
+  if (!is.jsValue(val) || !(val.value instanceof Date)) {
     throw new EvaluationError(
-      `${fnName}: expected a date value, got ${val.kind === 'js-value' ? 'js-value (not a Date)' : val.kind}`,
+      `${fnName}: expected a date value, got ${is.jsValue(val) ? 'js-value (not a Date)' : val.kind}`,
       { val }
     )
   }
@@ -30,15 +30,15 @@ function assertDate(val: CljValue, fnName: string): Date {
  * Example: {:year "numeric" :month "long"} → {year: "numeric", month: "long"}
  */
 function mapToIntlOptions(opts: CljValue): Intl.DateTimeFormatOptions {
-  if (opts.kind !== 'map') return {}
+  if (!is.map(opts)) return {}
   const result: Record<string, string> = {}
   for (const [k, val] of opts.entries) {
-    if (k.kind !== 'keyword') continue
+    if (!is.keyword(k)) continue
     const key = k.name.slice(1) // strip leading ':'
     const value =
-      val.kind === 'string'
+      is.string(val)
         ? val.value
-        : val.kind === 'keyword'
+        : is.keyword(val)
           ? val.name.slice(1)
           : null
     if (value !== null) result[key] = value
@@ -58,7 +58,7 @@ const nativeFns: Record<string, CljValue> = {
 
   // (from-millis* ms) → date — construct from epoch milliseconds
   'from-millis*': v.nativeFn('cljam.date.native/from-millis*', (ms: CljValue) => {
-    if (ms.kind !== 'number') {
+    if (!is.number(ms)) {
       throw new EvaluationError(
         `from-millis*: expected a number, got ${ms.kind}`,
         { ms }
@@ -69,7 +69,7 @@ const nativeFns: Record<string, CljValue> = {
 
   // (from-iso* s) → date — construct from ISO 8601 string
   'from-iso*': v.nativeFn('cljam.date.native/from-iso*', (s: CljValue) => {
-    if (s.kind !== 'string') {
+    if (!is.string(s)) {
       throw new EvaluationError(
         `from-iso*: expected a string, got ${s.kind}`,
         { s }
@@ -130,7 +130,7 @@ const nativeFns: Record<string, CljValue> = {
     'cljam.date.native/add-millis*',
     (d: CljValue, ms: CljValue) => {
       const date = assertDate(d, 'add-millis*')
-      if (ms.kind !== 'number') {
+      if (!is.number(ms)) {
         throw new EvaluationError(
           `add-millis*: expected a number for milliseconds, got ${ms.kind}`,
           { ms }
@@ -148,9 +148,9 @@ const nativeFns: Record<string, CljValue> = {
     (d: CljValue, locale: CljValue, opts: CljValue) => {
       const date = assertDate(d, 'format*')
       const localeStr: string | undefined =
-        locale.kind === 'string' ? locale.value : undefined
+        is.string(locale) ? locale.value : undefined
       const options: Intl.DateTimeFormatOptions =
-        opts.kind === 'nil' ? {} : mapToIntlOptions(opts)
+        is.nil(opts) ? {} : mapToIntlOptions(opts)
       return v.string(new Intl.DateTimeFormat(localeStr, options).format(date))
     }
   ),

@@ -154,7 +154,7 @@ export function matchesDiscriminator(
     return true
   }
   // A symbol that evaluated to itself (shouldn't happen, but guard anyway)
-  if (disc.kind === 'symbol') return true
+  if (is.symbol(disc)) return true
 
   if (is.keyword(disc)) {
     if (disc.name === ':default') return true

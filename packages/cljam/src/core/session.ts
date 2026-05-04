@@ -396,7 +396,7 @@ function buildSessionFacade(
           const expanded = ctx.expandAll(form, env)
           result = ctx.evaluate(expanded, env)
         }
-        if (result.kind !== 'pending') return result
+        if (!is.pending(result)) return result
         try {
           return await result.promise
         } catch (e) {

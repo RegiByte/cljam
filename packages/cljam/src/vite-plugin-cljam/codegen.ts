@@ -1,4 +1,5 @@
 import type { Arity, DestructurePattern } from '../core/types'
+import { isSymbol } from '../core/assertions'
 import { extractNsName, extractNsRequires, extractStringRequires } from './namespace-utils'
 import { readNamespaceVars, readDeftestNames } from './static-analysis'
 
@@ -287,7 +288,7 @@ export function generateTestModuleCode(
 type ArityShape = { params: DestructurePattern[]; restParam: DestructurePattern | null }
 
 function patternName(p: Arity['params'][number], index: number): string {
-  if (p.kind === 'symbol') return safeJsIdentifier(p.name)
+  if (isSymbol(p)) return safeJsIdentifier(p.name)
   return `arg${index}`
 }
 
@@ -298,7 +299,7 @@ function arityToSignature(arity: ArityShape): string {
 
   if (arity.restParam) {
     const restName =
-      arity.restParam.kind === 'symbol'
+      isSymbol(arity.restParam)
         ? safeJsIdentifier(arity.restParam.name)
         : 'rest'
     const params = fixedParams

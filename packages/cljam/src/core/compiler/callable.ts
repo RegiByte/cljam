@@ -51,7 +51,7 @@ export function compileCall(
       //   resolve arity → save param slots → write args → call compiledBody → restore slots
       // Falls through to ctx.applyCallable for all other callables (native
       // functions, vars-as-IFn, keywords, maps, uncompiled functions, etc.)
-      if (op.kind === 'function') {
+      if (is.function(op)) {
         const arity = resolveArity(op.arities, argCount)
         if (arity.compiledBody && arity.paramSlots) {
           const slots = arity.paramSlots

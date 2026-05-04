@@ -12,7 +12,7 @@
  *   bun run --filter docs gen:api-docs
  */
 
-import { createSession } from '@regibyte/cljam'
+import { createSession, is } from '@regibyte/cljam'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -31,7 +31,7 @@ async function main() {
   console.log('Running Clojure introspection (this may take a moment)...')
   const result = await session.evaluateAsync(cljSrc)
 
-  if (result.kind !== 'vector') {
+  if (!is.vector(result)) {
     throw new Error(`Expected vector result from introspection, got: ${result.kind}`)
   }
 
@@ -41,9 +41,9 @@ async function main() {
   let count = 0
 
   for (const pair of result.value) {
-    if (pair.kind !== 'vector' || pair.value.length !== 2) continue
+    if (!is.vector(pair) || pair.value.length !== 2) continue
     const [nsName, content] = pair.value
-    if (nsName.kind !== 'string' || content.kind !== 'string') continue
+    if (!is.string(nsName) || !is.string(content)) continue
 
     const filename = `${nsName.value}.md`
     writeFileSync(join(refDir, filename), content.value, 'utf8')

@@ -36,7 +36,7 @@ export const hofFunctions: Record<string, CljValue> = {
         const collection = hasInit ? rest[1] : rest[0]
 
         // nil is treated as an empty collection (matches Clojure semantics)
-        if (collection.kind === 'nil') {
+        if (is.nil(collection)) {
           if (!hasInit) {
             throw new EvaluationError(
               'reduce called on empty collection with no initial value',
