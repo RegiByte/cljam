@@ -10,8 +10,19 @@
   "refs": ["cljam/packages/cljam/src/core/types.ts#CljNumber"]
 }
 ---
-On the JVM, `(= 1 1.0)` is `false`, `{1 :a 1.0 :b}` has two entries, `(str 1.0)` is `"1.0"`, longs overflow with an
-error and `9007199254740993` reads exactly. Here `(= 1 1.0)` is `true`, the map has one entry, `(str 1.0)` is `"1"`,
-overflow returns a double, and large literals lose precision when read.
+| Form | JVM | cljam |
+|---|---|---|
+| `(= 1 1.0)` | `false` | `true` |
+| `(count {1 :a 1.0 :b})` | `2` | `1` |
+| `(str 1.0)`, `1e3` | `"1.0"`, `1000.0` | `"1"`, `1000` |
+| `(integer? 1.0)`, `(float? 1.0)` | `false`, `true` | `true`, `false` |
+| `(/ 1 2)` | `1/2` | `0.5` |
+| `9007199254740993` | exact | `9007199254740992` |
+| `(+ 9223372036854775807 1)` | throws `long overflow` | `9223372036854776000` |
+| `(pr-str 1e21)` | `"1.0E21"` | `"1e+21"` |
+| `(pr-str -0.0)` | `"-0.0"` | `"0"` |
+
+`int?` and `double?` answer `true` for every whole number, so `(double? 1)` is `true`. The box in
+[`CljNumber`](ref:cljam/packages/cljam/src/core/types.ts#CljNumber) could carry a tag, so the host does not force this today.
 
 Open pending a decision on the number model. The body records the reason once one is made.

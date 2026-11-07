@@ -8,7 +8,8 @@
     "build": "vitepress build",
     "preview": "vitepress preview",
     "repl": "cljam repl",
-    "gen:api-docs": "bun scripts/gen-api-docs.ts"
+    "gen:api-docs": "bun scripts/gen-api-docs.ts",
+    "gen:conformance": "node scripts/gen-conformance.mjs"
   },
   "devDependencies": {
     "vitepress": "^1.5.0",

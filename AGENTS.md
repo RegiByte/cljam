@@ -29,6 +29,9 @@ A change that alters what an entity claims updates it in the same commit, sets i
 (`kb.mjs render`). Fixing a divergence deletes its entity. Finding one adds an entity, `open` until it is fixed or
 carries a reason and becomes `justified`. `/kb verify` runs a full check; `/kb build` documents something new.
 
+The known divergences in `packages/docs/guide/conformance.md` are generated from the divergence entities, and CI fails
+when the page is out of date.
+
 ## Commands
 
 Run with bun, from `packages/cljam` unless noted:
@@ -38,3 +41,4 @@ Run with bun, from `packages/cljam` unless noted:
 - `bun run typecheck` typechecks.
 - `bun run gen:core-source` regenerates `src/clojure/generated/` after a change to `src/clojure/*.clj`.
 - `node .claude/skills/kb/tool/kb.mjs verify` (repo root) checks the knowledge base.
+- `node packages/docs/scripts/gen-conformance.mjs` (repo root) regenerates the conformance page after a divergence changes.
