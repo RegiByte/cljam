@@ -44,3 +44,6 @@ jobs:
 
       - name: The knowledge base verifies
         run: node .claude/skills/kb/tool/kb.mjs verify
+
+      - name: The conformance page matches the knowledge base
+        run: node packages/docs/scripts/gen-conformance.mjs --check
