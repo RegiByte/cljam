@@ -43,10 +43,16 @@ Probed hard and came back value- or byte-identical, apart from the entries under
 
 <!-- divergences:start -->
 
-81 open and 3 justified differences. An open difference is a bug or an undecided
+89 open and 3 justified differences. An open difference is a bug or an undecided
 question. A justified one carries its reason. Each was run on JVM Clojure 1.12 and on cljam.
 
 ### Silent: wrong value, no error
+
+#### :pre and :post conditions are not supported
+
+`(defn f [x] {:pre [(pos? x)]} x)` then `(f -1)` throws `AssertionError` on the JVM and returns `-1` here, and `fn` behaves
+the same. The condition map is evaluated and discarded, so `(pos? x)` has no effect. `(defn f [x] {:post [(pos? %)]} x)`
+throws `Symbol % not found` here on every call, even when the JVM's condition holds.
 
 #### assoc on a vector skips bounds checks
 
@@ -74,6 +80,11 @@ and `nil` here. `set-validator!` works, but does not check the current value: `(
 The host's operators are 32-bit, but the number model does not bound them to 32, so this is wrong under any outcome of
 *One double-precision number type*. `bit-and-not`, `bit-test` and friends are in *Numeric tower API is absent*.
 
+#### case accepts duplicate constants
+
+`(case 1 1 :a 1 :b)` throws `Duplicate case test constant: 1` on the JVM and returns `:a` here. `(case :a :a 1 :a 2)`
+behaves the same. The list groups in *case rejects lists and symbols as constants* fail for a different reason.
+
 #### catch does not test classes
 
 `(try (throw (ex-info "x" {})) (catch Exception e :caught))` is `:caught` on the JVM. Here the exception escapes, and
@@ -99,7 +110,7 @@ a catch-all, so
 
 `instance?` ignores its arguments and returns `false`, and the
 `conjure.` prefix is a leftover of an old project name. `defrecord` defines no class symbol: `P` does not resolve after
-`(defrecord P [x])`, where `(instance? P (->P 1))` is `true` on the JVM. `(defmulti f class)` with `String` as a dispatch
+`(defrecord P [x])`, where `(instance? P (->P 1))` is `true` on the JVM, and neither `(P. 1)` nor `(new P 1)` constructs one. `(defmulti f class)` with `String` as a dispatch
 value finds no method. `class?`, `parents` and `ancestors` on classes return `false` or `nil`. Open until the class
 model is redesigned together with the errors.
 
@@ -112,6 +123,11 @@ of these names collides here.
 `Math`, `String` and the other class stubs evaluate to keywords.
 `(all-ns)` lists `clojure.reflect` and `cursive.repl.runtime`, stub namespaces for editor integrations.
 
+#### condp has no :>> form
+
+`(condp some [1] #{1} :>> inc)` is `2` on the JVM, which passes the predicate's result to `inc`. Here it is `:>>`, and the
+form after it is read as the next clause.
+
 #### delay does not cache a thrown exception
 
 ```clojure
@@ -123,6 +139,8 @@ of these names collides here.
 ```
 
 The JVM counts `1`, cljam counts `2`.
+
+The oracle lists its cases under *catch does not test classes*, because `catch` with a class name fails first.
 
 #### Duplicate keys in literals are accepted
 
@@ -194,6 +212,12 @@ the locals in scope.
 The JVM turns only seqs into a map. cljam applies `hash-map` to any
 sequential value, so `(let [{:keys [a]} [:a 1 :b]] a)` fails with a `hash-map` error.
 
+#### Namespaces have no metadata
+
+`(meta (find-ns 'clojure.core))` is `{:doc "Fundamental library of the Clojure language", :author "Rich Hickey"}` on the
+JVM and `nil` here. `(ns foo "doc") (meta *ns*)` is `{:doc "doc"}` there, and `(ns ^:a foo) (meta *ns*)` is `{:a true}`.
+Both are `nil` here.
+
 #### One double-precision number type
 
 | Form | JVM | cljam |
@@ -224,6 +248,22 @@ After `(ns a) (defn- hidden [] 2)`, calling `(a/hidden)` from another namespace 
 `(read-string "")` is an `EOF while reading` error on the JVM and `nil` here. `(read-string {:eof :x} "")` is `:x` there
 and throws `read-string expects a string` here. `^"x" []` is valid metadata on the JVM (`{:tag "x"}`) and a read error
 here.
+
+#### Records are not maps
+
+With `(defrecord R [x])`:
+
+| Form | JVM | cljam |
+|---|---|---|
+| `(map? (->R 1))` | `true` | `false` |
+| `(associative? (->R 1))` | `true` | `false` |
+| `(meta (with-meta (->R 1) {:a 1}))` | `{:a 1}` | `with-meta does not support record` |
+| `(let [{:keys [x]} (->R 1)] x)` | `1` | `Cannot destructure` |
+| `((fn [{:keys [x]}] x) (->R 1))` | `1` | `Cannot destructure` |
+
+The predicates answer wrongly with no error, so code that branches on `map?` takes the wrong path, and
+`destructure` is one such branch. `get`, `assoc`, `merge`
+and keyword lookup work on records.
 
 #### Records can be called as functions
 
@@ -258,10 +298,18 @@ is `32` on the JVM and `1` here.
 
 Absent vars: `chunk`, `chunk-append`, `chunk-buffer`, `chunk-cons`, `chunk-first`, `chunk-next`, `chunk-rest`, `chunked-seq?`.
 
+#### Some empty seq results are nil
+
+`(concat)`, `(empty (map inc [1]))`, `(empty (range 3))`, `(empty (filter odd? [1]))` and `(empty (seq [1]))` are all `()` on
+the JVM and `nil` here. `(concat nil)` and `(concat [] [])` already return `()`. `(empty (rest [1]))` is `[]` here, as in
+*Seq functions return vectors*.
+
 #### Some invalid arguments return a value
 
 `(subs "abc" 5)` throws `StringIndexOutOfBoundsException` on the JVM and returns `""` here. `(even? 1.5)` and `(odd? 1.5)` throw
-`Argument must be an integer` there and return `false` and `true` here.
+`Argument must be an integer` there and return `false` and `true` here. `(derive :a :b)` fails an assertion there, since
+the global hierarchy needs namespaced tags, and returns a hierarchy here. `(quote)` and `(quote 1 2)` throw `Wrong number of
+args` there and return `nil` and `1` here.
 
 #### Some lazy functions are eager
 
@@ -270,6 +318,21 @@ Absent vars: `chunk`, `chunk-append`, `chunk-buffer`, `chunk-cons`, `chunk-first
 
 `partition-all`, `partition-by`, `map`, `filter`, `mapcat`, `take-nth`, `keep`, `interleave`, `interpose`, `dedupe`,
 `concat` and `drop-while` stay lazy.
+
+#### special-symbol? answers from cljam's own list
+
+| Form | JVM | cljam |
+|---|---|---|
+| `(special-symbol? 'defmacro)` | `false` | `true` |
+| `(special-symbol? 'binding)` | `false` | `true` |
+| `(special-symbol? 'ns)` | `false` | `true` |
+| `(special-symbol? 'async)` | `false` | `true` |
+| `(special-symbol? 'new)` | `true` | `false` |
+| `(special-symbol? 'throw)` | `true` | `false` |
+| `(special-symbol? 'catch)` | `true` | `false` |
+| `(special-symbol? '&)` | `true` | `false` |
+
+`defmacro`, `binding` and `ns` are special forms here and vars on the JVM, which is also why `ns-publics` omits them.
 
 #### String and char escapes are incomplete
 
@@ -335,6 +398,13 @@ keywords, chars and nil compare.
 
 `(conj {:a 1} {:b 2})` is `{:a 1, :b 2}` on the JVM and throws here. `(conj {} {})` and `(conj {:a 1} nil)` throw too, and
 `(into {} [{:a 1} {:b 2}])` fails with them. `(merge {:a 1} [:b 2])` also throws. `(conj {:a 1} [:b 2])` works.
+
+#### defn rejects attribute maps
+
+`(defn f {:a 1} [x] x)` and `(defn f "d" {:a 1} [x] x)` define `f` on the JVM, with `:a` on the var. Here both throw `first
+expects a collection or string`, though the `defn` docstring says it accepts an attribute map. `(defn f ([x] x) {:a 1})`
+throws `Unsupported binding form: :a`, and `(defmacro m {:a 1} [x] x)` throws `fn/defmacro expects a parameter vector or
+arity clauses`. Metadata on the name, `(defn ^:foo f [x] x)`, works.
 
 #### Float division by zero throws
 

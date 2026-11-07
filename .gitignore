@@ -53,3 +53,6 @@ experiments/mcp-workspace/
 
 # External repos to reference
 .project-references
+
+# Clojure CLI classpath cache
+.cpcache

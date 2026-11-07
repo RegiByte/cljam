@@ -31,6 +31,22 @@ carries a reason and becomes `justified`. `/kb verify` runs a full check; `/kb b
 
 The known divergences in `packages/docs/guide/conformance.md` are generated from the divergence entities, and CI fails
 when the page is out of date.
+## JVM oracle
+
+`packages/cljam/src/core/__tests__/jvm_oracle/` checks cljam against JVM Clojure in the normal test run, with no JVM
+needed: `oracle.spec.ts` compares each case with goldens generated on the JVM.
+
+- Add a case as one line in `cases/<area>.txt`: Clojure source, read by each runtime's own reader. It is one form, or
+  setup forms followed by the form under test; each is evaluated as a real top-level form, and the last value is
+  compared. Start the line with `!throws ` when the JVM throwing is the behaviour under test; the generator refuses any
+  other JVM throw.
+- Cases must be deterministic on the JVM (the generator refuses hangs, printed object addresses and order-dependent
+  results) and must not depend on hash order: wrap unordered results in `sort`.
+- Regenerate with `bun run gen:jvm-goldens` in `packages/cljam`, then commit the goldens. Only this needs a JVM.
+- A case that differs goes in `divergences.txt` as `<kb divergence id> <case source>`, and the spec fails unless the id
+  names an existing entity. When a listed case starts agreeing the spec fails until the line is deleted.
+- `goldens/coverage.md` tracks public-var coverage per `clojure.*` namespace. When it changes, review it and update it
+  with `bunx vitest run src/core/__tests__/jvm_oracle -u`.
 
 ## Commands
 
