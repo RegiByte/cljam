@@ -22,7 +22,5 @@
 | `(pr-str 1e21)` | `"1.0E21"` | `"1e+21"` |
 | `(pr-str -0.0)` | `"-0.0"` | `"0"` |
 
-`int?` and `double?` answer `true` for every whole number, so `(double? 1)` is `true`. The box in
-[`CljNumber`](ref:cljam/packages/cljam/src/core/types.ts#CljNumber) could carry a tag, so the host does not force this today.
-
-Open pending a decision on the number model. The body records the reason once one is made.
+`int?` and `double?` answer `true` for every whole number, so `(double? 1)` is `true`. All of these are in
+[`CljNumber`](ref:cljam/packages/cljam/src/core/types.ts#CljNumber), and they get fixed: see [[number-model]].
