@@ -26,7 +26,8 @@
     "test": "vitest",
     "release-blockers": "bun run scripts/release-blockers/run-repros.ts",
     "gen:core-source": "bun run scripts/gen-core-source.mjs",
-    "gen:version": "node scripts/gen-version.mjs"
+    "gen:version": "node scripts/gen-version.mjs",
+    "gen:jvm-goldens": "cd src/core/__tests__/jvm_oracle && clojure -M generate.clj"
   },
   "browser": {
     "./src/clojure/generated/builtin-namespace-registry.ts": "./src/clojure/generated/builtin-namespace-registry.browser.ts"

@@ -1,0 +1,43 @@
+; Namespaces and vars.
+(ns-name *ns*)
+(str *ns*)
+(ns-name (the-ns 'clojure.core))
+(ns-name (find-ns 'clojure.core))
+(find-ns 'nonesuch)
+(ns foo) (ns-name *ns*)
+(ns foo) (def a 1) (ns bar) (require '[foo :as f]) f/a
+(in-ns 'foo) (clojure.core/ns-name clojure.core/*ns*)
+(ns-name (create-ns 'foo))
+(remove-ns 'nonesuch)
+(do (alias 'str2 'clojure.string) 1)
+(alias 'str2 'clojure.string) (str2/upper-case "a")
+(alias 'str2 'clojure.string) ::str2/a
+(ns-aliases *ns*)
+(require '[clojure.string :as s]) (keys (ns-aliases *ns*))
+(require 'clojure.string)
+(require '[clojure.string :as s])
+(require '[clojure.string :refer [join]]) (join [1])
+(use 'clojure.set) (union #{} #{})
+(refer 'clojure.string :only '[join]) (join [1])
+!throws (require 'nonesuch.ns)
+(def a 1) (ns-publics *ns*)
+(def a 1) (keys (ns-interns *ns*))
+(def ^:private a 1) (keys (ns-publics *ns*))
+(def a 1) (ns-unmap *ns* 'a) (resolve 'a)
+(count (filter #(= "map" (str %)) (keys (ns-map 'clojure.core))))
+(namespace `a)
+(namespace `map)
+(name `map)
+`map
+`nonesuch
+(:major *clojure-version*)
+(subs (clojure-version) 0 4)
+*command-line-args*
+*1
+*e
+(intern 'user 'a 1)
+(intern *ns* 'a 1) a
+(ns foo (:refer-clojure :exclude [map])) (def map 1) map
+(ns foo (:require [clojure.string :as s])) (s/join [1])
+(meta *ns*)
+(meta (find-ns 'clojure.core))

@@ -1,0 +1,80 @@
+; Literals as each runtime's own reader sees them.
+017
+0xFF
+2r101
+36rZZ
+1/2
+4/2
+1N
+1.5M
+1e3
+1E-2
+-0.0
+##Inf
+##-Inf
+##NaN
+\a
+\newline
+\space
+\tab
+\o101
+\u0041
+"\101"
+"\u0041"
+"a\tb"
+"\n"
+:a/b
+::a
+'a/b
+'a
+'()
+[]
+{}
+#{}
+#{1}
+'(1 . 2)
+#"a+"
+(re-matches #"\d+" "12")
+#'map
+@(atom 1)
+^:a []
+(meta ^:a [])
+(meta ^{:b 1} [])
+(meta ^String [])
+'^:a b
+(meta '^:a b)
+#_ 1 2
+[1 #_ 2 3]
+[1 #_ #_ 2 3 4]
+(fn? #(+ % 1))
+(#(+ %1 %2) 1 2)
+(#(apply + %&) 1 2)
+(first '#(+ % 1))
+`a
+`(a b)
+`~1
+`(1 ~@[2 3])
+`[1 ~@[2]]
+`{:a ~1}
+#inst "2020-01-01"
+#uuid "00000000-0000-0000-0000-000000000000"
+#?(:clj 1 :cljs 2 :default 3)
+#?(:cljs 2)
+[#?@(:clj [1 2] :default [3])]
+!throws {:a 1 :a 2}
+!throws #{1 1}
+!throws (read-string "")
+!throws [1
+!throws )
+!throws "abc
+!throws #<
+!throws 09
+(read-string "1")
+(read-string "(1 2)")
+(read-string "#_1 2")
+(read-string "; c\n1")
+(read-string "#=(+ 1 2)x")
+(binding [*read-eval* false] (read-string "1"))
+*read-eval*
+(read-string "{:a 1}")
+(read-string "\\a")
