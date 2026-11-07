@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate version file
+        working-directory: packages/cljam
+        run: node scripts/gen-version.mjs
+
+      - name: Typecheck
+        working-directory: packages/cljam
+        run: bun run typecheck
+
+      - name: Test cljam
+        working-directory: packages/cljam
+        run: bunx vitest run
+
+      - name: Test libraries
+        run: |
+          for package in cljam-date cljam-integrant cljam-schema cljam-ring cljam-mcp; do
+            bun run --cwd "packages/$package" test
+          done
+
+      - name: The knowledge base verifies
+        run: node .claude/skills/kb/tool/kb.mjs verify
