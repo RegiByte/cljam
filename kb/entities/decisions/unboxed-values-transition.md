@@ -20,7 +20,7 @@ that accept boxed and unboxed values alike. Third, everything migrates and suppo
 Whatever breaks during the migration is a map of the code not respecting the conversion rules.
 
 **Alternatives considered.** Keeping boxes and carrying an integer/double tag: it gives closer number semantics, at
-the cost of the performance this transition exists to gain. See [[one-number-type]]. No benchmark has decided this yet.
+the cost of the performance this transition exists to gain. See [[one-number-type]].
 
 **Consequences.** If numbers unbox to JS numbers, integers and doubles become indistinguishable by construction, and
 `one-number-type` becomes justified by this decision.

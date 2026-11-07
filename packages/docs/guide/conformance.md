@@ -232,10 +232,8 @@ Both are `nil` here.
 | `(pr-str 1e21)` | `"1.0E21"` | `"1e+21"` |
 | `(pr-str -0.0)` | `"-0.0"` | `"0"` |
 
-`int?` and `double?` answer `true` for every whole number, so `(double? 1)` is `true`. The box in
-`CljNumber` could carry a tag, so the host does not force this today.
-
-Open pending a decision on the number model. The body records the reason once one is made.
+`int?` and `double?` answer `true` for every whole number, so `(double? 1)` is `true`. All of these are in
+`CljNumber`, and they get fixed: see *number-model*.
 
 #### Private vars are not enforced
 
