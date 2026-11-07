@@ -1,0 +1,18 @@
+{
+  "repos": {
+    "cljam": { "github": "RegiByte/cljam", "branch": "main" }
+  },
+  "types": [
+    {
+      "id": "divergence",
+      "label": "Divergences",
+      "parents": ["project", "system", "container"],
+      "evidence": true,
+      "shape": "hexagon",
+      "fields": {
+        "status": { "kind": "enum", "values": ["open", "justified"], "required": true },
+        "failure": { "kind": "enum", "values": ["silent", "loud", "printing", "missing"], "required": true }
+      }
+    }
+  ]
+}

@@ -44,8 +44,9 @@ packages/cljam/cljam
 packages/cljam/src/bin/version.ts
 
 .calva/
-.claude/
-CLAUDE.md
+.claude/*
+!.claude/skills/
+.worktrees/
 
 ## Experiments
 experiments/mcp-workspace/
