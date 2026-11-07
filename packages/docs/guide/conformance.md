@@ -43,7 +43,7 @@ Probed hard and came back value- or byte-identical, apart from the entries under
 
 <!-- divergences:start -->
 
-80 open and 4 justified differences. An open difference is a bug or an undecided
+81 open and 3 justified differences. An open difference is a bug or an undecided
 question. A justified one carries its reason. Each was run on JVM Clojure 1.12 and on cljam.
 
 ### Silent: wrong value, no error
@@ -229,6 +229,15 @@ here.
 
 With `(defrecord R [x y])`, `((->R 5 6) :x)` throws on the JVM and returns `5` here. `((->R 5 6) :w)` throws there and returns
 `nil` here. `(ifn? (->R 5 6))` is `false` and `true`.
+
+#### Regexes use the JavaScript dialect
+
+`(re-find #"\Aa\z" "a")`, `(re-find #"\p{Alpha}" "a")`, `(re-find #"\Qa.b\E" "a.b")` and `(re-find #"[a&&[^b]]" "a")` match on the
+JVM and return `nil` here. `(re-find #"a++" "aa")` and `(?x)` are errors here.
+
+The host engine is a fixed constraint: a regex is a host RegExp, as in ClojureScript, so a Java engine is not the goal. That does
+not cover the silent `nil`. `\A`, `\z` and `\Q...\E` can be translated to RegExp syntax, and syntax with no translation can be
+rejected at read time, as `(?x)` already is. Named groups, `(?i)`, `(?s)` and `(?m)` behave the same.
 
 #### Seq functions return vectors
 
@@ -695,13 +704,5 @@ JVM overflows.
 
 **Reason.** The JavaScript call stack is small and differs per engine. A VM budget gives one limit on every host, deeper than the
 JVM default.
-
-#### Regexes use the JavaScript dialect
-
-`(re-find #"\Aa\z" "a")`, `(re-find #"\p{Alpha}" "a")`, `(re-find #"\Qa.b\E" "a.b")` and `(re-find #"[a&&[^b]]" "a")` match on the
-JVM and return `nil` here. `(re-find #"a++" "aa")` and `(?x)` are errors here.
-
-**Reason.** A regex is a host value, as in ClojureScript, and shipping a Java regex engine to match this syntax costs more than
-it gains. Named groups, `(?i)`, `(?s)` and `(?m)` behave the same.
 
 <!-- divergences:end -->
