@@ -87,9 +87,7 @@ describe('jvm oracle', () => {
 
   it('names only kb entities that exist', () => {
     const entities = loadEntityIds(KB_ENTITIES)
-    const dangling = divergences.filter(
-      (d) => d.entity !== null && !entities.has(d.entity)
-    )
+    const dangling = divergences.filter((d) => !entities.has(d.entity))
     expect(dangling.map((d) => `${d.entity} ${d.source}`)).toEqual([])
   })
 

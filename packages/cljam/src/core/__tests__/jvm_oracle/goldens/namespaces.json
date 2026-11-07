@@ -42,6 +42,8 @@
     {"kind": "value", "printed": "1", "out": "", "source": "(ns foo (:refer-clojure :exclude [map])) (def map 1) map"},
     {"kind": "value", "printed": "\"1\"", "out": "", "source": "(ns foo (:require [clojure.string :as s])) (s/join [1])"},
     {"kind": "value", "printed": "nil", "out": "", "source": "(meta *ns*)"},
-    {"kind": "value", "printed": "{:doc \"Fundamental library of the Clojure language\", :author \"Rich Hickey\"}", "out": "", "source": "(meta (find-ns 'clojure.core))"}
+    {"kind": "value", "printed": "{:doc \"Fundamental library of the Clojure language\", :author \"Rich Hickey\"}", "out": "", "source": "(meta (find-ns 'clojure.core))"},
+    {"kind": "value", "printed": "{:doc \"doc\"}", "out": "", "source": "(ns foo \"doc\") (meta *ns*)"},
+    {"kind": "value", "printed": "{:a true}", "out": "", "source": "(ns ^:a foo) (meta *ns*)"}
   ]
 }

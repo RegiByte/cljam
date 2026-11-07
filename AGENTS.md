@@ -43,8 +43,8 @@ needed: `oracle.spec.ts` compares each case with goldens generated on the JVM.
 - Cases must be deterministic on the JVM (the generator refuses hangs, printed object addresses and order-dependent
   results) and must not depend on hash order: wrap unordered results in `sort`.
 - Regenerate with `bun run gen:jvm-goldens` in `packages/cljam`, then commit the goldens. Only this needs a JVM.
-- A case that differs goes in `divergences.txt` as `<kb divergence id or -> <case source>`. When a listed case starts
-  agreeing the spec fails until the line is deleted.
+- A case that differs goes in `divergences.txt` as `<kb divergence id> <case source>`, and the spec fails unless the id
+  names an existing entity. When a listed case starts agreeing the spec fails until the line is deleted.
 - `goldens/coverage.md` tracks public-var coverage per `clojure.*` namespace. When it changes, review it and update it
   with `bunx vitest run src/core/__tests__/jvm_oracle -u`.
 

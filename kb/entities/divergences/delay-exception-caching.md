@@ -19,3 +19,5 @@
 ```
 
 The JVM counts `1`, cljam counts `2`.
+
+The oracle lists its cases under [[catch-class-names]], because `catch` with a class name fails first.

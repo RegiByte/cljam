@@ -224,6 +224,9 @@
     {"kind": "value", "printed": "{\"a\" 1}", "out": "", "source": "(require '[clojure.walk :as w]) (w/stringify-keys {:a 1})"},
     {"kind": "value", "printed": "[2]", "out": "", "source": "(require '[clojure.walk :as w]) (w/prewalk-replace {1 2} [1])"},
     {"kind": "value", "printed": "({:a 1} {:a 2} nil)", "out": "", "source": "(require '[clojure.data :as d]) (d/diff {:a 1} {:a 2})"},
-    {"kind": "value", "printed": "1", "out": "", "source": "(require '[clojure.zip :as z]) (z/node (z/down (z/vector-zip [1 2])))"}
+    {"kind": "value", "printed": "1", "out": "", "source": "(require '[clojure.zip :as z]) (z/node (z/down (z/vector-zip [1 2])))"},
+    {"kind": "value", "printed": "()", "out": "", "source": "(empty (range 3))"},
+    {"kind": "value", "printed": "()", "out": "", "source": "(empty (seq [1]))"},
+    {"kind": "value", "printed": "()", "out": "", "source": "(empty (filter odd? [1]))"}
   ]
 }

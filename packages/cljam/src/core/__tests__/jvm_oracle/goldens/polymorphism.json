@@ -77,6 +77,9 @@
     {"kind": "value", "printed": "{#user.R{:x 1} 1}", "out": "", "source": "(defrecord R [x]) (hash-map (->R 1) 1)"},
     {"kind": "value", "printed": "{:a 1}", "out": "", "source": "(defstruct S :a) (struct S 1)"},
     {"kind": "value", "printed": "\"a\"", "out": "", "source": "(str (reify Object (toString [_] \"a\")))"},
-    {"kind": "value", "printed": "{:class java.lang.Long}", "out": "", "source": "(bean 1)"}
+    {"kind": "value", "printed": "{:class java.lang.Long}", "out": "", "source": "(bean 1)"},
+    {"kind": "value", "printed": "true", "out": "", "source": "(defrecord R [x]) (associative? (->R 1))"},
+    {"kind": "value", "printed": "1", "out": "", "source": "(defrecord R [x]) ((fn [{:keys [x]}] x) (->R 1))"},
+    {"kind": "value", "printed": "#user.R{:x 1}", "out": "", "source": "(defrecord R [x]) (new R 1)"}
   ]
 }

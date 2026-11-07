@@ -19,8 +19,8 @@ export type Verdict = { agree: true } | { agree: false; reason: string }
 
 export type Divergence = {
   source: string
-  /** kb divergence entity id, null until the entity exists. */
-  entity: string | null
+  /** kb divergence entity id. */
+  entity: string
 }
 
 const isContent = (line: string) => line.trim() !== '' && !line.startsWith(';')
@@ -36,18 +36,14 @@ export function parseCases(text: string): Case[] {
     )
 }
 
-/** Each line is `<entity id or -> <case source>`. */
+/** Each line is `<entity id> <case source>`. */
 export function parseDivergences(text: string): Divergence[] {
   return text
     .split('\n')
     .filter(isContent)
     .map((line) => {
       const gap = line.indexOf(' ')
-      const entity = line.slice(0, gap)
-      return {
-        source: line.slice(gap + 1),
-        entity: entity === '-' ? null : entity,
-      }
+      return { source: line.slice(gap + 1), entity: line.slice(0, gap) }
     })
 }
 

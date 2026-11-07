@@ -148,6 +148,20 @@
     {"kind": "threw", "class": "java.lang.IllegalArgumentException", "message": "Can't call nil, form: (nil)", "out": "", "source": "(nil)"},
     {"kind": "value", "printed": "1", "out": "", "source": "(try 1)"},
     {"kind": "value", "printed": "1", "out": "", "source": "(try 1 (finally 2))"},
-    {"kind": "value", "printed": "2", "out": "", "source": "(let [a (atom 0)] (try 1 (finally (reset! a 2))) @a)"}
+    {"kind": "value", "printed": "2", "out": "", "source": "(let [a (atom 0)] (try 1 (finally (reset! a 2))) @a)"},
+    {"kind": "threw", "class": "java.lang.AssertionError", "message": "Assert failed: (pos? x)", "out": "", "source": "((fn [x] {:pre [(pos? x)]} x) -1)"},
+    {"kind": "value", "printed": "1", "out": "", "source": "(defn f [x] {:post [(pos? %)]} x) (f 1)"},
+    {"kind": "value", "printed": "2", "out": "", "source": "(defn f \"d\" {:a 1} [x] x) (f 2)"},
+    {"kind": "value", "printed": "2", "out": "", "source": "(defn f ([x] x) {:a 1}) (f 2)"},
+    {"kind": "value", "printed": "2", "out": "", "source": "(defmacro m {:a 1} [x] x) (m 2)"},
+    {"kind": "threw", "class": "java.lang.IllegalArgumentException", "message": "Duplicate case test constant: :a", "out": "", "source": "(case :a :a 1 :a 2)"},
+    {"kind": "value", "printed": "false", "out": "", "source": "(special-symbol? 'binding)"},
+    {"kind": "value", "printed": "false", "out": "", "source": "(special-symbol? 'ns)"},
+    {"kind": "value", "printed": "false", "out": "", "source": "(special-symbol? 'async)"},
+    {"kind": "value", "printed": "true", "out": "", "source": "(special-symbol? 'new)"},
+    {"kind": "value", "printed": "true", "out": "", "source": "(special-symbol? 'throw)"},
+    {"kind": "value", "printed": "true", "out": "", "source": "(special-symbol? 'catch)"},
+    {"kind": "value", "printed": "true", "out": "", "source": "(special-symbol? '&)"},
+    {"kind": "threw", "class": "clojure.lang.ExceptionInfo", "message": "Wrong number of args (2) passed to quote", "out": "", "source": "(quote 1 2)"}
   ]
 }

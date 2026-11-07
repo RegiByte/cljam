@@ -41,3 +41,5 @@
 (ns foo (:require [clojure.string :as s])) (s/join [1])
 (meta *ns*)
 (meta (find-ns 'clojure.core))
+(ns foo "doc") (meta *ns*)
+(ns ^:a foo) (meta *ns*)

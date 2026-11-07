@@ -76,3 +76,6 @@
 (defstruct S :a) (struct S 1)
 (str (reify Object (toString [_] "a")))
 (bean 1)
+(defrecord R [x]) (associative? (->R 1))
+(defrecord R [x]) ((fn [{:keys [x]}] x) (->R 1))
+(defrecord R [x]) (new R 1)

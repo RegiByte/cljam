@@ -223,3 +223,6 @@
 (require '[clojure.walk :as w]) (w/prewalk-replace {1 2} [1])
 (require '[clojure.data :as d]) (d/diff {:a 1} {:a 2})
 (require '[clojure.zip :as z]) (z/node (z/down (z/vector-zip [1 2])))
+(empty (range 3))
+(empty (seq [1]))
+(empty (filter odd? [1]))

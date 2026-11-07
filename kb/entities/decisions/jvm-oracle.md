@@ -36,9 +36,9 @@ uses its own printer, with `*print-length*` bound so infinite seqs terminate. Bo
 host-specific. A cljam throw for a missing var never agrees with a JVM throw for another reason, since that is an absent
 feature rather than the same behaviour.
 
-**Known differences** are listed in `divergences.txt`, each line naming its kb divergence entity id once one
-exists. The suite stays green, and a listed case that starts agreeing fails until its line is deleted, so the list
-cannot rot.
+**Known differences** are listed in `divergences.txt`, and each line must name an existing kb divergence entity, so an
+unexplained difference cannot be recorded. The suite stays green, and a listed case that starts agreeing fails until its
+line is deleted, so the list cannot rot.
 
 **Public-var coverage** compares the JVM's `ns-publics` with cljam's, plus cljam's special forms: names like `defmacro`,
 `binding` and `ns` are vars on the JVM and special forms here, so `ns-publics` omits them. `(fn [] sym)` proves nothing,

@@ -22,6 +22,6 @@
 
 [`instance?`](ref:cljam/packages/cljam/src/core/bootstrap.ts#L264-L272) ignores its arguments and returns `false`, and the
 `conjure.` prefix is a leftover of an old project name. `defrecord` defines no class symbol: `P` does not resolve after
-`(defrecord P [x])`, where `(instance? P (->P 1))` is `true` on the JVM. `(defmulti f class)` with `String` as a dispatch
+`(defrecord P [x])`, where `(instance? P (->P 1))` is `true` on the JVM, and neither `(P. 1)` nor `(new P 1)` constructs one. `(defmulti f class)` with `String` as a dispatch
 value finds no method. `class?`, `parents` and `ancestors` on classes return `false` or `nil`. Open until the class
 model is redesigned together with the errors.
